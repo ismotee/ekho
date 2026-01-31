@@ -156,3 +156,4 @@ pytest
   - [Product Owner](docs/agent-roles/07-product-owner.md)
   - [DevOps Engineer](docs/agent-roles/08-devops-engineer.md)
   - [Technical Writer](docs/agent-roles/09-technical-writer.md)
+  - [UI/UX Designer](docs/agent-roles/10-ui-ux-designer.md)
