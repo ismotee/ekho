@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "ekho-backend"
+version = "1.0.0"
+description = "Ekho backend application with Django"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "ekho_backend"}, {include = "api"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Django = "^4.2.7"
+djangorestframework = "^3.14.0"
+django-cors-headers = "^4.3.1"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-django = "^4.7.0"
+pytest-cov = "^4.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "ekho_backend.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=api",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--reuse-db",
+]
