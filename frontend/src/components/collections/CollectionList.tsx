@@ -1,0 +1,126 @@
+/**
+ * CollectionList Component
+ * 
+ * Displays a list of collections.
+ * 
+ * Reference: docs/user-stories/02-collections.md (US-008), docs/design/02-collection-management-design.md
+ */
+
+import { useEffect, useState } from 'react'
+import { observer } from 'mobx-react-lite'
+import { Link, useNavigate } from 'react-router-dom'
+import { useCollectionStore } from '../../stores/collectionStore'
+import { useAuthStore } from '../../stores/authStore'
+import { CollectionCard } from './CollectionCard'
+import './Collections.css'
+
+interface CollectionListProps {
+  collections?: any[]
+  loading?: boolean
+  error?: string | null
+  pagination?: any
+}
+
+export const CollectionList = observer((props: CollectionListProps) => {
+  const navigate = useNavigate()
+  const collectionStore = useCollectionStore()
+  const authStore = useAuthStore()
+  const [showAllCollections, setShowAllCollections] = useState(false)
+  const [hideClosedCollections, setHideClosedCollections] = useState(true)
+  const collections = props.collections ?? collectionStore.collections
+  const loading = props.loading ?? collectionStore.loading
+  const error = props.error ?? collectionStore.error
+  const pagination = props.pagination ?? collectionStore.pagination
+
+  useEffect(() => {
+    // Only fetch if not using props collections
+    if (props.collections) {
+      return
+    }
+
+    // If authenticated, show only own collections by default
+    const params: any = {}
+    if (authStore.isAuthenticated && !showAllCollections && authStore.user) {
+      params.owner = authStore.user.username
+    }
+    if (hideClosedCollections) {
+      params.is_closed = false
+    }
+    
+    collectionStore.fetchCollections(params)
+  }, [authStore.isAuthenticated, authStore.user?.username, showAllCollections, hideClosedCollections, props.collections])
+
+  if (loading) {
+    return <div role="status">Loading...</div>
+  }
+
+  if (error) {
+    return <div className="error-message">{error}</div>
+  }
+
+  return (
+    <div className="collection-list-page">
+      <div className="collection-list-header">
+        <div className="collection-list-title-section">
+          <h1>Collections</h1>
+          <div className="collection-filters">
+            {authStore.isAuthenticated && (
+              <label className="filter-toggle">
+                <input
+                  type="checkbox"
+                  checked={showAllCollections}
+                  onChange={(e) => setShowAllCollections(e.target.checked)}
+                />
+                <span>Show all collections</span>
+              </label>
+            )}
+            <label className="filter-toggle">
+              <input
+                type="checkbox"
+                checked={hideClosedCollections}
+                onChange={(e) => setHideClosedCollections(e.target.checked)}
+              />
+              <span>Hide closed collections</span>
+            </label>
+          </div>
+        </div>
+        {authStore.isAuthenticated && (
+          <Link to="/collections/new" className="btn btn-primary">
+            + Create Collection
+          </Link>
+        )}
+      </div>
+
+      {collections.length === 0 ? (
+        <div className="empty-state">
+          <p>No collections found</p>
+          {authStore.isAuthenticated && (
+            <Link to="/collections/new" className="btn btn-primary">
+              Create Your First Collection
+            </Link>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="collection-list" role="list">
+            <div className="collection-grid">
+              {collections.map((collection) => (
+                <CollectionCard key={collection.id} collection={collection} />
+              ))}
+            </div>
+          </div>
+          
+          {pagination && pagination.count > 0 && (
+            <div className="pagination">
+              <span>Total: {pagination.count}</span>
+              {pagination.next && <button>Next</button>}
+              {pagination.previous && <button>Previous</button>}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+})
+
+CollectionList.displayName = 'CollectionList'

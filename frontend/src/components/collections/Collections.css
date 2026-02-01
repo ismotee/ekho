@@ -1,0 +1,279 @@
+/**
+ * Collection Component Styles
+ * 
+ * Reference: docs/design/05-design-system.md
+ */
+
+.collection-list-page {
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.collection-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  text-align: left;
+}
+
+.collection-list-title-section {
+  flex: 1;
+  text-align: left;
+}
+
+.collection-list-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #0F172A;
+  text-align: left;
+}
+
+.collection-filters {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #64748B;
+  user-select: none;
+  width: fit-content;
+  flex-shrink: 0;
+}
+
+.filter-toggle input[type="checkbox"] {
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+}
+
+.filter-toggle:hover {
+  color: #0F172A;
+}
+
+.collection-list {
+  margin: 2rem 0;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.collection-card {
+  display: block;
+  padding: 1.5rem;
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.collection-card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.collection-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.collection-card p {
+  margin: 0.5rem 0;
+  color: #64748B;
+  font-size: 0.875rem;
+}
+
+.collection-meta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #64748B;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: #FEE2E2;
+  color: #EF4444;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.collection-dates {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #94A3B8;
+}
+
+.collection-detail {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.back-link {
+  display: block;
+  margin-bottom: 1rem;
+  color: #2563EB;
+  text-decoration: none;
+  text-align: left;
+  width: 100%;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.collection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  text-align: left;
+}
+
+.collection-title-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.collection-title-section h1 {
+  margin: 0;
+  font-size: 2rem;
+  text-align: left;
+  width: 100%;
+}
+
+.collection-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.collection-info {
+  margin: 1.5rem 0;
+  padding: 0;
+  text-align: left;
+}
+
+.collection-info p {
+  margin: 0.5rem 0;
+  text-align: left;
+}
+
+.collection-info strong {
+  font-weight: 600;
+}
+
+.collection-actions {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.collection-form {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h2 {
+  margin: 0 0 1rem 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #64748B;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.records-section {
+  margin-top: 3rem;
+}
+
+.records-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.records-section-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0F172A;
+}
