@@ -183,7 +183,7 @@ class CollectionViewSet(viewsets.ModelViewSet):
         from django.db.models import Count
         queryset = Collection.objects.select_related('owner').annotate(
             record_count=Count('records')
-        )
+        ).order_by('-created_at')
         
         # Filter by owner username
         owner_username = self.request.query_params.get('owner')
@@ -312,7 +312,7 @@ class RecordViewSet(viewsets.ModelViewSet):
         if collection_id:
             queryset = queryset.filter(collection_id=collection_id)
         
-        return queryset.select_related('collection', 'collection__owner')
+        return queryset.select_related('collection', 'collection__owner').order_by('-created_at')
     
     def list(self, request, *args, **kwargs):
         """List records - collection parameter is required"""
