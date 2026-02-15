@@ -98,6 +98,7 @@ export class RecordStore {
   async fetchAllRecords(params?: {
     page?: number
     page_size?: number
+    search?: string
     collection_name?: string
     owner?: string
   }): Promise<void> {

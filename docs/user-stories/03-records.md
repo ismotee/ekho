@@ -225,3 +225,27 @@
 - Backend: `GET /api/records/` accepts optional query params `collection_name` (icontains on collection name) and `owner` (exact match on collection owner username)
 - Frontend: Filter UI in Records list page header; filter state passed to `fetchAllRecords({ collection_name?, owner?, ... })`; use filter config (key, label, type) for extensibility
 - Same auth and pagination as existing records list
+
+---
+
+## US-018: Search Records (and Reusable Search)
+
+**As a** user (authenticated or anonymous)  
+**I want to** search the global records list by title, artist, and collection context  
+**So that** I can quickly find records matching my search terms
+
+### Acceptance Criteria
+
+- [ ] A search input appears on the Records page (e.g. in the page header)
+- [ ] User can type a search term; results update (with optional debounce to limit requests)
+- [ ] Backend search covers: record title, artist, collection name, and collection description (case-insensitive, OR across fields)
+- [ ] Search works together with existing filters (collection name, owner); combined search + filters update the list correctly
+- [ ] Empty search term does not filter (shows all records subject to other filters)
+- [ ] The search component is reusable so it can be used on other views later (e.g. collections search)
+
+### Technical Notes
+
+- Backend: `GET /api/records/` accepts optional query param `search`; filter using Q over title, artist, collection__name, collection__description (icontains, OR). Empty/omitted `search` = no search filter.
+- Backend: `GET /api/collections/` accepts optional `search` (name + description, icontains, OR) for future use.
+- Frontend: Reusable SearchInput component (e.g. in `shared/` or `search/`): controlled input, placeholder, optional debounce, callback for search value; same styling as existing form inputs. Records page passes `search` into `fetchAllRecords`; optionally sync search term to URL query.
+- Accessibility: label and ARIA attributes for the search input

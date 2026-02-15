@@ -145,6 +145,60 @@ class TestListCollections:
 
 
 @pytest.mark.django_db
+class TestCollectionsListSearch:
+    """Test Collections list search param (Plan 3, for future use). search filters by name and description (icontains, OR)."""
+
+    def test_search_filters_by_name(self, authenticated_client):
+        """GET /api/collections/?search=... filters by collection name (icontains)."""
+        create_url = reverse('collections-list')
+        authenticated_client.post(
+            create_url,
+            {'name': 'UniqueCollectionNameHere', 'description': 'D'},
+            format='json',
+        )
+        authenticated_client.post(
+            create_url,
+            {'name': 'Other Collection', 'description': 'D'},
+            format='json',
+        )
+        url = reverse('collections-list')
+        response = authenticated_client.get(url, {'search': 'UniqueCollectionName'})
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['name'] == 'UniqueCollectionNameHere'
+
+    def test_search_filters_by_description(self, authenticated_client):
+        """GET /api/collections/?search=... filters by description (icontains)."""
+        create_url = reverse('collections-list')
+        authenticated_client.post(
+            create_url,
+            {'name': 'C1', 'description': 'Description with UniqueDescWord'},
+            format='json',
+        )
+        authenticated_client.post(
+            create_url,
+            {'name': 'C2', 'description': 'Other description'},
+            format='json',
+        )
+        url = reverse('collections-list')
+        response = authenticated_client.get(url, {'search': 'UniqueDescWord'})
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        assert len(response.data['results']) == 1
+        assert 'UniqueDescWord' in response.data['results'][0]['description']
+
+    def test_search_empty_does_not_filter(self, authenticated_client):
+        """Empty search param does not filter collections list."""
+        url = reverse('collections-list')
+        response_empty = authenticated_client.get(url, {'search': ''})
+        response_omit = authenticated_client.get(url)
+        assert response_empty.status_code == status.HTTP_200_OK
+        assert response_omit.status_code == status.HTTP_200_OK
+        assert response_empty.data['count'] == response_omit.data['count']
+
+
+@pytest.mark.django_db
 class TestCreateCollection:
     """Test Create Collection (US-005)"""
     

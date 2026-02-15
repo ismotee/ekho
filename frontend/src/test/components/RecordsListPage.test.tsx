@@ -125,3 +125,57 @@ describe('RecordsListPage – Filters (Plan 2, US-017)', () => {
     })
   })
 })
+
+describe('RecordsListPage – Search (Plan 3, US-018)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(useRecordStore).mockReturnValue({
+      records: [],
+      loading: false,
+      error: null,
+      pagination: { count: 0, next: null, previous: null },
+      fetchAllRecords: mockFetchAllRecords,
+    } as any)
+  })
+
+  it('has search input on records page', () => {
+    render(<RecordsListPage />)
+    const searchInput = screen.queryByRole('searchbox') ?? screen.queryByPlaceholderText(/search records/i)
+    expect(searchInput).toBeInTheDocument()
+  })
+
+  it('calls fetchAllRecords with search param when user types in search', async () => {
+    const user = userEvent.setup()
+    render(<RecordsListPage />)
+    const searchInput = screen.queryByRole('searchbox') ?? screen.queryByPlaceholderText(/search/i)
+    expect(searchInput).toBeInTheDocument()
+    await act(async () => {
+      await user.type(searchInput!, 'sunset')
+    })
+    await waitFor(() => {
+      expect(mockFetchAllRecords).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'sunset' })
+      )
+    })
+  })
+
+  it('calls fetchAllRecords with search combined with filters', async () => {
+    const user = userEvent.setup()
+    render(<RecordsListPage />)
+    const searchInput = screen.queryByRole('searchbox') ?? screen.queryByPlaceholderText(/search/i)
+    const collectionNameInput = screen.queryByLabelText(/collection name/i) ??
+      screen.queryByPlaceholderText(/filter by collection name/i)
+    await act(async () => {
+      await user.type(collectionNameInput!, 'Gallery')
+      await user.type(searchInput!, 'art')
+    })
+    await waitFor(() => {
+      expect(mockFetchAllRecords).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection_name: 'Gallery',
+          search: 'art',
+        })
+      )
+    })
+  })
+})

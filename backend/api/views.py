@@ -196,6 +196,13 @@ class CollectionViewSet(viewsets.ModelViewSet):
             is_closed_bool = is_closed.lower() == 'true'
             queryset = queryset.filter(is_closed=is_closed_bool)
         
+        # Search (Plan 3): name and description (icontains, OR)
+        search = (self.request.query_params.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(description__icontains=search)
+            )
+        
         return queryset
     
     def create(self, request, *args, **kwargs):
@@ -301,10 +308,11 @@ class RecordViewSet(viewsets.ModelViewSet):
         return context
     
     def get_queryset(self):
-        """Filter records by collection (optional), collection_name, and owner (Plan 2, US-017)."""
+        """Filter records by collection (optional), collection_name, owner (Plan 2), and search (Plan 3, US-018)."""
         collection_id = self.request.query_params.get('collection')
         collection_name = self.request.query_params.get('collection_name', '').strip()
         owner_username = self.request.query_params.get('owner', '').strip()
+        search = (self.request.query_params.get('search') or '').strip()
 
         queryset = Record.objects.all()
 
@@ -314,6 +322,13 @@ class RecordViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(collection__name__icontains=collection_name)
         if owner_username:
             queryset = queryset.filter(collection__owner__username=owner_username)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search)
+                | Q(artist__icontains=search)
+                | Q(collection__name__icontains=search)
+                | Q(collection__description__icontains=search)
+            )
 
         return queryset.select_related('collection', 'collection__owner').order_by('-created_at')
     

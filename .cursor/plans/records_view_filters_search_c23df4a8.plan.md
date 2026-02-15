@@ -17,10 +17,10 @@ This plan adds a dedicated **Records** list page (all records across collections
 - Filters: collection name and collection owner (UI and API); extensible filter design for future filters
 - Reusable Search component; backend search on records (title, artist, collection name, description) and collections (name, description) for future use
 
-**Current State:**
+**Current State (all plans complete):**
 
-- **Backend**: [backend/api/views.py](backend/api/views.py) – `RecordViewSet.list()` has **optional** `collection`; list response includes `collection_name`, `collection_owner_username`. No filters (`collection_name`, `owner`) or search yet. `CollectionViewSet` has `owner`, `is_closed`; no search.
-- **Frontend**: **Plan 1 done**: Global records route `/records`, [RecordsListPage](frontend/src/components/records/RecordsListPage.tsx), [recordStore](frontend/src/stores/recordStore.ts) has `fetchAllRecords()`, RecordCard shows collection name when present. Records still shown inside collection via [RecordList](frontend/src/components/records/RecordList.tsx). No filters or search UI yet.
+- **Backend**: [backend/api/views.py](backend/api/views.py) – `RecordViewSet.list()` has **optional** `collection`; list response includes `collection_name`, `collection_owner_username`. Optional query params: `collection_name`, `owner`, `search` (title, artist, collection name/description). `CollectionViewSet.get_queryset()` has optional `search` (name, description).
+- **Frontend**: **Plans 1–3 done**: Global records route `/records`, [RecordsListPage](frontend/src/components/records/RecordsListPage.tsx) with filters (left sidebar), [SearchInput](frontend/src/components/shared/SearchInput.tsx) below title, [recordStore](frontend/src/stores/recordStore.ts) `fetchAllRecords({ search, collection_name, owner, ... })`, RecordCard shows collection name when present.
 - **Look & Feel**: Reuse [CollectionList](frontend/src/components/collections/CollectionList.tsx), [Records.css](frontend/src/components/records/Records.css), [Collections.css](frontend/src/components/collections/Collections.css), [App.css](frontend/src/App.css).
 
 ## Architecture (Records List Flow)
@@ -51,7 +51,7 @@ This plan adds a dedicated **Records** list page (all records across collections
 
 ## Phase 1: Documentation
 
-**Status**: Pending
+**Status**: Done (deliverables produced for Plan 1, 2, and 3.)
 
 **Workflow**: Primary roles – Technical Writer, Lead Architect, Product Owner, Data Architect, UI/UX Designer. Output: technical and design documentation before code.
 
@@ -142,7 +142,7 @@ This plan adds a dedicated **Records** list page (all records across collections
 
 ## Phase 2: Tests
 
-**Status**: Pending
+**Status**: Done (tests written and passing for Plan 1, 2, and 3.)
 
 **Workflow**: Primary roles – Frontend Tester, Backend Tester, Frontend Developer, Backend Developer. Output: tests written from specs before production code.
 
@@ -249,7 +249,7 @@ This plan adds a dedicated **Records** list page (all records across collections
 
 ## Phase 3: Production Code
 
-**Status**: Pending
+**Status**: Done (Plan 1, Plan 2, and Plan 3 implementation complete per Implementation Order below.)
 
 **Workflow**: Primary roles – Frontend Developer, Backend Developer, DevOps Engineer. Output: implementation that passes Phase 2 tests and follows Phase 1 documentation.
 
@@ -354,12 +354,12 @@ ekho/
    - Phase 3: Backend (get_queryset filter params) then Frontend (filter UI + store params) – done. Delivered: `collection_name` and `owner` query params; filter UI with config-driven layout.
    - **Post–Phase 3:** Focus retention (loading only in content area); filters in left sidebar (top to bottom); fast debounce (300ms) on filter fields.
 
-3. **Plan 3 – Search**
-   - Phase 1 docs (Technical Writer, UI/UX Designer)
-   - Phase 2 tests (Backend Tester: search param records + collections; Frontend Tester: SearchInput, records page integration)
-   - Phase 3: Backend (search in both ViewSets) then Frontend (SearchInput component + records page integration)
+3. **Plan 3 – Search** ✅ **Done**
+   - Phase 1 docs (Technical Writer, UI/UX Designer) — **Done**: [docs/plans/records-view-plan3-search-phase1.md](docs/plans/records-view-plan3-search-phase1.md), [US-018](docs/user-stories/03-records.md), [api-spec](docs/api-specification.md) (search param on records + collections)
+   - Phase 2 tests — **Done**: Backend: `TestRecordsListSearch` and `TestCollectionsListSearch` in `backend/api/tests/test_records.py`, `test_collections.py`. Frontend: `SearchInput.test.tsx`, RecordsListPage search tests, `recordStore.test.ts` (search param). SearchInput in `frontend/src/components/shared/SearchInput.tsx`.
+   - Phase 3 — **Done**: Backend: `RecordViewSet.get_queryset()` applies optional `search` (Q: title, artist, collection__name, collection__description, icontains OR). `CollectionViewSet.get_queryset()` applies optional `search` (Q: name, description, icontains OR). Frontend: SearchInput on Records list page (below title), search state and `fetchAllRecords({ search, ... })`, styles in Records.css. All Plan 3 tests pass.
 
-Plan 2 and Plan 3 can be parallelized after Plan 1.
+Plan 2 and Plan 3 can be parallelized after Plan 1. **Initiative complete.**
 
 ## Backend Endpoint Summary
 
@@ -370,10 +370,10 @@ Plan 2 and Plan 3 can be parallelized after Plan 1.
 
 ## Success Criteria
 
-- User can open `/records` and see all records in a grid with same L&F as collections/records elsewhere
-- User can filter by collection name and collection owner; results update correctly
-- User can search records; backend searches title, artist, collection name, collection description
-- Search component is reusable (e.g. for future collections search)
-- Filter design allows adding new filters without rewriting the UI
-- Backend and frontend tests pass; existing behavior (e.g. list with `collection` param) preserved
-- No new API endpoints; same auth, pagination, and error style as existing API
+- ✅ User can open `/records` and see all records in a grid with same L&F as collections/records elsewhere
+- ✅ User can filter by collection name and collection owner; results update correctly
+- ✅ User can search records; backend searches title, artist, collection name, collection description
+- ✅ Search component is reusable (e.g. for future collections search)
+- ✅ Filter design allows adding new filters without rewriting the UI
+- ✅ Backend and frontend tests pass; existing behavior (e.g. list with `collection` param) preserved
+- ✅ No new API endpoints; same auth, pagination, and error style as existing API

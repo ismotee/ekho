@@ -53,10 +53,28 @@
 }
 
 .record-list-title {
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1rem 0;
   font-size: 2rem;
   font-weight: 600;
   color: #0F172A;
+}
+
+.record-list-search {
+  margin-bottom: 1.5rem;
+}
+
+.record-list-search input {
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.record-list-search input::placeholder {
+  color: #94A3B8;
 }
 
 .record-filter-input::placeholder {

@@ -25,6 +25,7 @@ This page lists **known bugs** in the Ekho application: confirmed product or app
 | ID | Title | Description | Area | Severity | Status | Discovered |
 |----|-------|-------------|------|----------|--------|------------|
 | BUG-001 | Back link in record detail view always goes to collection | When the user clicks the back link in the record detail view, the link always navigates to the collection page. Expected: it should navigate to the previous page (e.g. collection or records list view). | Frontend / Navigation | Medium | Open | 2025-02-14 |
+| BUG-002 | Filter banner on the left blends too much with the rest of the page | On the Records list page, the filter sidebar (collection name, owner, etc.) does not have enough visual separation from the main content; it blends in with the rest of the page and can be hard to distinguish. | Frontend / Records UI | Low | Open | 2025-02-15 |
 
 ## Recently fixed
 
