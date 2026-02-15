@@ -315,22 +315,15 @@ class RecordViewSet(viewsets.ModelViewSet):
         return queryset.select_related('collection', 'collection__owner').order_by('-created_at')
     
     def list(self, request, *args, **kwargs):
-        """List records - collection parameter is required"""
+        """List records - collection parameter is optional (omit to list all records)."""
         collection_id = request.query_params.get('collection')
-        
-        if not collection_id:
-            return Response({
-                'error': 'collection parameter is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verify collection exists
-        try:
-            collection = Collection.objects.get(id=collection_id)
-        except Collection.DoesNotExist:
-            return Response({
-                'error': 'Collection not found'
-            }, status=status.HTTP_404_NOT_FOUND)
-        
+        if collection_id:
+            try:
+                Collection.objects.get(id=collection_id)
+            except Collection.DoesNotExist:
+                return Response({
+                    'error': 'Collection not found'
+                }, status=status.HTTP_404_NOT_FOUND)
         return super().list(request, *args, **kwargs)
     
     def create(self, request, *args, **kwargs):

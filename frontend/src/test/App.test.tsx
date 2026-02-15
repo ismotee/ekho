@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
-import App from '../App'
+import { MemoryRouter } from 'react-router-dom'
+import App, { AppContent } from '../App'
 
 // Mock stores
 vi.mock('../stores/authStore', () => ({
@@ -37,7 +37,9 @@ vi.mock('../stores/recordStore', () => ({
     currentRecord: null,
     loading: false,
     error: null,
+    pagination: { count: 0, next: null, previous: null },
     fetchRecords: vi.fn(),
+    fetchAllRecords: vi.fn(),
     fetchRecord: vi.fn(),
     createRecord: vi.fn(),
     updateRecord: vi.fn(),
@@ -75,5 +77,21 @@ describe('App', () => {
     const nav = screen.getByRole('navigation')
     expect(nav).toBeInTheDocument()
     expect(screen.getByText(/ekho/i)).toBeInTheDocument()
+  })
+
+  it('renders Records link in navigation (US-016)', () => {
+    render(<App />)
+    const recordsLink = screen.getByRole('link', { name: /records/i })
+    expect(recordsLink).toBeInTheDocument()
+    expect(recordsLink).toHaveAttribute('href', '/records')
+  })
+
+  it('renders records list page at /records route (US-016)', () => {
+    render(
+      <MemoryRouter initialEntries={['/records']}>
+        <AppContent />
+      </MemoryRouter>
+    )
+    expect(screen.getByRole('heading', { name: /records/i })).toBeInTheDocument()
   })
 })

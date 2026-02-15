@@ -18,10 +18,11 @@ import { CollectionDetail } from './components/collections/CollectionDetail'
 import { CollectionForm } from './components/collections/CollectionForm'
 import { RecordDetail } from './components/records/RecordDetail'
 import { RecordForm } from './components/records/RecordForm'
+import { RecordsListPage } from './components/records/RecordsListPage'
 import { useAuthStore } from './stores/authStore'
 import './App.css'
 
-const AppContent = observer(() => {
+export const AppContent = observer(() => {
   const authStore = useAuthStore()
 
   // Fetch current user on app load to restore authentication state
@@ -36,6 +37,7 @@ const AppContent = observer(() => {
           <Route path="/" element={<Navigate to="/collections" replace />} />
           <Route path="/collections" element={<CollectionList />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
+          <Route path="/records" element={<RecordsListPage />} />
           <Route path="/records/:id" element={<RecordDetail />} />
           
           {/* Auth routes */}
