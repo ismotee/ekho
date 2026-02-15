@@ -112,6 +112,32 @@ describe('RecordStore Tests', () => {
     })
   })
 
+  it('fetchAllRecords passes search param when provided (Plan 3)', async () => {
+    const store = new RecordStore()
+    vi.mocked(api.get).mockResolvedValue({ results: [], count: 0, next: null, previous: null })
+    await store.fetchAllRecords({ search: 'sunset' })
+    expect(api.get).toHaveBeenCalledWith('/records/', { search: 'sunset' })
+  })
+
+  it('fetchAllRecords passes search with filters and pagination', async () => {
+    const store = new RecordStore()
+    vi.mocked(api.get).mockResolvedValue({ results: [], count: 0, next: null, previous: null })
+    await store.fetchAllRecords({
+      search: 'art',
+      collection_name: 'My',
+      owner: 'johndoe',
+      page: 2,
+      page_size: 10,
+    })
+    expect(api.get).toHaveBeenCalledWith('/records/', {
+      search: 'art',
+      collection_name: 'My',
+      owner: 'johndoe',
+      page: 2,
+      page_size: 10,
+    })
+  })
+
   it('sets loading state during fetchRecords', async () => {
     expect(true).toBe(true)
   })

@@ -357,6 +357,123 @@ class TestRecordsListFilters:
 
 
 @pytest.mark.django_db
+class TestRecordsListSearch:
+    """Test Records list search param (Plan 3, US-018). search filters by title, artist, collection name, collection description (icontains, OR)."""
+
+    def test_search_filters_by_title(self, authenticated_client, collection):
+        """search param filters records by title (icontains)."""
+        if not collection:
+            return
+        create_url = reverse('records-list')
+        authenticated_client.post(
+            create_url,
+            {'title': 'UniqueSunsetTitle', 'artist': 'A', 'collection': collection['id']},
+            format='json',
+        )
+        authenticated_client.post(
+            create_url,
+            {'title': 'Other Painting', 'artist': 'B', 'collection': collection['id']},
+            format='json',
+        )
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {'search': 'UniqueSunset'})
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['title'] == 'UniqueSunsetTitle'
+
+    def test_search_filters_by_artist(self, authenticated_client, collection):
+        """search param filters records by artist (icontains)."""
+        if not collection:
+            return
+        create_url = reverse('records-list')
+        authenticated_client.post(
+            create_url,
+            {'title': 'T1', 'artist': 'UniqueArtistName', 'collection': collection['id']},
+            format='json',
+        )
+        authenticated_client.post(
+            create_url,
+            {'title': 'T2', 'artist': 'Other Artist', 'collection': collection['id']},
+            format='json',
+        )
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {'search': 'UniqueArtist'})
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['artist'] == 'UniqueArtistName'
+
+    def test_search_includes_collection_name_and_description(self, authenticated_client, collection):
+        """search optionally includes collection name and description (per spec)."""
+        if not collection:
+            return
+        # Create a second collection with distinctive name/description and a record in it
+        other_url = reverse('collections-list')
+        other_resp = authenticated_client.post(
+            other_url,
+            {'name': 'GalleryWithUniqueWord', 'description': 'Description with UniqueWord here'},
+            format='json',
+        )
+        if other_resp.status_code != status.HTTP_201_CREATED:
+            return
+        other_cid = other_resp.data['id']
+        create_url = reverse('records-list')
+        authenticated_client.post(
+            create_url,
+            {'title': 'Generic', 'artist': 'X', 'collection': other_cid},
+            format='json',
+        )
+        url = reverse('records-list')
+        # Search by collection name
+        response = authenticated_client.get(url, {'search': 'GalleryWithUniqueWord'})
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['collection_name'] == 'GalleryWithUniqueWord'
+        # Search by collection description
+        response2 = authenticated_client.get(url, {'search': 'UniqueWord'})
+        assert response2.status_code == status.HTTP_200_OK
+        assert len(response2.data['results']) >= 1
+
+    def test_empty_search_param_does_not_filter(self, authenticated_client, collection):
+        """Empty or omitted search param does not filter (all records subject to other filters)."""
+        if not collection:
+            return
+        url = reverse('records-list')
+        response_empty = authenticated_client.get(url, {'search': ''})
+        response_omit = authenticated_client.get(url)
+        assert response_empty.status_code == status.HTTP_200_OK
+        assert response_omit.status_code == status.HTTP_200_OK
+        assert 'results' in response_empty.data
+        assert 'results' in response_omit.data
+        # Counts should match when no other filters
+        assert response_empty.data['count'] == response_omit.data['count']
+
+    def test_search_combined_with_collection_name_and_owner(self, authenticated_client, collection):
+        """search can be combined with collection_name and owner (AND)."""
+        if not collection:
+            return
+        create_url = reverse('records-list')
+        authenticated_client.post(
+            create_url,
+            {'title': 'Sunset Art', 'artist': 'Jane', 'collection': collection['id']},
+            format='json',
+        )
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {
+            'search': 'Sunset',
+            'collection_name': 'Test',
+            'owner': 'testuser',
+        })
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        for record in response.data['results']:
+            assert 'Sunset' in record['title'] or 'sunset' in record['title'].lower()
+            assert 'test' in record.get('collection_name', '').lower()
+            assert record.get('collection_owner_username') == 'testuser'
+
+
+@pytest.mark.django_db
 class TestCreateRecord:
     """Test Create Record (US-010, US-015)"""
     

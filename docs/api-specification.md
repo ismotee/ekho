@@ -179,6 +179,7 @@ Returns a paginated list of all collections. Accessible to both authenticated an
 - `page_size`: Items per page (default: 20, max: 100)
 - `owner`: Filter by owner username (optional)
 - `is_closed`: Filter by closed status (true/false, optional)
+- `search`: string (optional). Matches collections where the term appears (case-insensitive) in **name** or **description** (OR). Omitted or empty = no search filter. For future use (e.g. collections list search UI).
 
 **Response:** `200 OK`
 ```json
@@ -380,6 +381,7 @@ Returns a paginated list of records. The `collection` query parameter is **optio
 - `collection`: Collection ID (optional). When present, filter to records in this collection only. When omitted, return records from all collections.
 - `collection_name`: string (optional). Substring match on the record’s collection name (case-insensitive). Omitted or empty = no filter.
 - `owner`: string (optional). Exact match on the collection owner’s username. Omitted or empty = no filter.
+- `search`: string (optional). Full-text style filter: matches records where the term appears (case-insensitive) in **record title**, **artist**, **collection name**, or **collection description** (OR across these fields). Omitted or empty = no search filter. Can be combined with `collection`, `collection_name`, and `owner`.
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 20, max: 100)
 
@@ -423,7 +425,7 @@ Example (with new fields):
 
 **Authentication:** Not required (public endpoint)
 
-**User Stories:** US-013, US-016
+**User Stories:** US-013, US-016, US-018
 
 ---
 

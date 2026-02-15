@@ -2,17 +2,21 @@
  * RecordsListPage Component
  *
  * Global records list (all collections). Uses same L&F as CollectionList and RecordList.
- * Reference: docs/plans/records-view-plan1-phase1.md, US-016; Plan 2 filters US-017
+ * Reference: docs/plans/records-view-plan1-phase1.md, US-016; Plan 2 filters US-017; Plan 3 search US-018
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useRecordStore } from '../../stores/recordStore'
 import { RecordCard } from './RecordCard'
+import { SearchInput } from '../shared/SearchInput'
 import './Records.css'
 
 /** Debounce delay (ms) before applying filter changes. */
 const FILTER_DEBOUNCE_MS = 300
+
+/** Debounce for search input (ms). */
+const SEARCH_DEBOUNCE_MS = 300
 
 /** Filter config for extensibility (add new filters by extending this array). */
 const RECORD_LIST_FILTERS = [
@@ -24,14 +28,16 @@ export const RecordsListPage = observer(() => {
   const recordStore = useRecordStore()
   const [collectionName, setCollectionName] = useState('')
   const [owner, setOwner] = useState('')
+  const [search, setSearch] = useState('')
   const isFirstFetch = useRef(true)
 
   const fetchWithFilters = useCallback(() => {
-    const params: { page?: number; page_size?: number; collection_name?: string; owner?: string } = {}
+    const params: { page?: number; page_size?: number; search?: string; collection_name?: string; owner?: string } = {}
+    if (search.trim()) params.search = search.trim()
     if (collectionName.trim()) params.collection_name = collectionName.trim()
     if (owner.trim()) params.owner = owner.trim()
     recordStore.fetchAllRecords(params)
-  }, [collectionName, owner, recordStore])
+  }, [search, collectionName, owner, recordStore])
 
   useEffect(() => {
     if (isFirstFetch.current) {
@@ -97,6 +103,15 @@ export const RecordsListPage = observer(() => {
         </aside>
         <div className="record-list-main">
           <h1 className="record-list-title">Records</h1>
+          <div className="record-list-search">
+            <SearchInput
+              value={search}
+              onSearch={setSearch}
+              placeholder="Search records…"
+              debounceMs={SEARCH_DEBOUNCE_MS}
+              ariaLabel="Search records"
+            />
+          </div>
           {renderContent()}
         </div>
       </div>
