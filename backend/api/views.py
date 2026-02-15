@@ -301,17 +301,20 @@ class RecordViewSet(viewsets.ModelViewSet):
         return context
     
     def get_queryset(self):
-        """Filter records by collection (required for list, optional for detail)"""
-        # For list operations, collection parameter is required (handled in list() method)
-        # For detail operations (retrieve, update, delete), we don't filter by collection
-        # so we can access any record by ID
+        """Filter records by collection (optional), collection_name, and owner (Plan 2, US-017)."""
         collection_id = self.request.query_params.get('collection')
-        
+        collection_name = self.request.query_params.get('collection_name', '').strip()
+        owner_username = self.request.query_params.get('owner', '').strip()
+
         queryset = Record.objects.all()
-        
+
         if collection_id:
             queryset = queryset.filter(collection_id=collection_id)
-        
+        if collection_name:
+            queryset = queryset.filter(collection__name__icontains=collection_name)
+        if owner_username:
+            queryset = queryset.filter(collection__owner__username=owner_username)
+
         return queryset.select_related('collection', 'collection__owner').order_by('-created_at')
     
     def list(self, request, *args, **kwargs):

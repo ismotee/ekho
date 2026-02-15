@@ -85,6 +85,33 @@ describe('RecordStore Tests', () => {
     expect(api.get).toHaveBeenCalledWith('/records/', { page: 2, page_size: 10 })
   })
 
+  it('fetchAllRecords passes collection_name and owner when provided (Plan 2 filters)', async () => {
+    const store = new RecordStore()
+    vi.mocked(api.get).mockResolvedValue({ results: [], count: 0, next: null, previous: null })
+    await store.fetchAllRecords({ collection_name: 'My Art', owner: 'johndoe' })
+    expect(api.get).toHaveBeenCalledWith('/records/', {
+      collection_name: 'My Art',
+      owner: 'johndoe',
+    })
+  })
+
+  it('fetchAllRecords combines collection_name, owner, page and page_size', async () => {
+    const store = new RecordStore()
+    vi.mocked(api.get).mockResolvedValue({ results: [], count: 0, next: null, previous: null })
+    await store.fetchAllRecords({
+      collection_name: 'Gallery',
+      owner: 'alice',
+      page: 1,
+      page_size: 20,
+    })
+    expect(api.get).toHaveBeenCalledWith('/records/', {
+      collection_name: 'Gallery',
+      owner: 'alice',
+      page: 1,
+      page_size: 20,
+    })
+  })
+
   it('sets loading state during fetchRecords', async () => {
     expect(true).toBe(true)
   })

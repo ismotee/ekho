@@ -378,6 +378,8 @@ Returns a paginated list of records. The `collection` query parameter is **optio
 
 **Query Parameters:**
 - `collection`: Collection ID (optional). When present, filter to records in this collection only. When omitted, return records from all collections.
+- `collection_name`: string (optional). Substring match on the record’s collection name (case-insensitive). Omitted or empty = no filter.
+- `owner`: string (optional). Exact match on the collection owner’s username. Omitted or empty = no filter.
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 20, max: 100)
 
