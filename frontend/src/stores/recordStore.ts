@@ -98,6 +98,8 @@ export class RecordStore {
   async fetchAllRecords(params?: {
     page?: number
     page_size?: number
+    collection_name?: string
+    owner?: string
   }): Promise<void> {
     this.loading = true
     this.error = null

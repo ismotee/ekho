@@ -202,3 +202,26 @@
 - List response must include per-record context for the global view: e.g. `collection_name`, and optionally `collection_owner_username` (read-only fields on the record list response)
 - Frontend: New page component (e.g. Records List Page / All Records View), new nav link "Records", store method e.g. `fetchAllRecords(params?)` calling the API without `collection`, reusing existing RecordCard and Records.css patterns
 - Detail/create/update/delete continue to enforce ownership and closed-collection rules; this story only adds the global list view and API support for it
+
+---
+
+## US-017: Filter Records by Collection and Owner
+
+**As a** user (authenticated or anonymous)  
+**I want to** filter the global records list by collection name and by collection owner  
+**So that** I can narrow the list to records from specific collections or owners
+
+### Acceptance Criteria
+
+- [ ] Filter controls appear in the Records page header (same style as CollectionList filters)
+- [ ] User can filter by collection name (substring match); results update when applied
+- [ ] User can filter by collection owner username (exact match); results update when applied
+- [ ] Filters can be combined (e.g. collection name + owner)
+- [ ] Clearing a filter (empty value) removes that filter and results update
+- [ ] Filter design allows adding more filters later without rewriting the UI (config-driven)
+
+### Technical Notes
+
+- Backend: `GET /api/records/` accepts optional query params `collection_name` (icontains on collection name) and `owner` (exact match on collection owner username)
+- Frontend: Filter UI in Records list page header; filter state passed to `fetchAllRecords({ collection_name?, owner?, ... })`; use filter config (key, label, type) for extensibility
+- Same auth and pagination as existing records list

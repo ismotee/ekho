@@ -1,6 +1,6 @@
 ---
 name: Records View Filters Search
-overview: Add a new "All Records" frontend view with a basic list, extensible filters (collection name, collection owner), and a reusable search feature. Backend will be extended to support listing records without a required collection, with filtering and search. Work follows the Documentation → Tests → Production Code workflow and assigns agent roles per phase.
+overview: Add a new "All Records" frontend view with a basic list, extensible filters (collection name, collection owner), and a reusable search feature. Backend will be extended to support listing records without a required collection, with filtering and search. Work follows the Documentation → Tests → Production Code → Review and Bug Fix → Update Documentation and Plans workflow and assigns agent roles per phase.
 todos: []
 ---
 
@@ -8,7 +8,7 @@ todos: []
 
 ## Plan Overview
 
-This plan adds a dedicated **Records** list page (all records across collections), **filters** by collection name and collection owner (extensible for future filters), and a **reusable search** component with backend search on record title/artist and collection name/description. The work is split into three implementation areas, each following the workflow in [docs/agent-roles/README.md](docs/agent-roles/README.md).
+This plan adds a dedicated **Records** list page (all records across collections), **filters** by collection name and collection owner (extensible for future filters), and a **reusable search** component with backend search on record title/artist and collection name/description. The work is split into three implementation areas, each following the workflow in [docs/agent-roles/README.md](docs/agent-roles/README.md) (Documentation → Tests → Production Code → Review and Bug Fix → Update Documentation and Plans).
 
 **Key Deliverables:**
 
@@ -348,10 +348,11 @@ ekho/
    - Phase 2 tests (Backend Tester: list without collection, response shape; Frontend Tester: route, page, store) – done
    - Phase 3: Backend (ViewSet list + serializer fields) then Frontend (route, nav, fetchAllRecords, page, RecordCard tweak) – done. Delivered: optional `collection` on `GET /api/records/`, `collection_name`/`collection_owner_username` in list; `/records` route, Records nav link, `RecordsListPage`, `fetchAllRecords`, RecordCard shows collection name when present.
 
-2. **Plan 2 – Filters**
-   - Phase 1 docs (Technical Writer, UI/UX Designer)
-   - Phase 2 tests (Backend Tester: filter params; Frontend Tester: filter UI and params)
-   - Phase 3: Backend (get_queryset filter params) then Frontend (filter UI + store params)
+2. **Plan 2 – Filters** ✅ **Done**
+   - Phase 1 docs (Technical Writer, UI/UX Designer) – done ([docs/plans/records-view-plan2-filters-phase1.md](docs/plans/records-view-plan2-filters-phase1.md), [US-017](docs/user-stories/03-records.md))
+   - Phase 2 tests (Backend Tester: filter params; Frontend Tester: filter UI and params) – done
+   - Phase 3: Backend (get_queryset filter params) then Frontend (filter UI + store params) – done. Delivered: `collection_name` and `owner` query params; filter UI with config-driven layout.
+   - **Post–Phase 3:** Focus retention (loading only in content area); filters in left sidebar (top to bottom); fast debounce (300ms) on filter fields.
 
 3. **Plan 3 – Search**
    - Phase 1 docs (Technical Writer, UI/UX Designer)

@@ -1,6 +1,6 @@
 ---
 name: Ekho Art Collection Management Application
-overview: Comprehensive plan for building Ekho, an art collection management tool with user authentication, collection management, and record CRUD operations. The plan follows the Documentation → Tests → Production Code workflow and divides tasks across all 10 agent roles.
+overview: Comprehensive plan for building Ekho, an art collection management tool with user authentication, collection management, and record CRUD operations. The plan follows the Documentation → Tests → Production Code → Review and Bug Fix → Update Documentation and Plans workflow and divides tasks across all 10 agent roles.
 todos: []
 isProject: false
 ---
@@ -220,7 +220,7 @@ Ekho is a full-stack web application for managing art collections. Registered us
 
 **Status**: All test tasks completed. Comprehensive test suites created for both backend and frontend.
 
-**Workflow Position**: Following the **Documentation → Tests → Production Code** workflow, tests are written based on the complete documentation from Phase 1, before any production code is implemented.
+**Workflow Position**: Following the **Documentation → Tests → Production Code → Review and Bug Fix → Update Documentation and Plans** workflow, tests are written based on the complete documentation from Phase 1, before any production code is implemented.
 
 **Reference Documentation**:
 

@@ -237,6 +237,126 @@ class TestListRecords:
 
 
 @pytest.mark.django_db
+class TestRecordsListFilters:
+    """Test Records list filter params: collection_name, owner (Plan 2, US-017). TDD: fail until ViewSet applies filters."""
+
+    def test_collection_name_filters_by_substring(self, authenticated_client, collection):
+        """collection_name filters by substring match (icontains) on collection name."""
+        if not collection:
+            return
+        # Create second collection with different name and a record in each
+        other_url = reverse('collections-list')
+        other_resp = authenticated_client.post(
+            other_url, {'name': 'Other Gallery', 'description': 'Other'}, format='json'
+        )
+        if other_resp.status_code != status.HTTP_201_CREATED:
+            return
+        other_cid = other_resp.data['id']
+        create_url = reverse('records-list')
+        authenticated_client.post(
+            create_url,
+            {'title': 'In Other', 'artist': 'A', 'collection': other_cid},
+            format='json',
+        )
+        authenticated_client.post(
+            create_url,
+            {'title': 'In Test', 'artist': 'B', 'collection': collection['id']},
+            format='json',
+        )
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {'collection_name': 'Other Gallery'})
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        # Must only return records whose collection name contains "Other Gallery"
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['collection_name'] == 'Other Gallery'
+
+    def test_collection_name_empty_does_not_filter(self, authenticated_client, collection):
+        """Empty collection_name param does not filter (all records returned when no other filter)."""
+        if not collection:
+            return
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {'collection_name': ''})
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+
+    def test_owner_filters_by_collection_owner_username(self, authenticated_client, other_user, collection):
+        """owner param filters by exact match on collection owner username (exclude other users' records)."""
+        if not collection:
+            return
+        # Create collection and record as other_user
+        other_client = APIClient()
+        other_client.post(
+            reverse('auth-login'),
+            {'username': 'otheruser', 'password': 'testpass123'},
+            format='json',
+        )
+        other_coll = other_client.post(
+            reverse('collections-list'),
+            {'name': 'Other User Collection', 'description': 'O'},
+            format='json',
+        )
+        if other_coll.status_code != status.HTTP_201_CREATED:
+            return
+        other_client.post(
+            reverse('records-list'),
+            {'title': 'Other Record', 'artist': 'X', 'collection': other_coll.data['id']},
+            format='json',
+        )
+        authenticated_client.post(
+            reverse('records-list'),
+            {'title': 'Testuser Record', 'artist': 'Y', 'collection': collection['id']},
+            format='json',
+        )
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {'owner': 'testuser'})
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        # Must only return records whose collection owner is testuser (not otheruser)
+        assert len(response.data['results']) == 1
+        assert response.data['results'][0]['collection_owner_username'] == 'testuser'
+
+    def test_owner_nonexistent_returns_empty_results(self, authenticated_client, collection):
+        """owner with no matching username returns empty results."""
+        if not collection:
+            return
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {'owner': 'nonexistentuser123'})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['results'] == []
+
+    def test_collection_name_and_owner_combined(self, authenticated_client, collection):
+        """collection_name and owner can be combined (AND)."""
+        if not collection:
+            return
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {
+            'collection_name': 'Test',
+            'owner': 'testuser',
+        })
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        for record in response.data['results']:
+            assert 'Test' in record.get('collection_name', '').lower()
+            assert record.get('collection_owner_username') == 'testuser'
+
+    def test_filters_combined_with_collection_param(self, authenticated_client, collection):
+        """collection_name and owner work together with optional collection (id) param."""
+        if not collection:
+            return
+        url = reverse('records-list')
+        response = authenticated_client.get(url, {
+            'collection': collection['id'],
+            'owner': 'testuser',
+        })
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        for record in response.data['results']:
+            assert record['collection'] == collection['id']
+            assert record.get('collection_owner_username') == 'testuser'
+
+
+@pytest.mark.django_db
 class TestCreateRecord:
     """Test Create Record (US-010, US-015)"""
     
