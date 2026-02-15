@@ -45,8 +45,44 @@ describe('RecordStore Tests', () => {
     expect(true).toBe(true)
   })
 
-  it('requires collection parameter in fetchRecords', async () => {
-    expect(true).toBe(true)
+  it('requires collectionId in fetchRecords and throws when missing', async () => {
+    const store = new RecordStore()
+    await expect(store.fetchRecords(0)).rejects.toThrow('Collection ID is required')
+  })
+
+  it('fetchAllRecords calls GET /records/ without collection param (US-016)', async () => {
+    const store = new RecordStore()
+    const mockResults = [
+      {
+        id: 1,
+        title: 'R1',
+        artist: 'A1',
+        collection: 1,
+        collection_name: 'Test Collection',
+        collection_owner_username: 'testuser',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      },
+    ]
+    vi.mocked(api.get).mockResolvedValue({
+      results: mockResults,
+      count: 1,
+      next: null,
+      previous: null,
+    })
+    await store.fetchAllRecords({})
+    expect(api.get).toHaveBeenCalledWith('/records/', expect.any(Object))
+    const callParams = vi.mocked(api.get).mock.calls[0][1]
+    expect(callParams).not.toHaveProperty('collection')
+    expect(store.records).toEqual(mockResults)
+    expect(store.pagination.count).toBe(1)
+  })
+
+  it('fetchAllRecords accepts page and page_size and forwards to API', async () => {
+    const store = new RecordStore()
+    vi.mocked(api.get).mockResolvedValue({ results: [], count: 0, next: null, previous: null })
+    await store.fetchAllRecords({ page: 2, page_size: 10 })
+    expect(api.get).toHaveBeenCalledWith('/records/', { page: 2, page_size: 10 })
   })
 
   it('sets loading state during fetchRecords', async () => {

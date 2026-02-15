@@ -26,6 +26,9 @@ export const Navigation = observer(() => {
           <Link to="/collections" className="nav-link">
             Collections
           </Link>
+          <Link to="/records" className="nav-link">
+            Records
+          </Link>
         </div>
         
         <div className="nav-right">

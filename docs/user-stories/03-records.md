@@ -175,3 +175,30 @@
 - Security: validate file types, scan for malicious content
 - Image URL should be accessible to both authenticated and anonymous users
 - Consider generating thumbnails for list views
+
+---
+
+## US-016: View All Records (Global Records List)
+
+**As a** user (authenticated or anonymous)  
+**I want to** view a list of all records across all collections on a dedicated page  
+**So that** I can browse all artwork in one place without opening each collection
+
+### Acceptance Criteria
+
+- [ ] A "Records" route exists (e.g. `/records`) and is reachable from the main navigation
+- [ ] Both authenticated and anonymous users can access the Records page
+- [ ] The page lists records from all collections (no required collection filter)
+- [ ] Each record card shows at least: title, artist, year (if present), thumbnail; and **collection name** (and optionally collection owner) so context is clear
+- [ ] Records are displayed in the same grid/list style as the existing collection-scoped record list (same look and feel)
+- [ ] User can click a record to go to its detail page
+- [ ] List is paginated when there are many records; pagination controls (e.g. Previous/Next) and total count are shown
+- [ ] Loading state is shown while fetching; empty state when there are no records; errors are displayed clearly
+- [ ] When `collection` query param is provided to the API, behavior remains: only records from that collection are returned (backward compatibility for collection detail page)
+
+### Technical Notes
+
+- Backend: `GET /api/records/` must accept requests **without** the `collection` parameter; when omitted, return records from all collections with same permission/visibility as today (no extra restriction at list level)
+- List response must include per-record context for the global view: e.g. `collection_name`, and optionally `collection_owner_username` (read-only fields on the record list response)
+- Frontend: New page component (e.g. Records List Page / All Records View), new nav link "Records", store method e.g. `fetchAllRecords(params?)` calling the API without `collection`, reusing existing RecordCard and Records.css patterns
+- Detail/create/update/delete continue to enforce ownership and closed-collection rules; this story only adds the global list view and API support for it

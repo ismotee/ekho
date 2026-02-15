@@ -40,18 +40,27 @@ class CollectionSerializer(serializers.ModelSerializer):
 
 
 class RecordSerializer(serializers.ModelSerializer):
-    """Serializer for Record model"""
+    """Serializer for Record model. List responses include collection_name and collection_owner_username."""
     image = serializers.ImageField(required=False, allow_null=True)
-    
+    collection_name = serializers.SerializerMethodField(read_only=True)
+    collection_owner_username = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Record
         fields = [
-            'id', 'title', 'artist', 'year', 'medium', 
+            'id', 'title', 'artist', 'year', 'medium',
             'dimensions', 'description', 'condition', 'image',
-            'collection', 'created_at', 'updated_at'
+            'collection', 'collection_name', 'collection_owner_username',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-    
+        read_only_fields = ['id', 'created_at', 'updated_at', 'collection_name', 'collection_owner_username']
+
+    def get_collection_name(self, obj):
+        return obj.collection.name if obj.collection_id else None
+
+    def get_collection_owner_username(self, obj):
+        return obj.collection.owner.username if obj.collection_id and obj.collection.owner_id else None
+
     def to_representation(self, instance):
         """Override to return absolute URL for image"""
         representation = super().to_representation(instance)

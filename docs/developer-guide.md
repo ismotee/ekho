@@ -400,9 +400,10 @@ cp db.sqlite3 db.sqlite3.backup
 
 1. Check existing documentation
 2. Review error messages carefully
-3. Check GitHub issues (if applicable)
-4. Ask team members for assistance
-5. Review code examples in the codebase
+3. Check [Known Bugs](known-bugs.md) for confirmed product bugs
+4. Check GitHub issues (if applicable)
+5. Ask team members for assistance
+6. Review code examples in the codebase
 
 ## Code Style
 

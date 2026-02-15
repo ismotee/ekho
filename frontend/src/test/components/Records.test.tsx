@@ -148,6 +148,21 @@ describe('RecordCard Component Tests', () => {
     expect(true).toBe(true)
   })
 
+  it('displays collection_name when present (US-016 global records list)', () => {
+    const recordWithCollection = {
+      id: 1,
+      title: 'Artwork',
+      artist: 'Artist',
+      collection: 1,
+      collection_name: 'My Collection',
+      collection_owner_username: 'johndoe',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }
+    render(<RecordCard record={recordWithCollection} />)
+    expect(screen.getByText(/My Collection/)).toBeInTheDocument()
+  })
+
   it('displays image thumbnail if available', () => {
     expect(true).toBe(true)
   })

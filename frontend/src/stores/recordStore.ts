@@ -21,6 +21,8 @@ export interface Record {
   condition?: string
   image?: string
   collection: number
+  collection_name?: string
+  collection_owner_username?: string
   created_at: string
   updated_at: string
 }
@@ -79,6 +81,39 @@ export class RecordStore {
         } else if (response.data) {
           // Handle single record response
           this.records = [response.data]
+        }
+        this.loading = false
+        this.error = null
+      })
+    } catch (error) {
+      runInAction(() => {
+        this.loading = false
+        const apiError = error as ApiError
+        this.error = apiError.error || apiError.detail || 'Failed to fetch records'
+      })
+      throw error
+    }
+  }
+
+  async fetchAllRecords(params?: {
+    page?: number
+    page_size?: number
+  }): Promise<void> {
+    this.loading = true
+    this.error = null
+
+    try {
+      const response = await api.get<Record>('/records/', { ...params })
+      runInAction(() => {
+        if (response.results) {
+          this.records = response.results
+          this.pagination = {
+            count: response.count || 0,
+            next: response.next || null,
+            previous: response.previous || null,
+          }
+        } else {
+          this.records = []
         }
         this.loading = false
         this.error = null

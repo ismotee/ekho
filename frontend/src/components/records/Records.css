@@ -4,6 +4,22 @@
  * Reference: docs/design/05-design-system.md
  */
 
+.record-list-page {
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.record-list-header {
+  margin-bottom: 1.5rem;
+}
+
+.record-list-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #0F172A;
+}
+
 .record-list {
   margin: 2rem 0;
 }

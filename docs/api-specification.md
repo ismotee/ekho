@@ -374,18 +374,26 @@ Sets `is_closed` to `true`, making the collection read-only. Only the owner can 
 
 **GET** `/api/records/`
 
-Returns a paginated list of records. Must filter by collection.
+Returns a paginated list of records. The `collection` query parameter is **optional**. When omitted, the response includes records from all collections (same visibility as today; no extra restriction at list level). When provided, only records from that collection are returned (backward compatibility for the collection detail page).
 
 **Query Parameters:**
-- `collection`: Collection ID (required)
+- `collection`: Collection ID (optional). When present, filter to records in this collection only. When omitted, return records from all collections.
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 20, max: 100)
 
 **Response:** `200 OK`
+
+Paginated shape: `count`, `next`, `previous`, `results`. Each item in `results` includes all existing record fields. For list responses, the following read-only fields are included so the global records view can show collection context:
+
+- `collection_name`: string — name of the record’s collection (from `collection.name`).
+- `collection_owner_username`: string (optional) — username of the collection owner (from `collection.owner.username`).
+
+Example (with new fields):
+
 ```json
 {
   "count": 25,
-  "next": "http://localhost:8000/api/records/?collection=1&page=2",
+  "next": "http://localhost:8000/api/records/?page=2",
   "previous": null,
   "results": [
     {
@@ -399,6 +407,8 @@ Returns a paginated list of records. Must filter by collection.
       "condition": "Excellent",
       "image": "http://localhost:8000/media/records/image1.jpg",
       "collection": 1,
+      "collection_name": "My Art Collection",
+      "collection_owner_username": "johndoe",
       "created_at": "2024-01-15T10:30:00Z",
       "updated_at": "2024-01-15T10:30:00Z"
     }
@@ -407,11 +417,11 @@ Returns a paginated list of records. Must filter by collection.
 ```
 
 **Errors:**
-- `400`: Collection parameter missing or invalid
+- `404`: When `collection` is provided and no collection with that ID exists
 
 **Authentication:** Not required (public endpoint)
 
-**User Stories:** US-013
+**User Stories:** US-013, US-016
 
 ---
 

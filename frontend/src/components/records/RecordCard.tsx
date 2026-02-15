@@ -26,6 +26,9 @@ export const RecordCard = ({ record }: RecordCardProps) => {
         <h3>{record.title}</h3>
         <p>Artist: {record.artist}</p>
         {record.year && <p>Year: {record.year}</p>}
+        {record.collection_name && (
+          <p className="record-collection-context">Collection: {record.collection_name}</p>
+        )}
       </div>
     </Link>
   )

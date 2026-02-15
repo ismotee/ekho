@@ -86,7 +86,7 @@ def collection(authenticated_client, user):
 
 @pytest.mark.django_db
 class TestListRecords:
-    """Test List Records (US-013)"""
+    """Test List Records (US-013, US-016)"""
     
     def test_list_endpoint_accessible_to_anonymous_users(self):
         """Test list endpoint accessible to anonymous users (200 OK)"""
@@ -94,30 +94,79 @@ class TestListRecords:
         url = reverse('records-list')
         response = client.get(url, {'collection': 1})
         
-        # Should be accessible (may return 400 if collection doesn't exist)
-        assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND]
+        # Should be accessible (may return 404 if collection doesn't exist)
+        assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
     
     def test_list_endpoint_accessible_to_authenticated_users(self, authenticated_client):
         """Test list endpoint accessible to authenticated users (200 OK)"""
         url = reverse('records-list')
         response = authenticated_client.get(url, {'collection': 1})
         
-        # Should be accessible (may return 400 if collection doesn't exist)
-        assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND]
+        # Should be accessible (may return 404 if collection doesn't exist)
+        assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
     
-    def test_collection_parameter_is_required(self, authenticated_client):
-        """Test collection parameter is required (400 if missing)"""
+    def test_list_without_collection_returns_200_and_results(self, authenticated_client):
+        """Test list without collection param returns 200 and paginated results (US-016). Collection is optional."""
         url = reverse('records-list')
         response = authenticated_client.get(url)
-        
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        assert isinstance(response.data['results'], list)
+        # Pagination keys when collection omitted (all records list)
+        assert 'count' in response.data
     
-    def test_collection_parameter_validation(self, authenticated_client):
-        """Test collection parameter validation (404 if invalid collection ID)"""
+    def test_list_with_collection_parameter_filters_by_collection(self, authenticated_client, collection):
+        """Test list with collection param returns only that collection's records (backward compatibility)."""
+        if collection:
+            url = reverse('records-list')
+            response = authenticated_client.get(url, {'collection': collection['id']})
+            assert response.status_code == status.HTTP_200_OK
+            assert 'results' in response.data
+            for record in response.data['results']:
+                assert record['collection'] == collection['id']
+    
+    def test_list_with_nonexistent_collection_returns_404(self, authenticated_client):
+        """Test list with invalid collection ID returns 404 (not 400)."""
         url = reverse('records-list')
         response = authenticated_client.get(url, {'collection': 99999})
-        
-        assert response.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND]
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_list_response_includes_collection_name_and_owner(self, authenticated_client, collection):
+        """Test list response includes collection_name and collection_owner_username per item (US-016)."""
+        if collection:
+            create_url = reverse('records-list')
+            authenticated_client.post(create_url, {
+                'title': 'List Context Test',
+                'artist': 'Test Artist',
+                'collection': collection['id'],
+            }, format='json')
+            url = reverse('records-list')
+            response = authenticated_client.get(url, {'collection': collection['id']})
+            assert response.status_code == status.HTTP_200_OK
+            assert len(response.data['results']) >= 1
+            record = response.data['results'][0]
+            assert 'collection_name' in record
+            assert record['collection_name'] == 'Test Collection'
+            assert 'collection_owner_username' in record
+            assert record['collection_owner_username'] == 'testuser'
+
+    def test_list_all_records_includes_collection_context_fields(self, authenticated_client, collection):
+        """Test GET /api/records/ without collection returns items with collection_name and collection_owner_username."""
+        if collection:
+            create_url = reverse('records-list')
+            authenticated_client.post(create_url, {
+                'title': 'All Records Context Test',
+                'artist': 'Test Artist',
+                'collection': collection['id'],
+            }, format='json')
+            url = reverse('records-list')
+            response = authenticated_client.get(url)
+            assert response.status_code == status.HTTP_200_OK
+            assert len(response.data['results']) >= 1
+            record = next((r for r in response.data['results'] if r.get('title') == 'All Records Context Test'), None)
+            assert record is not None
+            assert 'collection_name' in record
+            assert 'collection_owner_username' in record
     
     def test_pagination_parameters(self, authenticated_client, collection):
         """Test pagination (page, page_size parameters)"""

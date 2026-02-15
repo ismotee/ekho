@@ -2,6 +2,24 @@
 
 A full-stack web application with TypeScript/React + MobX frontend and Django/Python backend.
 
+---
+
+## Documentation
+
+Project documentation lives in the **`docs/`** directory. Summary:
+
+| Area | Description |
+|------|--------------|
+| **[API Specification](docs/api-specification.md)** | REST API endpoints, authentication, request/response formats, and usage for the Ekho Art Collection Management Application. |
+| **[Architecture](docs/architecture/)** | System and security architecture; architecture decision records (ADRs) for authentication, image storage, permissions, and API versioning. |
+| **[Data & models](docs/data-models.md)** | Data models (User, Collection, Record), relationships, and constraints. See also [schema design](docs/data/schema-design.md), [models](docs/data/models.md), and [query optimization](docs/data/query-optimization.md) in `docs/data/`. |
+| **[Design](docs/design/)** | UI/UX specs: authentication, collection and record management, navigation and layout, and the design system (colors, typography, components). |
+| **[Developer guide](docs/developer-guide.md)** | Prerequisites, project setup, development workflow, code structure, testing, API and frontend development, database management, and troubleshooting. |
+| **[Known Bugs](docs/known-bugs.md)** | List of confirmed product/application defects and their status; separate from troubleshooting and security. |
+| **[User stories](docs/user-stories/)** | Product-level user stories and acceptance criteria for authentication, collections, and records. |
+
+---
+
 ## Project Structure
 
 ```
@@ -144,16 +162,3 @@ pytest
 - **Backend**: Django 4.2, Django REST Framework, Poetry
 - **Testing**: Vitest (frontend), pytest (backend)
 
-## Documentation
-
-- **[Agent Roles](docs/agent-roles/README.md)**: Comprehensive documentation of agent roles for the development team. Each role is documented in a separate file:
-  - [Frontend Developer](docs/agent-roles/01-frontend-developer.md)
-  - [Backend Developer](docs/agent-roles/02-backend-developer.md)
-  - [Lead Architect](docs/agent-roles/03-lead-architect.md)
-  - [Data Architect](docs/agent-roles/04-data-architect.md)
-  - [Frontend Tester](docs/agent-roles/05-frontend-tester.md)
-  - [Backend Tester](docs/agent-roles/06-backend-tester.md)
-  - [Product Owner](docs/agent-roles/07-product-owner.md)
-  - [DevOps Engineer](docs/agent-roles/08-devops-engineer.md)
-  - [Technical Writer](docs/agent-roles/09-technical-writer.md)
-  - [UI/UX Designer](docs/agent-roles/10-ui-ux-designer.md)
