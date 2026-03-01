@@ -54,11 +54,11 @@ Reference<DateQualifier> options, assign it to und field
 -/+
 ```
 
-Reference<DatePeriod> options, get them from https://finto.fi/rest/v1/yso/data?uri=http%3A%2F%2Fwww.yso.fi%2Fonto%2Fyso%2Fp4623&format=application/ld%2Bjson
+Reference<DatePeriod> options,
+get them from https://finto.fi/rest/v1/yso/data?uri=http%3A%2F%2Fwww.yso.fi%2Fonto%2Fyso%2Fp4623&format=application/ld%2Bjson
 
 
-(form these into json that conforms to the Reference structure. No in_scheme)
-Reference<OrganizationAssociation> options in finnish
+Reference<Association> options in finnish
 ```
 aikaisempi omistaja,
 alkuperäinen omistaja,
@@ -115,7 +115,7 @@ vastauspaikka
 ```
 
 
-Reference<SourceType> in finnish
+Reference<SourceType> options in finnish
 ```
 valokuva
 verkkoaineisto
@@ -126,11 +126,10 @@ artikkeli
 ```
 
 Reference<OrganizationFunction>
-get it from finto.fi/yso/fi
-```
-```
+# get it from finto.fi/yso/fi
+# leave empty for now
 
-Reference<AddressType> in finnish
+Reference<AddressType> options in finnish
 ```
 Katuosoite
 Kotiosoite
@@ -139,23 +138,74 @@ Postiosoite
 Työpaikan osoite
 ```
 
-Reference<OrganizationIdentifierType> in finnish
+Reference<OrganizationIdentifierType> options in finnish
 ```
 ISNI
 Y-tunnus
 ```
+
+Reference<AddressType> options in finnish
+```
+Katuosoite
+Kotiosoite
+Käyntiosoite
+Postiosoite
+Työpaikan osoite
+```
+
+Reference<SpatialStatus> leave it empty for now
+
+Reference<CoordinatesType> options in und
+```
+    ETRS-TM35FIN # tasokoordinaatit
+    KKJ # maantieteelliset koordinaatit
+```
+
+Reference<SpatialFeature> options, empty for now
+
+Reference<SpatialFeatureType> options, empty for now
+
+Reference<PersonNameType> options, in finnish
+```
+ avionimi
+ entinen nimi
+ koko nimi
+ lempinimi
+ liikanimi
+ muu nimi
+ myöhempi nimi
+ nimimerkki
+ omaa sukua
+ peitenimi
+ puumerkki
+ rinnakkaisnimi
+ taiteilijanimi
+ vieraskielinen nimi
+ virallinen nimi
+```
+
+Reference<PersonGender> options, in finnish
+```
+mies
+nainen
+muu
+ei tietoa
+```
+
+Reference<PersonNationality> options, in finnish
+```
+    suomi
+```
+
+Reference<PersonSchoolOrStyle> options, empty for now
+
+Reference<PersonOccupation> options, empty for now
 
 Label
 ```
     fi: <string>, # finnish translation 
     en: <string>, # english translation
     und <string>: # undefined language
-```
-
-Reference
-```
-    pref_label: Label,
-    in_scheme: string #url validation, optional
 ```
 
 OtherName
@@ -178,22 +228,68 @@ Temporal
     earliest: DateDetail
     latest: DateDetail
     period: Reference<DatePeriod>
-    text: string # description of the temporal detail
+    text: CharField # description of the temporal detail
+```
+
+SpatialNameType
+```
+    address: CharField
+    address_type: Reference<AddressType>
+    email: CharField # email validation
+    phone_number: CharField # phone number validation
+```
+
+SpatialContext
+```
+    text: CharField
+    level: CharField
+    date: Temporal
+```
+
+SpatialFeature
+```
+    feature: Reference<SpatialFeature>
+    feature_type: Reference<SpatialFeatureType>
+    feature_date: Temporal
 ```
 
 Spatial
 ```
     association: Reference<SpatialAssociation>
     name: Label
-    name_type: 
+    name_type: SpatialNameType
+    note: CharField
+    environmental_details: CharField
+    status: Reference<SpatialStatus>
+    coordinates: Coordinates # see common-models.md
+    reference_number: ReferenceNumber #see common-models.md
+    position: CharField
+    owner: Actor # ForeignKey related_name role_spatial_owner
+    context: SpatialContext
+    feature: SpatialFeature
 ```
 
-Source
+Source # abstract model
 ```
-    source: string
     source_type: Reference<SourceType>
     source_date: DateDetail
     note: string
+```
+
+Source<OrganizationHistorySource>
+```
+    author: Actor # ForeignKey related_name role_organization_history_source
+```
+
+Source<PersonHistorySource>
+````
+    author: Actor # ForeignKey related_name role_person_biographical_note_source
+```
+
+BiographicalNote
+```
+    note: TextField
+    source: Source
 ```
 
 OrganizationHistory
@@ -201,36 +297,66 @@ OrganizationHistory
     foundation_date: Temporal
     foundation_place: Spatial
     dissolution_date: Temporal
-    text: string # can be long text
-    source: Source
+    biographical_note: BiographicalNote
 ```
-
 
 Address
 ```
-    text: string
+    text: CharField
     type: Reference<AddressType>
-    email: string
-    phone_number: string # needs validation so that it conforms to the phone number convention
+    email: CharField #needs email validation
+    phone_number: CharField # needs validation so that it conforms to the phone number convention
 ```
 
 OrganizationIdentifier
 ```
-    text: string
+    text: CharField
     type: Reference<OrganizationIdentifierType>
+```
+
+PersonName
+```
+    name: CharField
+    date: Temporal
+    name_type: Reference<PersonNameType>
+```
+
+Person
+```
+    first_name: List<PersonName>
+    last_name: PersonName
+    other_name: List<PersonName>
+    additions_to_name: CharField
+    birth_date: Temporal
+    place_of_birth: Spatial
+    death_date: Temporal
+    gender: Reference<PersonGender>
+    nationality: Reference<PersonNationality>
+    address: Address
+    website: CharField/UrlField # validation needed
+    school_or_style: Reference<PersonSchoolOrStyle>
+    biographical_note: BiographicalNote
+    occupation: Reference<PersonOccupation>
+    reference_number: ReferenceNumber
 ```
 
 Organization
 ``` 
-    association: List<Reference<OrganizationAssociation> >
     main_body: Label
     sub_body Label
     other_name: List<OtherName>
-    addition_to_name: string
+    addition_to_name: CharField
     name_date: Temporal
     history: OrganizationHistory
     function: Reference<OrganizationFunction>
     address: Address
-    website: string # URL validation
+    website: CharField # URL validation
     reference_number: Identifier
+```
+
+Actor
+```
+    person: Person
+    organization: Organization
+    group: Group
 ```
