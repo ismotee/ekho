@@ -48,7 +48,7 @@ export function objectProductInformationRowHasContent(row: ObjectProductInformat
   if (row.actor?.some(roledActorRowHasContent)) return true
   if (temporalHasContent(row.date)) return true
   if (row.place && spatialRowHasContent(row.place)) return true
-  if (row.reason?.trim() || row.note?.trim() || row.technique?.trim()) return true
+  if (row.reason?.trim() || row.note?.trim() || referenceFieldFi(row.technique)) return true
   if (row.technique_type?.some((t) => referenceFieldFi(t) || (typeof t === 'string' && t.trim()))) {
     return true
   }
@@ -140,7 +140,7 @@ export function compactHistoryForSave(h: History): History | undefined {
         }
         if (r.reason !== undefined && !r.reason.trim()) delete r.reason
         if (r.note !== undefined && !r.note.trim()) delete r.note
-        if (r.technique !== undefined && !r.technique.trim()) delete r.technique
+        if (!referenceFieldFi(r.technique)) delete r.technique
         if (r.date && !temporalHasContent(r.date)) delete r.date
         if (r.place && !spatialRowHasContent(r.place)) delete r.place
         return r

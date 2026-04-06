@@ -15,6 +15,10 @@ import {
 } from '../../lib/historyPayload'
 import {
   ACCESS_CATEGORY_FI,
+  ASSOCIATED_ACTIVITY_TYPE_FI,
+  ASSOCIATED_CULTURAL_AFFINITY_FI,
+  ASSOCIATED_EVENT_NAME_FI,
+  ASSOCIATED_EVENT_NAME_TYPE_FI,
   AQCUISITION_METHOD_FI,
   DENOMINATION_FI,
   LANGUAGE_FI,
@@ -26,8 +30,10 @@ import {
   OBJECT_TYPE_FI,
   OWNERSHIP_EXCHANGE_METHOD_FI,
   RIGHTS_TYPE_FI,
+  TECHNIQUE_FI,
   TECHNIQUE_TYPE_FI,
   TITLE_TYPE_FI,
+  USAGE_FI,
 } from '../../data/referenceVocabularies'
 import { referenceFieldFi, referenceFieldToPayload, referenceSelectOptions } from '../../lib/referenceField'
 import type { RecordPayload } from '../../types/record'
@@ -1044,8 +1050,8 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               summary={
                 actors[0] && !isActorSlotEmpty(actors[0].actor)
                   ? firstActorSummary
-                  : row.technique?.trim()
-                    ? row.technique
+                  : referenceFieldFi(row.technique).trim()
+                    ? referenceFieldFi(row.technique)
                     : temporalSummaryLine(row.date)
                       ? temporalSummaryLine(row.date)
                       : place.name?.fi?.trim() || row.note?.trim() || t('recordForm.history.emptyProductionEntry')
@@ -1156,24 +1162,22 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                   disabled={disabled}
                 />
               </div>
-              <div className="form-group form-group--grow">
-                <label htmlFor={`rf-opi-tech-${pIndex}`}>{t('recordForm.labels.techniqueFreeText')}</label>
-                <FieldInfoText infoKey="recordForm.info.history.technique" />
-                <input
-                  id={`rf-opi-tech-${pIndex}`}
-                  type="text"
-                  value={row.technique ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setProduction(
-                      production.map((r, i) =>
-                        i === pIndex ? { ...r, technique: v.trim() ? v : undefined } : r,
-                      ),
-                    )
-                  }}
-                  disabled={disabled}
-                />
-              </div>
+              <ReferenceSelect
+                id={`rf-opi-tech-${pIndex}`}
+                label={t('recordForm.labels.technique')}
+                infoKey="recordForm.info.history.technique"
+                allowlist={TECHNIQUE_FI}
+                valueFi={referenceFieldFi(row.technique)}
+                onChangeFi={(fi) =>
+                  setProduction(
+                    production.map((r, i) =>
+                      i === pIndex ? { ...r, technique: referenceFieldToPayload(fi) } : r,
+                    ),
+                  )
+                }
+                disabled={disabled}
+                emptyLabel="—"
+              />
               <fieldset className="record-form-nested-fieldset">
                 <legend>{t('recordForm.history.techniqueTypesLegend')}</legend>
                 {techTypes.map((tt, ttIndex) => (
@@ -1262,22 +1266,20 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               disabled={disabled}
               summary={summary}
             >
-              <div className="form-group">
-                <label htmlFor={`rf-uh-usage-${index}`}>{t('recordForm.labels.usage')}</label>
-                <input
-                  id={`rf-uh-usage-${index}`}
-                  type="text"
-                  value={typeof row.usage === 'string' ? row.usage : referenceFieldFi(row.usage)}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    const next = usage.map((u, i) =>
-                      i === index ? { ...u, usage: v.trim() ? v : undefined } : u,
-                    )
-                    setUsage(next)
-                  }}
-                  disabled={disabled}
-                />
-              </div>
+              <ReferenceSelect
+                id={`rf-uh-usage-${index}`}
+                label={t('recordForm.labels.usage')}
+                allowlist={USAGE_FI}
+                valueFi={referenceFieldFi(row.usage)}
+                onChangeFi={(fi) => {
+                  const next = usage.map((u, i) =>
+                    i === index ? { ...u, usage: referenceFieldToPayload(fi) } : u,
+                  )
+                  setUsage(next)
+                }}
+                disabled={disabled}
+                emptyLabel="—"
+              />
               <div className="form-group">
                 <label htmlFor={`rf-uh-note-${index}`}>{t('recordForm.labels.note')}</label>
                 <textarea
@@ -1349,32 +1351,30 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
             >
               <fieldset className="record-form-nested-fieldset">
                 <legend>{t('recordForm.history.associatedActivityLegend')}</legend>
-                <div className="form-group form-group--grow">
-                  <label htmlFor={`rf-objh-act-type-${index}`}>{t('recordForm.labels.activityType')}</label>
-                  <input
-                    id={`rf-objh-act-type-${index}`}
-                    type="text"
-                    value={referenceFieldFi(act.type)}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setObjectHist(
-                        objectHist.map((r, i) =>
-                          i === index
-                            ? {
-                                ...r,
-                                activity: {
-                                  ...r.activity,
-                                  type: v.trim() ? referenceFieldToPayload(v) : undefined,
-                                  note: r.activity?.note,
-                                },
-                              }
-                            : r,
-                        ),
-                      )
-                    }}
-                    disabled={disabled}
-                  />
-                </div>
+                <ReferenceSelect
+                  id={`rf-objh-act-type-${index}`}
+                  label={t('recordForm.labels.activityType')}
+                  allowlist={ASSOCIATED_ACTIVITY_TYPE_FI}
+                  valueFi={referenceFieldFi(act.type)}
+                  onChangeFi={(fi) => {
+                    setObjectHist(
+                      objectHist.map((r, i) =>
+                        i === index
+                          ? {
+                              ...r,
+                              activity: {
+                                ...r.activity,
+                                type: referenceFieldToPayload(fi),
+                                note: r.activity?.note,
+                              },
+                            }
+                          : r,
+                      ),
+                    )
+                  }}
+                  disabled={disabled}
+                  emptyLabel="—"
+                />
                 <div className="form-group form-group--grow">
                   <label htmlFor={`rf-objh-act-note-${index}`}>{t('recordForm.labels.activityNote')}</label>
                   <textarea
@@ -1402,25 +1402,21 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                   />
                 </div>
               </fieldset>
-              <div className="form-group form-group--grow">
-                <label htmlFor={`rf-objh-cult-${index}`}>{t('recordForm.labels.culturalAffinity')}</label>
-                <input
-                  id={`rf-objh-cult-${index}`}
-                  type="text"
-                  value={referenceFieldFi(row.cultural_affinity)}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setObjectHist(
-                      objectHist.map((r, i) =>
-                        i === index
-                          ? { ...r, cultural_affinity: v.trim() ? referenceFieldToPayload(v) : undefined }
-                          : r,
-                      ),
-                    )
-                  }}
-                  disabled={disabled}
-                />
-              </div>
+              <ReferenceSelect
+                id={`rf-objh-cult-${index}`}
+                label={t('recordForm.labels.culturalAffinity')}
+                allowlist={ASSOCIATED_CULTURAL_AFFINITY_FI}
+                valueFi={referenceFieldFi(row.cultural_affinity)}
+                onChangeFi={(fi) => {
+                  setObjectHist(
+                    objectHist.map((r, i) =>
+                      i === index ? { ...r, cultural_affinity: referenceFieldToPayload(fi) } : r,
+                    ),
+                  )
+                }}
+                disabled={disabled}
+                emptyLabel="—"
+              />
               <fieldset className="record-form-nested-fieldset">
                 <legend>{t('recordForm.history.actorsWithRoleLegend')}</legend>
                 {renderRoledActorRows(rowActors, (next) => {
@@ -1560,50 +1556,46 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               </fieldset>
               <fieldset className="record-form-nested-fieldset">
                 <legend>{t('recordForm.history.associatedEventLegend')}</legend>
-                <div className="form-group form-group--grow">
-                  <label htmlFor={`rf-objh-ev-name-${index}`}>{t('recordForm.labels.eventName')}</label>
-                  <input
-                    id={`rf-objh-ev-name-${index}`}
-                    type="text"
-                    value={referenceFieldFi(ev.name)}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setObjectHist(
-                        objectHist.map((r, i) =>
-                          i === index
-                            ? {
-                                ...r,
-                                event: { ...r.event, name: v.trim() ? referenceFieldToPayload(v) : undefined },
-                              }
-                            : r,
-                        ),
-                      )
-                    }}
-                    disabled={disabled}
-                  />
-                </div>
-                <div className="form-group form-group--grow">
-                  <label htmlFor={`rf-objh-ev-nt-${index}`}>{t('recordForm.labels.eventNameType')}</label>
-                  <input
-                    id={`rf-objh-ev-nt-${index}`}
-                    type="text"
-                    value={referenceFieldFi(ev.name_type)}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setObjectHist(
-                        objectHist.map((r, i) =>
-                          i === index
-                            ? {
-                                ...r,
-                                event: { ...r.event, name_type: v.trim() ? referenceFieldToPayload(v) : undefined },
-                              }
-                            : r,
-                        ),
-                      )
-                    }}
-                    disabled={disabled}
-                  />
-                </div>
+                <ReferenceSelect
+                  id={`rf-objh-ev-name-${index}`}
+                  label={t('recordForm.labels.eventName')}
+                  allowlist={ASSOCIATED_EVENT_NAME_FI}
+                  valueFi={referenceFieldFi(ev.name)}
+                  onChangeFi={(fi) => {
+                    setObjectHist(
+                      objectHist.map((r, i) =>
+                        i === index
+                          ? {
+                              ...r,
+                              event: { ...r.event, name: referenceFieldToPayload(fi) },
+                            }
+                          : r,
+                      ),
+                    )
+                  }}
+                  disabled={disabled}
+                  emptyLabel="—"
+                />
+                <ReferenceSelect
+                  id={`rf-objh-ev-nt-${index}`}
+                  label={t('recordForm.labels.eventNameType')}
+                  allowlist={ASSOCIATED_EVENT_NAME_TYPE_FI}
+                  valueFi={referenceFieldFi(ev.name_type)}
+                  onChangeFi={(fi) => {
+                    setObjectHist(
+                      objectHist.map((r, i) =>
+                        i === index
+                          ? {
+                              ...r,
+                              event: { ...r.event, name_type: referenceFieldToPayload(fi) },
+                            }
+                          : r,
+                      ),
+                    )
+                  }}
+                  disabled={disabled}
+                  emptyLabel="—"
+                />
                 <div className="form-group form-group--grow">
                   <label htmlFor={`rf-objh-ev-note-${index}`}>{t('recordForm.labels.eventNote')}</label>
                   <textarea

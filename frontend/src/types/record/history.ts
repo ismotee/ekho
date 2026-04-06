@@ -25,7 +25,7 @@ export interface ObjectProductInformation {
   place?: Spatial
   reason?: string
   note?: string
-  technique?: string
+  technique?: ReferenceField
   technique_type?: ReferenceField[]
 }
 

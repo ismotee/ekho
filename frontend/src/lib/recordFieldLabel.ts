@@ -57,8 +57,8 @@ const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   price: 'recordForm.labels.exchangePrice',
   /** OwnershipExchange.denomination — form uses priceDenomination */
   denomination: 'recordForm.labels.priceDenomination',
-  /** Object production free-text technique line */
-  technique: 'recordForm.labels.techniqueFreeText',
+  /** Object production technique */
+  technique: 'recordForm.labels.technique',
   /** ObjectHistory.event — form uses associatedEventLegend */
   event: 'recordForm.history.associatedEventLegend',
   /** DateDetail (Temporal); API typo from common-models */
