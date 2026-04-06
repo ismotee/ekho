@@ -166,6 +166,50 @@ Returns current authenticated user information.
 
 ---
 
+### Actor registry endpoints
+
+Actors are shared catalog entries: `data` includes **`person`** and **`organization`** objects (see `docs/data/actor-models.md`). **Exactly one** of them must carry enough information to identify the actor (not both, not neither). An **`organization`** object may include optional **`contact_person`**. Record domain JSON references actors with `{ "id": <actor primary key> }` only in actor-shaped fields (see `record_actor_refs` on the server).
+
+#### List actors
+
+**GET** `/api/actors/`
+
+- **Anonymous:** only global actors (`owner` is `null`).
+- **Authenticated:** global actors plus actors owned by the current user.
+
+Paginated like collections (`count`, `next`, `previous`, `results`).
+
+#### Create actor
+
+**POST** `/api/actors/`
+
+**Authentication:** Required.
+
+**Body:** `{ "data": { "person": { ... }, "organization": { ... } } }` (both keys optional objects; exactly one side must be populated enough to identify the actor; `organization.contact_person` is optional).
+
+#### Retrieve / update / delete actor
+
+**GET|PATCH|DELETE** `/api/actors/{id}/`
+
+- **Global actors** (`owner` null): readable by anyone who can list them; **PATCH/DELETE** only for Django staff users.
+- **User-owned actors:** full CRUD for the owner; other users receive `404` on detail.
+
+#### Actor usage (records)
+
+**GET** `/api/actors/{id}/usage/`
+
+**Response:** `{ "count": <number>, "records": [ { "id": <record id>, "label": "<title or object number>" } ] }` (sample records capped; `count` is total).
+
+#### Deleting an actor
+
+**DELETE** removes the actor and **strips** all references to that id from every record’s `data` (see server `strip_actor_id`).
+
+#### Record validation
+
+On record create/update, every actor id embedded in `data` must exist and be either global or owned by the authenticated user saving the record.
+
+---
+
 ### Collection Endpoints
 
 #### List Collections
@@ -371,6 +415,24 @@ Sets `is_closed` to `true`, making the collection read-only. Only the owner can 
 
 ### Record Endpoints
 
+#### Record resource shape (locked)
+
+Each record resource includes:
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `id` | integer | Primary key |
+| `collection` | integer | Collection ID |
+| `created_at`, `updated_at` | string (ISO 8601) | Timestamps |
+| `data` | object | **Domain payload.** Nested object whose keys match [docs/data/record-models.md](data/record-models.md): `identification_details`, `aquisition_details`, `rights` (array of rights entries or `null`), `history`, `description`, `access`, `object_location`, `confidentiality`. Values are domain objects (or arrays where specified) or `null` when unset. Keeps DRF top-level metadata distinct from domain fields. |
+| `representative_image` | string or `null` | **Optional.** Absolute URL of the list/detail thumbnail image; not part of the `data` graph. |
+| `collection_name` | string | Read-only; list responses |
+| `collection_owner_username` | string | Read-only; list responses |
+
+**Wrapper key name:** `data` (locked). **Presentation image field name:** `representative_image` (locked).
+
+---
+
 #### List Records
 
 **GET** `/api/records/`
@@ -381,18 +443,13 @@ Returns a paginated list of records. The `collection` query parameter is **optio
 - `collection`: Collection ID (optional). When present, filter to records in this collection only. When omitted, return records from all collections.
 - `collection_name`: string (optional). Substring match on the record’s collection name (case-insensitive). Omitted or empty = no filter.
 - `owner`: string (optional). Exact match on the collection owner’s username. Omitted or empty = no filter.
-- `search`: string (optional). Full-text style filter: matches records where the term appears (case-insensitive) in **record title**, **artist**, **collection name**, or **collection description** (OR across these fields). Omitted or empty = no search filter. Can be combined with `collection`, `collection_name`, and `owner`.
+- `search`: string (optional). Case-insensitive match when the term appears in **collection name**, **collection description**, or as a **substring of the serialized `data` JSON** (implementation: JSON cast to text for `icontains`, so any string inside the payload can match). Omitted or empty = no filter. Can be combined with `collection`, `collection_name`, and `owner`. For production, consider PostgreSQL-specific JSON operators if you need path-aware search.
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 20, max: 100)
 
 **Response:** `200 OK`
 
-Paginated shape: `count`, `next`, `previous`, `results`. Each item in `results` includes all existing record fields. For list responses, the following read-only fields are included so the global records view can show collection context:
-
-- `collection_name`: string — name of the record’s collection (from `collection.name`).
-- `collection_owner_username`: string (optional) — username of the collection owner (from `collection.owner.username`).
-
-Example (with new fields):
+Paginated shape: `count`, `next`, `previous`, `results`. Each item in `results` follows **Record resource shape (locked)** above.
 
 ```json
 {
@@ -402,17 +459,20 @@ Example (with new fields):
   "results": [
     {
       "id": 1,
-      "title": "Sunset Over Mountains",
-      "artist": "Jane Smith",
-      "year": 2023,
-      "medium": "Oil on Canvas",
-      "dimensions": "24x36 inches",
-      "description": "A beautiful landscape painting",
-      "condition": "Excellent",
-      "image": "http://localhost:8000/media/records/image1.jpg",
       "collection": 1,
       "collection_name": "My Art Collection",
       "collection_owner_username": "johndoe",
+      "representative_image": "http://localhost:8000/media/records/image1.jpg",
+      "data": {
+        "identification_details": null,
+        "aquisition_details": null,
+        "rights": null,
+        "history": null,
+        "description": null,
+        "access": null,
+        "object_location": null,
+        "confidentiality": null
+      },
       "created_at": "2024-01-15T10:30:00Z",
       "updated_at": "2024-01-15T10:30:00Z"
     }
@@ -433,34 +493,35 @@ Example (with new fields):
 
 **POST** `/api/records/`
 
-Creates a new art record in a collection. Only the collection owner can create records, and only if the collection is not closed.
+Creates a new record in a collection. Only the collection owner can create records, and only if the collection is not closed.
 
-**Request Body (multipart/form-data):**
-```
-title: "Sunset Over Mountains"
-artist: "Jane Smith"
-year: 2023
-medium: "Oil on Canvas"
-dimensions: "24x36 inches"
-description: "A beautiful landscape painting"
-condition: "Excellent"
-collection: 1
-image: [file]
-```
+**Request (multipart/form-data, recommended):**
 
-**Response:** `201 Created`
+- `collection`: collection ID (required)
+- `data`: JSON string — object with the domain keys under **Record resource shape** (same structure as response `data`; may be partial)
+- `representative_image`: file (optional)
+
+**Alternative:** `application/json` body with `collection` and `data` only when no new image is uploaded; use multipart when uploading `representative_image`.
+
+**Response:** `201 Created` — body follows **Record resource shape (locked)**.
+
 ```json
 {
   "id": 1,
-  "title": "Sunset Over Mountains",
-  "artist": "Jane Smith",
-  "year": 2023,
-  "medium": "Oil on Canvas",
-  "dimensions": "24x36 inches",
-  "description": "A beautiful landscape painting",
-  "condition": "Excellent",
-  "image": "http://localhost:8000/media/records/image1.jpg",
   "collection": 1,
+  "collection_name": "My Art Collection",
+  "collection_owner_username": "johndoe",
+  "representative_image": "http://localhost:8000/media/records/image1.jpg",
+  "data": {
+    "identification_details": null,
+    "aquisition_details": null,
+    "rights": null,
+    "history": null,
+    "description": null,
+    "access": null,
+    "object_location": null,
+    "confidentiality": null
+  },
   "created_at": "2024-01-15T10:30:00Z",
   "updated_at": "2024-01-15T10:30:00Z"
 }
@@ -485,18 +546,26 @@ image: [file]
 Returns detailed information about a specific record.
 
 **Response:** `200 OK`
+
+Same fields as list items, including read-only `collection_name` and `collection_owner_username` on the serialized record.
+
 ```json
 {
   "id": 1,
-  "title": "Sunset Over Mountains",
-  "artist": "Jane Smith",
-  "year": 2023,
-  "medium": "Oil on Canvas",
-  "dimensions": "24x36 inches",
-  "description": "A beautiful landscape painting",
-  "condition": "Excellent",
-  "image": "http://localhost:8000/media/records/image1.jpg",
   "collection": 1,
+  "collection_name": "My Art Collection",
+  "collection_owner_username": "johndoe",
+  "representative_image": "http://localhost:8000/media/records/image1.jpg",
+  "data": {
+    "identification_details": null,
+    "aquisition_details": null,
+    "rights": null,
+    "history": null,
+    "description": null,
+    "access": null,
+    "object_location": null,
+    "confidentiality": null
+  },
   "created_at": "2024-01-15T10:30:00Z",
   "updated_at": "2024-01-15T10:30:00Z"
 }
@@ -515,29 +584,29 @@ Returns detailed information about a specific record.
 
 **PUT** `/api/records/{id}/` or **PATCH** `/api/records/{id}/`
 
-Updates record information. Only the collection owner can update, and only if the collection is not closed.
+Updates a record. Only the collection owner can update, and only if the collection is not closed.
 
-**Request Body (PATCH, multipart/form-data):**
-```
-title: "Updated Title"
-artist: "Jane Smith"
-year: 2023
-image: [file] (optional, to replace existing image)
-```
+**Request:** JSON body with `data` (and other allowed scalar fields) when not replacing the image; **multipart/form-data** with `data` as a JSON string plus optional `representative_image` file when uploading or replacing the thumbnail.
 
-**Response:** `200 OK`
+**Response:** `200 OK` — **Record resource shape (locked)**.
+
 ```json
 {
   "id": 1,
-  "title": "Updated Title",
-  "artist": "Jane Smith",
-  "year": 2023,
-  "medium": "Oil on Canvas",
-  "dimensions": "24x36 inches",
-  "description": "A beautiful landscape painting",
-  "condition": "Excellent",
-  "image": "http://localhost:8000/media/records/image1_updated.jpg",
   "collection": 1,
+  "collection_name": "My Art Collection",
+  "collection_owner_username": "johndoe",
+  "representative_image": "http://localhost:8000/media/records/image1_updated.jpg",
+  "data": {
+    "identification_details": null,
+    "aquisition_details": null,
+    "rights": null,
+    "history": null,
+    "description": null,
+    "access": null,
+    "object_location": null,
+    "confidentiality": null
+  },
   "created_at": "2024-01-15T10:30:00Z",
   "updated_at": "2024-01-15T11:00:00Z"
 }
@@ -559,7 +628,7 @@ image: [file] (optional, to replace existing image)
 
 **DELETE** `/api/records/{id}/`
 
-Permanently deletes a record and its associated image file. Only the collection owner can delete, and only if the collection is not closed.
+Permanently deletes a record and its stored **representative_image** file (if any). Only the collection owner can delete, and only if the collection is not closed.
 
 **Response:** `204 No Content`
 
@@ -594,8 +663,8 @@ Permanently deletes a record and its associated image file. Only the collection 
 
 ### Image URLs
 
-- Images are served at: `http://localhost:8000/media/records/{filename}`
-- URLs are included in record responses
+- **Representative** (list/detail) images are served under `http://localhost:8000/media/records/{filename}` and exposed as the `representative_image` absolute URL on each record resource.
+- Nested domain image references (see `Image` in [docs/data/common-models.md](data/common-models.md)) serialize as absolute URL strings inside `data` when present.
 - Images are publicly accessible (no authentication required for viewing)
 
 ### Image Validation
@@ -675,4 +744,6 @@ API versioning strategy: Initial version does not include version prefix. Future
 
 - **User Stories**: See `docs/user-stories/`
 - **Design Documentation**: See `docs/design/`
-- **Data Models**: See `docs/data-models.md`
+- **Django model mapping**: See `docs/data/models.md`
+- **Record domain schema**: See `docs/data/record-models.md` and linked files under `docs/data/`
+- **High-level data overview**: See `docs/data-models.md`

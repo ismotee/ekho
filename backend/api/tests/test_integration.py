@@ -25,6 +25,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from api.tests.test_records import record_payload
+
 
 @pytest.fixture
 def user():
@@ -72,11 +74,9 @@ class TestFullWorkflow:
             
             # Step 2: Add records
             records_url = reverse('records-list')
-            record_data = {
-                'title': 'Workflow Test Record',
-                'artist': 'Test Artist',
-                'collection': collection_id
-            }
+            record_data = record_payload(
+                collection_id, title='Workflow Test Record', object_number='WF-1'
+            )
             record_response = authenticated_client.post(records_url, record_data, format='json')
             
             if record_response.status_code == status.HTTP_201_CREATED:
@@ -98,7 +98,11 @@ class TestFullWorkflow:
                 record_detail_url = reverse('records-detail', kwargs={'pk': record_id})
                 update_response = authenticated_client.patch(
                     record_detail_url,
-                    {'title': 'Updated'},
+                    {
+                        'data': record_payload(
+                            collection_id, title='Updated', object_number='WF-1'
+                        )['data']
+                    },
                     format='json'
                 )
                 assert update_response.status_code == status.HTTP_403_FORBIDDEN
@@ -120,11 +124,11 @@ class TestFullWorkflow:
             records_url = reverse('records-list')
             record_ids = []
             for i in range(3):
-                record_data = {
-                    'title': f'Record {i+1}',
-                    'artist': f'Artist {i+1}',
-                    'collection': collection_id
-                }
+                record_data = record_payload(
+                    collection_id,
+                    title=f'Record {i+1}',
+                    object_number=f'R{i+1}',
+                )
                 record_response = authenticated_client.post(records_url, record_data, format='json')
                 if record_response.status_code == status.HTTP_201_CREATED:
                     record_ids.append(record_response.data['id'])
@@ -143,7 +147,11 @@ class TestFullWorkflow:
                 record_detail_url = reverse('records-detail', kwargs={'pk': record_ids[0]})
                 record_update_response = authenticated_client.patch(
                     record_detail_url,
-                    {'title': 'Updated Record'},
+                    {
+                        'data': record_payload(
+                            collection_id, title='Updated Record', object_number='R1'
+                        )['data']
+                    },
                     format='json'
                 )
                 assert record_update_response.status_code == status.HTTP_200_OK
@@ -168,7 +176,11 @@ class TestFullWorkflow:
             if record_ids:
                 verify_record_update_response = authenticated_client.patch(
                     reverse('records-detail', kwargs={'pk': record_ids[0]}),
-                    {'title': 'Hacked Title'},
+                    {
+                        'data': record_payload(
+                            collection_id, title='Hacked Title', object_number='R1'
+                        )['data']
+                    },
                     format='json'
                 )
                 assert verify_record_update_response.status_code == status.HTTP_403_FORBIDDEN
@@ -189,11 +201,9 @@ class TestFullWorkflow:
             
             # Add record
             records_url = reverse('records-list')
-            record_data = {
-                'title': 'Integrity Test Record',
-                'artist': 'Test Artist',
-                'collection': collection_id
-            }
+            record_data = record_payload(
+                collection_id, title='Integrity Test Record', object_number='INT-1'
+            )
             record_response = authenticated_client.post(records_url, record_data, format='json')
             
             if record_response.status_code == status.HTTP_201_CREATED:
@@ -307,11 +317,9 @@ class TestAnonymousUserAccess:
             collection_id = collection_response.data['id']
             
             records_url = reverse('records-list')
-            record_data = {
-                'title': 'Public Record',
-                'artist': 'Test Artist',
-                'collection': collection_id
-            }
+            record_data = record_payload(
+                collection_id, title='Public Record', object_number='PUB-1'
+            )
             record_response = authenticated_client.post(records_url, record_data, format='json')
             
             if record_response.status_code == status.HTTP_201_CREATED:
@@ -339,11 +347,7 @@ class TestAnonymousUserAccess:
         
         # Cannot create record
         records_url = reverse('records-list')
-        record_data = {
-            'title': 'Unauthorized Record',
-            'artist': 'Test Artist',
-            'collection': 1
-        }
+        record_data = record_payload(1, title='Unauthorized Record', object_number='UN-1')
         response = client.post(records_url, record_data, format='json')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
@@ -417,11 +421,9 @@ class TestMultiUserScenarios:
             collection_id = collection_response.data['id']
             
             records_url = reverse('records-list')
-            record_data = {
-                'title': 'User B Record',
-                'artist': 'Test Artist',
-                'collection': collection_id
-            }
+            record_data = record_payload(
+                collection_id, title='User B Record', object_number='UB-1'
+            )
             record_response = other_client.post(records_url, record_data, format='json')
             
             if record_response.status_code == status.HTTP_201_CREATED:
@@ -431,7 +433,11 @@ class TestMultiUserScenarios:
                 record_detail_url = reverse('records-detail', kwargs={'pk': record_id})
                 update_response = authenticated_client.patch(
                     record_detail_url,
-                    {'title': 'Hacked'},
+                    {
+                        'data': record_payload(
+                            collection_id, title='Hacked', object_number='UB-1'
+                        )['data']
+                    },
                     format='json'
                 )
                 assert update_response.status_code == status.HTTP_403_FORBIDDEN

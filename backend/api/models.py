@@ -1,12 +1,11 @@
 """
 Django models for Ekho Art Collection Management Application
 
-Reference: docs/data-models.md
+Record payload: docs/data/record-models.md (stored in `data` JSONField).
 """
 
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Collection(models.Model):
@@ -34,38 +33,67 @@ class Collection(models.Model):
 
 class Record(models.Model):
     """
-    Represents an art record (artwork) within a collection.
-    Records contain artwork information and optional image.
+    Art record within a collection. Domain fields live in `data` (see record-models.md).
+    `representative_image` is optional presentation metadata for list/detail thumbnails.
     """
-    title = models.CharField(max_length=200)
-    artist = models.CharField(max_length=200)
-    year = models.IntegerField(
-        null=True, 
-        blank=True,
-        validators=[
-            MinValueValidator(1000),  # Reasonable minimum year
-            MaxValueValidator(2100)   # Reasonable maximum year
-        ]
-    )
-    medium = models.CharField(max_length=100, blank=True)
-    dimensions = models.CharField(max_length=100, blank=True)
-    description = models.TextField(max_length=2000, blank=True)
-    condition = models.CharField(max_length=200, blank=True)
-    image = models.ImageField(
-        upload_to='records/',
+    data = models.JSONField(default=dict, blank=True)
+    representative_image = models.ImageField(
+        upload_to="records/",
         blank=True,
         null=True,
-        max_length=255
+        max_length=255,
     )
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='records')
+    collection = models.ForeignKey(
+        Collection, on_delete=models.CASCADE, related_name="records"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['collection']),
+            models.Index(fields=["collection"]),
         ]
-    
+
     def __str__(self):
-        return f"{self.title} by {self.artist}"
+        payload = self.data if isinstance(self.data, dict) else {}
+        id_details = payload.get("identification_details")
+        if isinstance(id_details, dict):
+            title = id_details.get("title")
+            if isinstance(title, list):
+                for item in title:
+                    if isinstance(item, dict) and item.get("value"):
+                        return str(item["value"])
+            elif isinstance(title, dict) and title.get("value"):
+                return str(title["value"])
+            num = id_details.get("object_number")
+            if num:
+                return str(num)
+        return f"Record {self.pk}"
+
+
+class Actor(models.Model):
+    """
+    Catalog entry: person or organization JSON (docs/data/actor-models.md).
+    owner=null: global actor visible to everyone; else user-owned.
+    """
+
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="actors",
+    )
+    data = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["owner"]),
+        ]
+
+    def __str__(self):
+        return f"Actor {self.pk}"

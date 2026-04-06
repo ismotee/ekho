@@ -19,8 +19,17 @@ import { CollectionForm } from './components/collections/CollectionForm'
 import { RecordDetail } from './components/records/RecordDetail'
 import { RecordForm } from './components/records/RecordForm'
 import { RecordsListPage } from './components/records/RecordsListPage'
+import { ActorListPage } from './components/actors/ActorListPage'
+import { ActorDetailPage } from './components/actors/ActorDetailPage'
+import { ActorForm } from './components/actors/ActorForm'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from './stores/authStore'
 import './App.css'
+
+const NotFound = () => {
+  const { t } = useTranslation()
+  return <div className="empty-state">{t('app.notFound')}</div>
+}
 
 export const AppContent = observer(() => {
   const authStore = useAuthStore()
@@ -39,6 +48,7 @@ export const AppContent = observer(() => {
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/records" element={<RecordsListPage />} />
           <Route path="/records/:id" element={<RecordDetail />} />
+          <Route path="/actors" element={<ActorListPage />} />
           
           {/* Auth routes */}
           <Route path="/login" element={<LoginForm />} />
@@ -77,9 +87,26 @@ export const AppContent = observer(() => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/actors/new"
+            element={
+              <ProtectedRoute>
+                <ActorForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/actors/:id/edit"
+            element={
+              <ProtectedRoute>
+                <ActorForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/actors/:id" element={<ActorDetailPage />} />
           
         {/* 404 */}
-        <Route path="*" element={<div>404 - Page Not Found</div>} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </MainLayout>
   )

@@ -55,8 +55,11 @@ describe('RecordStore Tests', () => {
     const mockResults = [
       {
         id: 1,
-        title: 'R1',
-        artist: 'A1',
+        data: {
+          identification_details: { title: [{ value: 'R1' }] },
+          description: { content: { description: 'Artist: A1' } },
+        },
+        representative_image: null,
         collection: 1,
         collection_name: 'Test Collection',
         collection_owner_username: 'testuser',

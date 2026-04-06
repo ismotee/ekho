@@ -12,6 +12,7 @@ from . import views
 router = DefaultRouter()
 router.register(r'collections', views.CollectionViewSet, basename='collections')
 router.register(r'records', views.RecordViewSet, basename='records')
+router.register(r'actors', views.ActorViewSet, basename='actors')
 
 # Authentication URLs
 auth_urlpatterns = [

@@ -1,6 +1,6 @@
 /**
  * Collection Component Styles
- * 
+ *
  * Reference: docs/design/05-design-system.md
  */
 
@@ -27,7 +27,7 @@
   margin: 0 0 0.5rem 0;
   font-size: 2rem;
   font-weight: 600;
-  color: #0F172A;
+  color: var(--color-text);
   text-align: left;
 }
 
@@ -45,20 +45,20 @@
   gap: 0.5rem;
   cursor: pointer;
   font-size: 0.875rem;
-  color: #64748B;
+  color: var(--color-text-secondary);
   user-select: none;
   width: fit-content;
   flex-shrink: 0;
 }
 
-.filter-toggle input[type="checkbox"] {
+.filter-toggle input[type='checkbox'] {
   cursor: pointer;
   width: 1rem;
   height: 1rem;
 }
 
 .filter-toggle:hover {
-  color: #0F172A;
+  color: var(--color-text);
 }
 
 .collection-list {
@@ -75,29 +75,29 @@
 .collection-card {
   display: block;
   padding: 1.5rem;
-  background: white;
-  border: 1px solid #E2E8F0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   text-decoration: none;
   color: inherit;
   transition: box-shadow 0.15s ease-in-out;
 }
 
 .collection-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .collection-card h3 {
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #0F172A;
+  color: var(--color-text);
 }
 
 .collection-card p {
   margin: 0.5rem 0;
-  color: #64748B;
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -106,14 +106,14 @@
   gap: 1rem;
   margin-top: 1rem;
   font-size: 0.875rem;
-  color: #64748B;
+  color: var(--color-text-secondary);
 }
 
 .badge {
   display: inline-block;
   padding: 0.25rem 0.5rem;
-  background-color: #FEE2E2;
-  color: #EF4444;
+  background-color: var(--color-badge-danger-bg);
+  color: var(--color-badge-danger-text);
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -122,7 +122,7 @@
 .collection-dates {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: var(--color-text-muted);
 }
 
 .collection-detail {
@@ -134,7 +134,7 @@
 .back-link {
   display: block;
   margin-bottom: 1rem;
-  color: #2563EB;
+  color: var(--color-primary);
   text-decoration: none;
   text-align: left;
   width: 100%;
@@ -201,9 +201,9 @@
   max-width: 600px;
   margin: 2rem auto;
   padding: 2rem;
-  background: white;
+  background: var(--color-surface);
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .form-actions {
@@ -219,7 +219,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -227,12 +227,13 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-text);
   padding: 2rem;
   border-radius: 0.5rem;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 
 .modal-content h2 {
@@ -249,7 +250,7 @@
 .empty-state {
   text-align: center;
   padding: 3rem;
-  color: #64748B;
+  color: var(--color-text-secondary);
 }
 
 .pagination {
@@ -275,5 +276,5 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #0F172A;
+  color: var(--color-text);
 }

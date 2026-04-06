@@ -1,84 +1,86 @@
 """
 Record API Tests
 
-Reference: docs/api-specification.md (Record Endpoints), docs/user-stories/03-records.md, docs/data-models.md (Record Model)
+Reference: docs/api-specification.md (Record Endpoints), docs/data/record-models.md
 
-This module contains comprehensive tests for record endpoints:
-- List Records (US-013)
-- Create Record (US-010, US-015)
-- Retrieve Record (US-014)
-- Update Record (US-011, US-015)
-- Delete Record (US-012)
-- Image Upload Tests (US-015)
-- Permission Edge Cases
-
-TDD APPROACH: These tests are written BEFORE production code exists.
-The tests SHOULD FAIL until API endpoints and models are implemented.
-This follows the Documentation → Tests → Production Code workflow.
-
-Expected failures:
-- URL reverse errors when endpoints don't exist (NoReverseMatch)
-- 404 errors when endpoints don't exist
-- Import errors when Record model doesn't exist
-- Assertion failures when responses don't match expected format
+Domain payload is under `data`; optional `representative_image` for thumbnails.
 """
 
-import pytest
+import json
 import io
+
+import pytest
 from PIL import Image
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
 
-# Note: These tests assume Collection and Record models exist
-# In actual implementation, import would be:
-# from api.models import Collection, Record
-
-
 def create_test_image():
-    """Helper function to create a test image file"""
-    image = Image.new('RGB', (100, 100), color='red')
+    """Create a test JPEG upload."""
+    image = Image.new("RGB", (100, 100), color="red")
     img_io = io.BytesIO()
-    image.save(img_io, format='JPEG')
-    img_io.seek(0)
-    return img_io
+    image.save(img_io, format="JPEG")
+    data = img_io.getvalue()
+    return SimpleUploadedFile("test.jpg", data, content_type="image/jpeg")
+
+
+def record_payload(collection_id, *, title="Untitled", object_number="OBJ-1", **extra_domains):
+    """Minimal valid record body: identification_details with title list and object_number."""
+    data = {
+        "identification_details": {
+            "object_number": object_number,
+            "title": [{"value": title}],
+        }
+    }
+    for key, val in extra_domains.items():
+        data[key] = val
+    return {"collection": collection_id, "data": data}
+
+
+def record_title_value(record_dict):
+    """First Title entry (list shape) or legacy single title dict."""
+    raw = (
+        (record_dict.get("data") or {})
+        .get("identification_details") or {}
+    ).get("title")
+    if isinstance(raw, list) and raw:
+        first = raw[0]
+        return first if isinstance(first, dict) else {}
+    if isinstance(raw, dict):
+        return raw
+    return {}
 
 
 @pytest.fixture
 def user():
-    """Create a test user"""
-    return User.objects.create_user(username='testuser', password='testpass123')
+    return User.objects.create_user(username="testuser", password="testpass123")
 
 
 @pytest.fixture
 def other_user():
-    """Create another test user"""
-    return User.objects.create_user(username='otheruser', password='testpass123')
+    return User.objects.create_user(username="otheruser", password="testpass123")
 
 
 @pytest.fixture
 def authenticated_client(user):
-    """Create an authenticated API client"""
     client = APIClient()
-    login_url = reverse('auth-login')
-    client.post(login_url, {
-        'username': 'testuser',
-        'password': 'testpass123'
-    }, format='json')
+    client.post(
+        reverse("auth-login"),
+        {"username": "testuser", "password": "testpass123"},
+        format="json",
+    )
     return client
 
 
 @pytest.fixture
 def collection(authenticated_client, user):
-    """Create a test collection"""
-    url = reverse('collections-list')
-    data = {
-        'name': 'Test Collection',
-        'description': 'Test Description'
-    }
-    response = authenticated_client.post(url, data, format='json')
+    url = reverse("collections-list")
+    response = authenticated_client.post(
+        url, {"name": "Test Collection", "description": "Test Description"}, format="json"
+    )
     if response.status_code == status.HTTP_201_CREATED:
         return response.data
     return None
@@ -86,1352 +88,964 @@ def collection(authenticated_client, user):
 
 @pytest.mark.django_db
 class TestListRecords:
-    """Test List Records (US-013, US-016)"""
-    
     def test_list_endpoint_accessible_to_anonymous_users(self):
-        """Test list endpoint accessible to anonymous users (200 OK)"""
         client = APIClient()
-        url = reverse('records-list')
-        response = client.get(url, {'collection': 1})
-        
-        # Should be accessible (may return 404 if collection doesn't exist)
+        url = reverse("records-list")
+        response = client.get(url, {"collection": 1})
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
-    
+
     def test_list_endpoint_accessible_to_authenticated_users(self, authenticated_client):
-        """Test list endpoint accessible to authenticated users (200 OK)"""
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'collection': 1})
-        
-        # Should be accessible (may return 404 if collection doesn't exist)
+        url = reverse("records-list")
+        response = authenticated_client.get(url, {"collection": 1})
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
-    
+
     def test_list_without_collection_returns_200_and_results(self, authenticated_client):
-        """Test list without collection param returns 200 and paginated results (US-016). Collection is optional."""
-        url = reverse('records-list')
+        url = reverse("records-list")
         response = authenticated_client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        assert isinstance(response.data['results'], list)
-        # Pagination keys when collection omitted (all records list)
-        assert 'count' in response.data
-    
-    def test_list_with_collection_parameter_filters_by_collection(self, authenticated_client, collection):
-        """Test list with collection param returns only that collection's records (backward compatibility)."""
+        assert "results" in response.data
+        assert isinstance(response.data["results"], list)
+        assert "count" in response.data
+
+    def test_list_with_collection_parameter_filters_by_collection(
+        self, authenticated_client, collection
+    ):
         if collection:
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {'collection': collection['id']})
+            url = reverse("records-list")
+            response = authenticated_client.get(url, {"collection": collection["id"]})
             assert response.status_code == status.HTTP_200_OK
-            assert 'results' in response.data
-            for record in response.data['results']:
-                assert record['collection'] == collection['id']
-    
+            for record in response.data["results"]:
+                assert record["collection"] == collection["id"]
+
     def test_list_with_nonexistent_collection_returns_404(self, authenticated_client):
-        """Test list with invalid collection ID returns 404 (not 400)."""
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'collection': 99999})
+        url = reverse("records-list")
+        response = authenticated_client.get(url, {"collection": 99999})
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_list_response_includes_collection_name_and_owner(self, authenticated_client, collection):
-        """Test list response includes collection_name and collection_owner_username per item (US-016)."""
+    def test_list_response_includes_collection_name_and_owner(
+        self, authenticated_client, collection
+    ):
         if collection:
-            create_url = reverse('records-list')
-            authenticated_client.post(create_url, {
-                'title': 'List Context Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-            }, format='json')
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {'collection': collection['id']})
+            create_url = reverse("records-list")
+            authenticated_client.post(
+                create_url,
+                record_payload(collection["id"], title="List Context Test", object_number="LC-1"),
+                format="json",
+            )
+            url = reverse("records-list")
+            response = authenticated_client.get(url, {"collection": collection["id"]})
             assert response.status_code == status.HTTP_200_OK
-            assert len(response.data['results']) >= 1
-            record = response.data['results'][0]
-            assert 'collection_name' in record
-            assert record['collection_name'] == 'Test Collection'
-            assert 'collection_owner_username' in record
-            assert record['collection_owner_username'] == 'testuser'
+            record = response.data["results"][0]
+            assert record["collection_name"] == "Test Collection"
+            assert record["collection_owner_username"] == "testuser"
 
-    def test_list_all_records_includes_collection_context_fields(self, authenticated_client, collection):
-        """Test GET /api/records/ without collection returns items with collection_name and collection_owner_username."""
+    def test_list_all_records_includes_collection_context_fields(
+        self, authenticated_client, collection
+    ):
         if collection:
-            create_url = reverse('records-list')
-            authenticated_client.post(create_url, {
-                'title': 'All Records Context Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-            }, format='json')
-            url = reverse('records-list')
+            create_url = reverse("records-list")
+            authenticated_client.post(
+                create_url,
+                record_payload(
+                    collection["id"], title="All Records Context Test", object_number="ARC-1"
+                ),
+                format="json",
+            )
+            url = reverse("records-list")
             response = authenticated_client.get(url)
             assert response.status_code == status.HTTP_200_OK
-            assert len(response.data['results']) >= 1
-            record = next((r for r in response.data['results'] if r.get('title') == 'All Records Context Test'), None)
+            record = next(
+                (
+                    r
+                    for r in response.data["results"]
+                    if record_title_value(r).get("value") == "All Records Context Test"
+                ),
+                None,
+            )
             assert record is not None
-            assert 'collection_name' in record
-            assert 'collection_owner_username' in record
-    
+            assert "collection_name" in record
+            assert "collection_owner_username" in record
+
     def test_pagination_parameters(self, authenticated_client, collection):
-        """Test pagination (page, page_size parameters)"""
         if collection:
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {
-                'collection': collection['id'],
-                'page': 1,
-                'page_size': 10
-            })
-            
+            url = reverse("records-list")
+            response = authenticated_client.get(
+                url, {"collection": collection["id"], "page": 1, "page_size": 10}
+            )
             assert response.status_code == status.HTTP_200_OK
-    
+
     def test_pagination_response_format(self, authenticated_client, collection):
-        """Test pagination response format"""
         if collection:
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {'collection': collection['id']})
-            
+            url = reverse("records-list")
+            response = authenticated_client.get(url, {"collection": collection["id"]})
             assert response.status_code == status.HTTP_200_OK
-            # Should have pagination structure
-            assert 'results' in response.data or isinstance(response.data, list)
-    
+            assert "results" in response.data or isinstance(response.data, list)
+
     def test_response_includes_all_required_fields(self, authenticated_client, collection):
-        """Test response includes all required fields"""
         if collection:
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {'collection': collection['id']})
-            
+            url = reverse("records-list")
+            response = authenticated_client.get(url, {"collection": collection["id"]})
             assert response.status_code == status.HTTP_200_OK
-            # When records exist, check structure
-            if 'results' in response.data and len(response.data['results']) > 0:
-                record = response.data['results'][0]
-                required_fields = ['id', 'title', 'artist', 'collection']
-                for field in required_fields:
+            if response.data.get("results"):
+                record = response.data["results"][0]
+                for field in ("id", "data", "collection"):
                     assert field in record
-    
-    def test_image_urls_are_properly_formatted(self, authenticated_client, collection):
-        """Test image URLs are properly formatted"""
+
+    def test_representative_image_urls_are_strings_when_set(
+        self, authenticated_client, collection
+    ):
         if collection:
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {'collection': collection['id']})
-            
+            url = reverse("records-list")
+            response = authenticated_client.get(url, {"collection": collection["id"]})
             assert response.status_code == status.HTTP_200_OK
-            # If records with images exist, check URL format
-            if 'results' in response.data:
-                for record in response.data['results']:
-                    if 'image' in record and record['image']:
-                        assert isinstance(record['image'], str)
-    
+            for record in response.data.get("results", []):
+                img = record.get("representative_image")
+                if img:
+                    assert isinstance(img, str)
+
     def test_empty_list_returns_empty_results_array(self, authenticated_client, collection):
-        """Test empty list returns empty results array"""
         if collection:
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {'collection': collection['id']})
-            
+            url = reverse("records-list")
+            response = authenticated_client.get(url, {"collection": collection["id"]})
             assert response.status_code == status.HTTP_200_OK
-            assert 'results' in response.data or isinstance(response.data, list)
-    
+            assert "results" in response.data or isinstance(response.data, list)
+
     def test_ordering_by_created_at_descending(self, authenticated_client, collection):
-        """Test ordering (should be by -created_at per data model spec)"""
         if collection:
-            url = reverse('records-list')
-            response = authenticated_client.get(url, {'collection': collection['id']})
-            
+            url = reverse("records-list")
+            response = authenticated_client.get(url, {"collection": collection["id"]})
             assert response.status_code == status.HTTP_200_OK
-            # When multiple records exist, verify ordering
 
 
 @pytest.mark.django_db
 class TestRecordsListFilters:
-    """Test Records list filter params: collection_name, owner (Plan 2, US-017). TDD: fail until ViewSet applies filters."""
-
     def test_collection_name_filters_by_substring(self, authenticated_client, collection):
-        """collection_name filters by substring match (icontains) on collection name."""
         if not collection:
             return
-        # Create second collection with different name and a record in each
-        other_url = reverse('collections-list')
         other_resp = authenticated_client.post(
-            other_url, {'name': 'Other Gallery', 'description': 'Other'}, format='json'
+            reverse("collections-list"),
+            {"name": "Other Gallery", "description": "Other"},
+            format="json",
         )
         if other_resp.status_code != status.HTTP_201_CREATED:
             return
-        other_cid = other_resp.data['id']
-        create_url = reverse('records-list')
+        other_cid = other_resp.data["id"]
+        create_url = reverse("records-list")
         authenticated_client.post(
             create_url,
-            {'title': 'In Other', 'artist': 'A', 'collection': other_cid},
-            format='json',
+            record_payload(other_cid, title="In Other", object_number="O-1"),
+            format="json",
         )
         authenticated_client.post(
             create_url,
-            {'title': 'In Test', 'artist': 'B', 'collection': collection['id']},
-            format='json',
+            record_payload(collection["id"], title="In Test", object_number="T-1"),
+            format="json",
         )
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'collection_name': 'Other Gallery'})
+        response = authenticated_client.get(reverse("records-list"), {"collection_name": "Other Gallery"})
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        # Must only return records whose collection name contains "Other Gallery"
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['collection_name'] == 'Other Gallery'
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["collection_name"] == "Other Gallery"
 
     def test_collection_name_empty_does_not_filter(self, authenticated_client, collection):
-        """Empty collection_name param does not filter (all records returned when no other filter)."""
         if not collection:
             return
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'collection_name': ''})
+        response = authenticated_client.get(reverse("records-list"), {"collection_name": ""})
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
+        assert "results" in response.data
 
-    def test_owner_filters_by_collection_owner_username(self, authenticated_client, other_user, collection):
-        """owner param filters by exact match on collection owner username (exclude other users' records)."""
+    def test_owner_filters_by_collection_owner_username(
+        self, authenticated_client, other_user, collection
+    ):
         if not collection:
             return
-        # Create collection and record as other_user
         other_client = APIClient()
         other_client.post(
-            reverse('auth-login'),
-            {'username': 'otheruser', 'password': 'testpass123'},
-            format='json',
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
         )
         other_coll = other_client.post(
-            reverse('collections-list'),
-            {'name': 'Other User Collection', 'description': 'O'},
-            format='json',
+            reverse("collections-list"),
+            {"name": "Other User Collection", "description": "O"},
+            format="json",
         )
         if other_coll.status_code != status.HTTP_201_CREATED:
             return
         other_client.post(
-            reverse('records-list'),
-            {'title': 'Other Record', 'artist': 'X', 'collection': other_coll.data['id']},
-            format='json',
+            reverse("records-list"),
+            record_payload(other_coll.data["id"], title="Other Record", object_number="OR-1"),
+            format="json",
         )
         authenticated_client.post(
-            reverse('records-list'),
-            {'title': 'Testuser Record', 'artist': 'Y', 'collection': collection['id']},
-            format='json',
+            reverse("records-list"),
+            record_payload(collection["id"], title="Testuser Record", object_number="TR-1"),
+            format="json",
         )
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'owner': 'testuser'})
+        response = authenticated_client.get(reverse("records-list"), {"owner": "testuser"})
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        # Must only return records whose collection owner is testuser (not otheruser)
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['collection_owner_username'] == 'testuser'
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["collection_owner_username"] == "testuser"
 
     def test_owner_nonexistent_returns_empty_results(self, authenticated_client, collection):
-        """owner with no matching username returns empty results."""
         if not collection:
             return
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'owner': 'nonexistentuser123'})
+        response = authenticated_client.get(
+            reverse("records-list"), {"owner": "nonexistentuser123"}
+        )
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['results'] == []
+        assert response.data["results"] == []
 
     def test_collection_name_and_owner_combined(self, authenticated_client, collection):
-        """collection_name and owner can be combined (AND)."""
         if not collection:
             return
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {
-            'collection_name': 'Test',
-            'owner': 'testuser',
-        })
+        response = authenticated_client.get(
+            reverse("records-list"), {"collection_name": "Test", "owner": "testuser"}
+        )
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        for record in response.data['results']:
-            assert 'Test' in record.get('collection_name', '').lower()
-            assert record.get('collection_owner_username') == 'testuser'
+        for record in response.data["results"]:
+            assert "test" in record.get("collection_name", "").lower()
+            assert record.get("collection_owner_username") == "testuser"
 
     def test_filters_combined_with_collection_param(self, authenticated_client, collection):
-        """collection_name and owner work together with optional collection (id) param."""
         if not collection:
             return
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {
-            'collection': collection['id'],
-            'owner': 'testuser',
-        })
+        response = authenticated_client.get(
+            reverse("records-list"),
+            {"collection": collection["id"], "owner": "testuser"},
+        )
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        for record in response.data['results']:
-            assert record['collection'] == collection['id']
-            assert record.get('collection_owner_username') == 'testuser'
+        for record in response.data["results"]:
+            assert record["collection"] == collection["id"]
+            assert record.get("collection_owner_username") == "testuser"
 
 
 @pytest.mark.django_db
 class TestRecordsListSearch:
-    """Test Records list search param (Plan 3, US-018). search filters by title, artist, collection name, collection description (icontains, OR)."""
+    """search matches JSON text (data) and collection name/description."""
 
-    def test_search_filters_by_title(self, authenticated_client, collection):
-        """search param filters records by title (icontains)."""
+    def test_search_filters_by_title_value_in_data(self, authenticated_client, collection):
         if not collection:
             return
-        create_url = reverse('records-list')
+        create_url = reverse("records-list")
+        cid = collection["id"]
         authenticated_client.post(
             create_url,
-            {'title': 'UniqueSunsetTitle', 'artist': 'A', 'collection': collection['id']},
-            format='json',
+            record_payload(cid, title="UniqueSunsetTitle", object_number="US-1"),
+            format="json",
         )
         authenticated_client.post(
             create_url,
-            {'title': 'Other Painting', 'artist': 'B', 'collection': collection['id']},
-            format='json',
+            record_payload(cid, title="Other Painting", object_number="OP-1"),
+            format="json",
         )
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'search': 'UniqueSunset'})
+        response = authenticated_client.get(reverse("records-list"), {"search": "UniqueSunset"})
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['title'] == 'UniqueSunsetTitle'
+        assert len(response.data["results"]) == 1
+        assert record_title_value(response.data["results"][0]).get("value") == "UniqueSunsetTitle"
 
-    def test_search_filters_by_artist(self, authenticated_client, collection):
-        """search param filters records by artist (icontains)."""
+    def test_search_filters_by_object_number_substring(self, authenticated_client, collection):
         if not collection:
             return
-        create_url = reverse('records-list')
+        create_url = reverse("records-list")
+        cid = collection["id"]
         authenticated_client.post(
             create_url,
-            {'title': 'T1', 'artist': 'UniqueArtistName', 'collection': collection['id']},
-            format='json',
+            record_payload(cid, title="T1", object_number="UniqueArtistName-001"),
+            format="json",
         )
         authenticated_client.post(
             create_url,
-            {'title': 'T2', 'artist': 'Other Artist', 'collection': collection['id']},
-            format='json',
+            record_payload(cid, title="T2", object_number="OTHER-002"),
+            format="json",
         )
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {'search': 'UniqueArtist'})
+        response = authenticated_client.get(reverse("records-list"), {"search": "UniqueArtist"})
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['artist'] == 'UniqueArtistName'
+        assert len(response.data["results"]) == 1
 
     def test_search_includes_collection_name_and_description(self, authenticated_client, collection):
-        """search optionally includes collection name and description (per spec)."""
         if not collection:
             return
-        # Create a second collection with distinctive name/description and a record in it
-        other_url = reverse('collections-list')
         other_resp = authenticated_client.post(
-            other_url,
-            {'name': 'GalleryWithUniqueWord', 'description': 'Description with UniqueWord here'},
-            format='json',
+            reverse("collections-list"),
+            {
+                "name": "GalleryWithUniqueWord",
+                "description": "Description with UniqueWord here",
+            },
+            format="json",
         )
         if other_resp.status_code != status.HTTP_201_CREATED:
             return
-        other_cid = other_resp.data['id']
-        create_url = reverse('records-list')
+        other_cid = other_resp.data["id"]
         authenticated_client.post(
-            create_url,
-            {'title': 'Generic', 'artist': 'X', 'collection': other_cid},
-            format='json',
+            reverse("records-list"),
+            record_payload(other_cid, title="Generic", object_number="G-1"),
+            format="json",
         )
-        url = reverse('records-list')
-        # Search by collection name
-        response = authenticated_client.get(url, {'search': 'GalleryWithUniqueWord'})
+        url = reverse("records-list")
+        response = authenticated_client.get(url, {"search": "GalleryWithUniqueWord"})
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['collection_name'] == 'GalleryWithUniqueWord'
-        # Search by collection description
-        response2 = authenticated_client.get(url, {'search': 'UniqueWord'})
+        assert len(response.data["results"]) == 1
+        response2 = authenticated_client.get(url, {"search": "UniqueWord"})
         assert response2.status_code == status.HTTP_200_OK
-        assert len(response2.data['results']) >= 1
+        assert len(response2.data["results"]) >= 1
 
     def test_empty_search_param_does_not_filter(self, authenticated_client, collection):
-        """Empty or omitted search param does not filter (all records subject to other filters)."""
         if not collection:
             return
-        url = reverse('records-list')
-        response_empty = authenticated_client.get(url, {'search': ''})
+        url = reverse("records-list")
+        response_empty = authenticated_client.get(url, {"search": ""})
         response_omit = authenticated_client.get(url)
-        assert response_empty.status_code == status.HTTP_200_OK
-        assert response_omit.status_code == status.HTTP_200_OK
-        assert 'results' in response_empty.data
-        assert 'results' in response_omit.data
-        # Counts should match when no other filters
-        assert response_empty.data['count'] == response_omit.data['count']
+        assert response_empty.data["count"] == response_omit.data["count"]
 
     def test_search_combined_with_collection_name_and_owner(self, authenticated_client, collection):
-        """search can be combined with collection_name and owner (AND)."""
         if not collection:
             return
-        create_url = reverse('records-list')
         authenticated_client.post(
-            create_url,
-            {'title': 'Sunset Art', 'artist': 'Jane', 'collection': collection['id']},
-            format='json',
+            reverse("records-list"),
+            record_payload(collection["id"], title="Sunset Art", object_number="SA-1"),
+            format="json",
         )
-        url = reverse('records-list')
-        response = authenticated_client.get(url, {
-            'search': 'Sunset',
-            'collection_name': 'Test',
-            'owner': 'testuser',
-        })
+        response = authenticated_client.get(
+            reverse("records-list"),
+            {"search": "Sunset", "collection_name": "Test", "owner": "testuser"},
+        )
         assert response.status_code == status.HTTP_200_OK
-        assert 'results' in response.data
-        for record in response.data['results']:
-            assert 'Sunset' in record['title'] or 'sunset' in record['title'].lower()
-            assert 'test' in record.get('collection_name', '').lower()
-            assert record.get('collection_owner_username') == 'testuser'
+        for record in response.data["results"]:
+            assert record.get("collection_owner_username") == "testuser"
+            assert "test" in record.get("collection_name", "").lower()
+            tv = record_title_value(record).get("value") or ""
+            assert "sunset" in tv.lower()
 
 
 @pytest.mark.django_db
 class TestCreateRecord:
-    """Test Create Record (US-010, US-015)"""
-    
     def test_create_requires_authentication(self):
-        """Test create requires authentication (401 if not authenticated)"""
         client = APIClient()
-        url = reverse('records-list')
-        data = {
-            'title': 'Test Artwork',
-            'artist': 'Test Artist',
-            'collection': 1
-        }
-        response = client.post(url, data, format='json')
-        
+        url = reverse("records-list")
+        response = client.post(url, record_payload(1), format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     def test_only_collection_owner_can_create(self, authenticated_client, other_user, collection):
-        """Test only collection owner can create (403 if not owner)"""
         if collection:
-            # Create collection as other_user
             other_client = APIClient()
-            login_url = reverse('auth-login')
-            other_client.post(login_url, {
-                'username': 'otheruser',
-                'password': 'testpass123'
-            }, format='json')
-            
-            other_collection_url = reverse('collections-list')
-            other_collection_data = {
-                'name': 'Other Collection',
-                'description': 'Test'
-            }
-            other_collection_response = other_client.post(other_collection_url, other_collection_data, format='json')
-            
+            other_client.post(
+                reverse("auth-login"),
+                {"username": "otheruser", "password": "testpass123"},
+                format="json",
+            )
+            other_collection_response = other_client.post(
+                reverse("collections-list"),
+                {"name": "Other Collection", "description": "Test"},
+                format="json",
+            )
             if other_collection_response.status_code == status.HTTP_201_CREATED:
-                other_collection_id = other_collection_response.data['id']
-                url = reverse('records-list')
-                data = {
-                    'title': 'Unauthorized Record',
-                    'artist': 'Test Artist',
-                    'collection': other_collection_id
-                }
-                response = authenticated_client.post(url, data, format='json')
-                
+                oid = other_collection_response.data["id"]
+                response = authenticated_client.post(
+                    reverse("records-list"),
+                    record_payload(oid, title="Unauthorized Record", object_number="UR-1"),
+                    format="json",
+                )
                 assert response.status_code == status.HTTP_403_FORBIDDEN
-    
+
     def test_cannot_create_in_closed_collection(self, authenticated_client, collection):
-        """Test cannot create in closed collection (403 if collection is_closed=True)"""
         if collection:
-            collection_id = collection['id']
-            # Close the collection
-            collection_url = reverse('collections-detail', kwargs={'pk': collection_id})
-            authenticated_client.patch(collection_url, {'is_closed': True}, format='json')
-            
-            # Try to create record
-            url = reverse('records-list')
-            data = {
-                'title': 'Test Artwork',
-                'artist': 'Test Artist',
-                'collection': collection_id
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            cid = collection["id"]
+            authenticated_client.patch(
+                reverse("collections-detail", kwargs={"pk": cid}),
+                {"is_closed": True},
+                format="json",
+            )
+            response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(cid, title="Test Artwork", object_number="TA-1"),
+                format="json",
+            )
             assert response.status_code == status.HTTP_403_FORBIDDEN
-    
-    def test_successful_creation_with_all_required_fields(self, authenticated_client, collection):
-        """Test successful creation with all required fields"""
+
+    def test_successful_creation_with_minimal_payload(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Sunset Over Mountains',
-                'artist': 'Jane Smith',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            url = reverse("records-list")
+            response = authenticated_client.post(
+                url,
+                record_payload(
+                    collection["id"], title="Sunset Over Mountains", object_number="SOM-1"
+                ),
+                format="json",
+            )
             assert response.status_code == status.HTTP_201_CREATED
-            assert response.data['title'] == 'Sunset Over Mountains'
-            assert response.data['artist'] == 'Jane Smith'
-    
-    def test_successful_creation_with_optional_fields(self, authenticated_client, collection):
-        """Test successful creation with optional fields"""
+            assert record_title_value(response.data).get("value") == "Sunset Over Mountains"
+
+    def test_successful_creation_with_extra_domain_keys(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Complete Artwork',
-                'artist': 'Complete Artist',
-                'year': 2023,
-                'medium': 'Oil on Canvas',
-                'dimensions': '24x36 inches',
-                'description': 'A beautiful landscape painting',
-                'condition': 'Excellent',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            url = reverse("records-list")
+            response = authenticated_client.post(
+                url,
+                record_payload(
+                    collection["id"],
+                    title="Complete Artwork",
+                    object_number="CA-1",
+                    description={"note": "A beautiful landscape"},
+                ),
+                format="json",
+            )
             assert response.status_code == status.HTTP_201_CREATED
-            assert response.data['year'] == 2023
-            assert response.data['medium'] == 'Oil on Canvas'
-    
-    def test_validation_title_required(self, authenticated_client, collection):
-        """Test validation: title required (400 if missing)"""
+            assert "description" in response.data["data"]
+
+    def test_create_collection_required(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            data = {
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            response = authenticated_client.post(
+                reverse("records-list"), {"data": {}}, format="json"
+            )
             assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    def test_validation_artist_required(self, authenticated_client, collection):
-        """Test validation: artist required (400 if missing)"""
+
+    def test_validation_unknown_key_in_data(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Test Title',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            response = authenticated_client.post(
+                reverse("records-list"),
+                {
+                    "collection": collection["id"],
+                    "data": {"identification_details": {}, "not_a_domain_key": {}},
+                },
+                format="json",
+            )
             assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    def test_validation_title_max_length_200(self, authenticated_client, collection):
-        """Test validation: title max length 200 characters"""
+
+    def test_validation_data_must_be_object(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'a' * 201,  # 201 characters
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            response = authenticated_client.post(
+                reverse("records-list"),
+                {"collection": collection["id"], "data": []},
+                format="json",
+            )
             assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    def test_validation_artist_max_length_200(self, authenticated_client, collection):
-        """Test validation: artist max length 200 characters"""
-        if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Test Title',
-                'artist': 'a' * 201,  # 201 characters
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    def test_validation_year_must_be_integer_1000_2100(self, authenticated_client, collection):
-        """Test validation: year must be integer between 1000-2100 (per data model)"""
-        if collection:
-            url = reverse('records-list')
-            
-            # Test year too low
-            data = {
-                'title': 'Test Title',
-                'artist': 'Test Artist',
-                'year': 999,
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-            
-            # Test year too high
-            data['year'] = 2101
-            response = authenticated_client.post(url, data, format='json')
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-            
-            # Test valid year
-            data['year'] = 2023
-            response = authenticated_client.post(url, data, format='json')
-            assert response.status_code == status.HTTP_201_CREATED
-    
-    def test_validation_medium_max_length_100(self, authenticated_client, collection):
-        """Test validation: medium max length 100 characters"""
-        if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Test Title',
-                'artist': 'Test Artist',
-                'medium': 'a' * 101,  # 101 characters
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    def test_validation_dimensions_max_length_100(self, authenticated_client, collection):
-        """Test validation: dimensions max length 100 characters"""
-        if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Test Title',
-                'artist': 'Test Artist',
-                'dimensions': 'a' * 101,  # 101 characters
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    def test_validation_description_max_length_2000(self, authenticated_client, collection):
-        """Test validation: description max length 2000 characters"""
-        if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Test Title',
-                'artist': 'Test Artist',
-                'description': 'a' * 2001,  # 2001 characters
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
-    def test_validation_condition_max_length_200(self, authenticated_client, collection):
-        """Test validation: condition max length 200 characters"""
-        if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Test Title',
-                'artist': 'Test Artist',
-                'condition': 'a' * 201,  # 201 characters
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
+
     def test_image_upload_with_valid_file(self, authenticated_client, collection):
-        """Test image upload with valid file (JPG, PNG, GIF)"""
         if collection:
-            url = reverse('records-list')
-            image_file = create_test_image()
+            url = reverse("records-list")
+            cid = collection["id"]
+            p = record_payload(cid, title="Image Test", object_number="IT-1")
             data = {
-                'title': 'Image Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': image_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": create_test_image(),
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
-            # May succeed or fail depending on implementation
-            assert response.status_code in [
-                status.HTTP_201_CREATED,
-                status.HTTP_400_BAD_REQUEST,  # If image handling not implemented
-                status.HTTP_500_INTERNAL_SERVER_ERROR
-            ]
-    
+            response = authenticated_client.post(url, data, format="multipart")
+            assert response.status_code == status.HTTP_201_CREATED
+
     def test_image_upload_file_size_limit_10mb(self, authenticated_client, collection):
-        """Test image upload file size limit (10MB max)"""
         if collection:
-            url = reverse('records-list')
-            # Create a file larger than 10MB
-            large_file = io.BytesIO(b'x' * (11 * 1024 * 1024))  # 11MB
-            large_file.name = 'large.jpg'
+            url = reverse("records-list")
+            large_file = SimpleUploadedFile(
+                "large.jpg",
+                b"x" * (11 * 1024 * 1024),
+                content_type="image/jpeg",
+            )
+            cid = collection["id"]
+            p = record_payload(cid, title="Large Image Test", object_number="LIT-1")
             data = {
-                'title': 'Large Image Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': large_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": large_file,
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
-            # Should reject large files
-            assert response.status_code in [
+            response = authenticated_client.post(url, data, format="multipart")
+            assert response.status_code in (
                 status.HTTP_400_BAD_REQUEST,
                 status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                status.HTTP_500_INTERNAL_SERVER_ERROR
-            ]
-    
+            )
+
     def test_image_upload_invalid_file_type(self, authenticated_client, collection):
-        """Test image upload invalid file type (should return 400)"""
         if collection:
-            url = reverse('records-list')
-            # Create a non-image file
-            text_file = io.BytesIO(b'This is not an image')
-            text_file.name = 'document.txt'
+            url = reverse("records-list")
+            text_file = SimpleUploadedFile(
+                "document.txt", b"not an image", content_type="text/plain"
+            )
+            cid = collection["id"]
+            p = record_payload(cid, title="Invalid File Test", object_number="IFT-1")
             data = {
-                'title': 'Invalid File Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': text_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": text_file,
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
+            response = authenticated_client.post(url, data, format="multipart")
             assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
+
     def test_image_is_optional(self, authenticated_client, collection):
-        """Test image is optional (can create record without image)"""
         if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'No Image Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="No Image Test", object_number="NI-1"),
+                format="json",
+            )
             assert response.status_code == status.HTTP_201_CREATED
-    
+
     def test_timestamps_are_automatically_set(self, authenticated_client, collection):
-        """Test timestamps are automatically set"""
         if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Timestamp Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="Timestamp Test", object_number="TT-1"),
+                format="json",
+            )
             assert response.status_code == status.HTTP_201_CREATED
-            assert 'created_at' in response.data
-            assert 'updated_at' in response.data
-    
+            assert "created_at" in response.data
+            assert "updated_at" in response.data
+
     def test_response_format_matches_api_spec(self, authenticated_client, collection):
-        """Test response format matches API spec (201 Created)"""
         if collection:
-            url = reverse('records-list')
-            data = {
-                'title': 'Format Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="Format Test", object_number="FT-1"),
+                format="json",
+            )
             assert response.status_code == status.HTTP_201_CREATED
-            required_fields = ['id', 'title', 'artist', 'collection', 'created_at', 'updated_at']
-            for field in required_fields:
+            for field in ("id", "data", "collection", "created_at", "updated_at"):
                 assert field in response.data
-    
-    def test_image_url_in_response_is_correct(self, authenticated_client, collection):
-        """Test image URL in response is correct"""
+
+    def test_representative_image_url_in_response(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            image_file = create_test_image()
+            cid = collection["id"]
+            p = record_payload(cid, title="Image URL Test", object_number="IUT-1")
             data = {
-                'title': 'Image URL Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': image_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": create_test_image(),
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
-            if response.status_code == status.HTTP_201_CREATED:
-                if 'image' in response.data and response.data['image']:
-                    assert isinstance(response.data['image'], str)
+            response = authenticated_client.post(
+                reverse("records-list"), data, format="multipart"
+            )
+            assert response.status_code == status.HTTP_201_CREATED
+            assert response.data.get("representative_image")
 
 
 @pytest.mark.django_db
 class TestRetrieveRecord:
-    """Test Retrieve Record (US-014)"""
-    
     def test_retrieve_accessible_to_anonymous_users(self):
-        """Test retrieve accessible to anonymous users (200 OK)"""
         client = APIClient()
-        url = reverse('records-detail', kwargs={'pk': 999})
-        response = client.get(url)
-        
+        response = client.get(reverse("records-detail", kwargs={"pk": 999}))
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
-    
+
     def test_retrieve_accessible_to_authenticated_users(self, authenticated_client):
-        """Test retrieve accessible to authenticated users (200 OK)"""
-        url = reverse('records-detail', kwargs={'pk': 999})
-        response = authenticated_client.get(url)
-        
+        response = authenticated_client.get(reverse("records-detail", kwargs={"pk": 999}))
         assert response.status_code in [status.HTTP_200_OK, status.HTTP_404_NOT_FOUND]
-    
+
     def test_retrieve_with_valid_id_returns_record_data(self, authenticated_client, collection):
-        """Test retrieve with valid ID returns record data"""
         if collection:
-            # Create a record first
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Retrieve Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="Retrieve Test", object_number="RT-1"),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                response = authenticated_client.get(url)
-                
+                rid = create_response.data["id"]
+                response = authenticated_client.get(
+                    reverse("records-detail", kwargs={"pk": rid})
+                )
                 assert response.status_code == status.HTTP_200_OK
-                assert response.data['title'] == 'Retrieve Test'
-    
+                assert record_title_value(response.data).get("value") == "Retrieve Test"
+
     def test_retrieve_with_invalid_id_returns_404(self, authenticated_client):
-        """Test retrieve with invalid ID returns 404"""
-        url = reverse('records-detail', kwargs={'pk': 99999})
-        response = authenticated_client.get(url)
-        
+        response = authenticated_client.get(reverse("records-detail", kwargs={"pk": 99999}))
         assert response.status_code == status.HTTP_404_NOT_FOUND
-    
-    def test_response_includes_all_fields_including_image_url(self, authenticated_client, collection):
-        """Test response includes all fields including image URL"""
+
+    def test_response_includes_data_and_representative_image(self, authenticated_client, collection):
         if collection:
-            create_url = reverse('records-list')
-            data = {
-                'title': 'All Fields Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="All Fields Test", object_number="AFT-1"),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                response = authenticated_client.get(url)
-                
+                rid = create_response.data["id"]
+                response = authenticated_client.get(
+                    reverse("records-detail", kwargs={"pk": rid})
+                )
                 assert response.status_code == status.HTTP_200_OK
-                assert 'image' in response.data
-    
-    def test_image_url_is_accessible(self, authenticated_client, collection):
-        """Test image URL is accessible"""
-        # This would require actual image upload and URL verification
-        # For now, just verify the field exists
-        if collection:
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Image URL Access Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
-            if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                response = authenticated_client.get(url)
-                
-                assert response.status_code == status.HTTP_200_OK
-                # Image field should exist (may be null/empty)
-                assert 'image' in response.data
+                assert "data" in response.data
+                assert "representative_image" in response.data
 
 
 @pytest.mark.django_db
 class TestUpdateRecord:
-    """Test Update Record (US-011, US-015)"""
-    
     def test_update_requires_authentication(self):
-        """Test update requires authentication (401 if not authenticated)"""
         client = APIClient()
-        url = reverse('records-detail', kwargs={'pk': 1})
-        data = {
-            'title': 'Updated Title'
-        }
-        response = client.patch(url, data, format='json')
-        
+        response = client.patch(
+            reverse("records-detail", kwargs={"pk": 1}),
+            {"data": {}},
+            format="json",
+        )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     def test_only_collection_owner_can_update(self, authenticated_client, other_user, collection):
-        """Test only collection owner can update (403 if not owner)"""
         if collection:
-            # Create record as owner
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Owner Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="Owner Test", object_number="OT-1"),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                
-                # Try to update as other user
+                rid = create_response.data["id"]
                 other_client = APIClient()
-                login_url = reverse('auth-login')
-                other_client.post(login_url, {
-                    'username': 'otheruser',
-                    'password': 'testpass123'
-                }, format='json')
-                
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                update_data = {'title': 'Hacked Title'}
-                response = other_client.patch(url, update_data, format='json')
-                
+                other_client.post(
+                    reverse("auth-login"),
+                    {"username": "otheruser", "password": "testpass123"},
+                    format="json",
+                )
+                response = other_client.patch(
+                    reverse("records-detail", kwargs={"pk": rid}),
+                    {"data": record_payload(collection["id"], title="Hacked Title", object_number="HT-1")["data"]},
+                    format="json",
+                )
                 assert response.status_code == status.HTTP_403_FORBIDDEN
-    
+
     def test_cannot_update_record_in_closed_collection(self, authenticated_client, collection):
-        """Test cannot update record in closed collection (403 if collection is_closed=True)"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Closed Collection Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(
+                    collection["id"], title="Closed Collection Test", object_number="CCT-1"
+                ),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                
-                # Close collection
-                collection_url = reverse('collections-detail', kwargs={'pk': collection['id']})
-                authenticated_client.patch(collection_url, {'is_closed': True}, format='json')
-                
-                # Try to update record
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                update_data = {'title': 'Updated Title'}
-                response = authenticated_client.patch(url, update_data, format='json')
-                
+                rid = create_response.data["id"]
+                authenticated_client.patch(
+                    reverse("collections-detail", kwargs={"pk": collection["id"]}),
+                    {"is_closed": True},
+                    format="json",
+                )
+                response = authenticated_client.patch(
+                    reverse("records-detail", kwargs={"pk": rid}),
+                    {"data": record_payload(collection["id"], title="Updated Title", object_number="UT-1")["data"]},
+                    format="json",
+                )
                 assert response.status_code == status.HTTP_403_FORBIDDEN
-    
+
     def test_successful_update_with_patch(self, authenticated_client, collection):
-        """Test successful update with PATCH (partial update)"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Original Title',
-                'artist': 'Original Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(
+                    collection["id"], title="Original Title", object_number="OT-1"
+                ),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                update_data = {'title': 'Updated Title'}
-                response = authenticated_client.patch(url, update_data, format='json')
-                
+                rid = create_response.data["id"]
+                new_data = record_payload(
+                    collection["id"], title="Updated Title", object_number="OT-1"
+                )["data"]
+                response = authenticated_client.patch(
+                    reverse("records-detail", kwargs={"pk": rid}),
+                    {"data": new_data},
+                    format="json",
+                )
                 assert response.status_code == status.HTTP_200_OK
-                assert response.data['title'] == 'Updated Title'
-    
+                assert record_title_value(response.data).get("value") == "Updated Title"
+
     def test_successful_update_with_put(self, authenticated_client, collection):
-        """Test successful update with PUT (full update)"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Original Title',
-                'artist': 'Original Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(
+                    collection["id"], title="Original Title", object_number="OT-2"
+                ),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                update_data = {
-                    'title': 'Updated Title',
-                    'artist': 'Updated Artist',
-                    'collection': collection['id']
+                rid = create_response.data["id"]
+                body = record_payload(
+                    collection["id"], title="Updated Title", object_number="UA-1"
+                )
+                body["collection"] = collection["id"]
+                response = authenticated_client.put(
+                    reverse("records-detail", kwargs={"pk": rid}),
+                    body,
+                    format="json",
+                )
+                assert response.status_code == status.HTTP_200_OK
+                assert record_title_value(response.data).get("value") == "Updated Title"
+
+    def test_representative_image_can_be_replaced_on_update(self, authenticated_client, collection):
+        if collection:
+            cid = collection["id"]
+            p = record_payload(cid, title="Image Replace Test", object_number="IRT-1")
+            create_data = {
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": create_test_image(),
+            }
+            create_response = authenticated_client.post(
+                reverse("records-list"), create_data, format="multipart"
+            )
+            if create_response.status_code == status.HTTP_201_CREATED:
+                rid = create_response.data["id"]
+                patch_data = {
+                    "collection": str(cid),
+                    "data": json.dumps(p["data"]),
+                    "representative_image": create_test_image(),
                 }
-                response = authenticated_client.put(url, update_data, format='json')
-                
+                response = authenticated_client.patch(
+                    reverse("records-detail", kwargs={"pk": rid}),
+                    patch_data,
+                    format="multipart",
+                )
                 assert response.status_code == status.HTTP_200_OK
-                assert response.data['title'] == 'Updated Title'
-    
-    def test_image_can_be_replaced_during_update(self, authenticated_client, collection):
-        """Test image can be replaced during update"""
-        if collection:
-            # Create record with image
-            create_url = reverse('records-list')
-            image_file = create_test_image()
-            data = {
-                'title': 'Image Replace Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': image_file
-            }
-            create_response = authenticated_client.post(create_url, data, format='multipart')
-            
-            if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                new_image = create_test_image()
-                update_data = {'image': new_image}
-                response = authenticated_client.patch(url, update_data, format='multipart')
-                
-                # May succeed or fail depending on implementation
-                assert response.status_code in [
-                    status.HTTP_200_OK,
-                    status.HTTP_400_BAD_REQUEST,
-                    status.HTTP_500_INTERNAL_SERVER_ERROR
-                ]
-    
+
     def test_updated_at_timestamp_is_updated(self, authenticated_client, collection):
-        """Test updated_at timestamp is updated"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Timestamp Update Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(
+                    collection["id"], title="Timestamp Update Test", object_number="TUT-1"
+                ),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                original_updated_at = create_response.data['updated_at']
-                
-                # Update record
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                update_data = {'title': 'Updated Title'}
-                response = authenticated_client.patch(url, update_data, format='json')
-                
+                rid = create_response.data["id"]
+                new_data = record_payload(
+                    collection["id"], title="Updated Title", object_number="TUT-1"
+                )["data"]
+                response = authenticated_client.patch(
+                    reverse("records-detail", kwargs={"pk": rid}),
+                    {"data": new_data},
+                    format="json",
+                )
                 assert response.status_code == status.HTTP_200_OK
-                assert 'updated_at' in response.data
-                assert response.data['updated_at'] is not None
-    
-    def test_validation_errors_for_all_fields(self, authenticated_client, collection):
-        """Test validation errors for all fields"""
-        if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Validation Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
-            if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                
-                # Test invalid year
-                update_data = {'year': 9999}
-                response = authenticated_client.patch(url, update_data, format='json')
-                assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
-    
+                assert response.data["updated_at"]
+
     def test_response_format_matches_api_spec(self, authenticated_client, collection):
-        """Test response format matches API spec (200 OK)"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Format Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="Format Test", object_number="FT-2"),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                update_data = {'title': 'Updated Format Test'}
-                response = authenticated_client.patch(url, update_data, format='json')
-                
+                rid = create_response.data["id"]
+                new_data = record_payload(
+                    collection["id"], title="Updated Format Test", object_number="FT-2"
+                )["data"]
+                response = authenticated_client.patch(
+                    reverse("records-detail", kwargs={"pk": rid}),
+                    {"data": new_data},
+                    format="json",
+                )
                 assert response.status_code == status.HTTP_200_OK
-                assert 'id' in response.data
-                assert 'title' in response.data
+                assert "id" in response.data
+                assert "data" in response.data
 
 
 @pytest.mark.django_db
 class TestDeleteRecord:
-    """Test Delete Record (US-012)"""
-    
     def test_delete_requires_authentication(self):
-        """Test delete requires authentication (401 if not authenticated)"""
         client = APIClient()
-        url = reverse('records-detail', kwargs={'pk': 1})
-        response = client.delete(url)
-        
+        response = client.delete(reverse("records-detail", kwargs={"pk": 1}))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     def test_only_collection_owner_can_delete(self, authenticated_client, other_user, collection):
-        """Test only collection owner can delete (403 if not owner)"""
         if collection:
-            # Create record as owner
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Delete Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="Delete Test", object_number="DT-1"),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                
-                # Try to delete as other user
+                rid = create_response.data["id"]
                 other_client = APIClient()
-                login_url = reverse('auth-login')
-                other_client.post(login_url, {
-                    'username': 'otheruser',
-                    'password': 'testpass123'
-                }, format='json')
-                
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                response = other_client.delete(url)
-                
+                other_client.post(
+                    reverse("auth-login"),
+                    {"username": "otheruser", "password": "testpass123"},
+                    format="json",
+                )
+                response = other_client.delete(reverse("records-detail", kwargs={"pk": rid}))
                 assert response.status_code == status.HTTP_403_FORBIDDEN
-    
+
     def test_cannot_delete_record_in_closed_collection(self, authenticated_client, collection):
-        """Test cannot delete record in closed collection (403 if collection is_closed=True)"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Closed Delete Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(
+                    collection["id"], title="Closed Delete Test", object_number="CDT-1"
+                ),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                
-                # Close collection
-                collection_url = reverse('collections-detail', kwargs={'pk': collection['id']})
-                authenticated_client.patch(collection_url, {'is_closed': True}, format='json')
-                
-                # Try to delete record
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                response = authenticated_client.delete(url)
-                
+                rid = create_response.data["id"]
+                authenticated_client.patch(
+                    reverse("collections-detail", kwargs={"pk": collection["id"]}),
+                    {"is_closed": True},
+                    format="json",
+                )
+                response = authenticated_client.delete(
+                    reverse("records-detail", kwargs={"pk": rid})
+                )
                 assert response.status_code == status.HTTP_403_FORBIDDEN
-    
+
     def test_successful_delete_returns_204_no_content(self, authenticated_client, collection):
-        """Test successful delete returns 204 No Content"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Delete 204 Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(
+                    collection["id"], title="Delete 204 Test", object_number="D204-1"
+                ),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                response = authenticated_client.delete(url)
-                
+                rid = create_response.data["id"]
+                response = authenticated_client.delete(
+                    reverse("records-detail", kwargs={"pk": rid})
+                )
                 assert response.status_code == status.HTTP_204_NO_CONTENT
-    
+
     def test_record_is_removed_from_database(self, authenticated_client, collection):
-        """Test record is removed from database"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Remove Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(collection["id"], title="Remove Test", object_number="RM-1"),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                
-                # Delete record
-                delete_response = authenticated_client.delete(url)
-                assert delete_response.status_code == status.HTTP_204_NO_CONTENT
-                
-                # Verify record is gone
-                get_response = authenticated_client.get(url)
-                assert get_response.status_code == status.HTTP_404_NOT_FOUND
-    
+                rid = create_response.data["id"]
+                url = reverse("records-detail", kwargs={"pk": rid})
+                assert authenticated_client.delete(url).status_code == status.HTTP_204_NO_CONTENT
+                assert authenticated_client.get(url).status_code == status.HTTP_404_NOT_FOUND
+
     def test_delete_with_invalid_id_returns_404(self, authenticated_client):
-        """Test delete with invalid ID returns 404"""
-        url = reverse('records-detail', kwargs={'pk': 99999})
-        response = authenticated_client.delete(url)
-        
+        response = authenticated_client.delete(reverse("records-detail", kwargs={"pk": 99999}))
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db
 class TestImageUpload:
-    """Test Image Upload (US-015)"""
-    
     def test_valid_image_formats(self, authenticated_client, collection):
-        """Test valid image formats (JPEG, PNG, GIF)"""
         if collection:
-            url = reverse('records-list')
-            
-            # Test JPEG
-            jpeg_image = create_test_image()
+            cid = collection["id"]
+            p = record_payload(cid, title="JPEG Test", object_number="JT-1")
             data = {
-                'title': 'JPEG Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': jpeg_image
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": create_test_image(),
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            # May succeed or fail depending on implementation
-            assert response.status_code in [
-                status.HTTP_201_CREATED,
-                status.HTTP_400_BAD_REQUEST,
-                status.HTTP_500_INTERNAL_SERVER_ERROR
-            ]
-    
+            response = authenticated_client.post(reverse("records-list"), data, format="multipart")
+            assert response.status_code == status.HTTP_201_CREATED
+
     def test_invalid_image_formats_are_rejected(self, authenticated_client, collection):
-        """Test invalid image formats are rejected"""
         if collection:
-            url = reverse('records-list')
-            # Create a non-image file
-            text_file = io.BytesIO(b'This is not an image')
-            text_file.name = 'document.txt'
+            text_file = SimpleUploadedFile(
+                "document.txt", b"not an image", content_type="text/plain"
+            )
+            cid = collection["id"]
+            p = record_payload(cid, title="Invalid Format Test", object_number="IFT-2")
             data = {
-                'title': 'Invalid Format Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': text_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": text_file,
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
+            response = authenticated_client.post(reverse("records-list"), data, format="multipart")
             assert response.status_code == status.HTTP_400_BAD_REQUEST
-    
+
     def test_file_size_validation_10mb_limit(self, authenticated_client, collection):
-        """Test file size validation (10MB limit)"""
         if collection:
-            url = reverse('records-list')
-            # Create a file larger than 10MB
-            large_file = io.BytesIO(b'x' * (11 * 1024 * 1024))  # 11MB
-            large_file.name = 'large.jpg'
+            large_file = SimpleUploadedFile(
+                "large.jpg",
+                b"x" * (11 * 1024 * 1024),
+                content_type="image/jpeg",
+            )
+            cid = collection["id"]
+            p = record_payload(cid, title="Large File Test", object_number="LFT-1")
             data = {
-                'title': 'Large File Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': large_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": large_file,
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
-            assert response.status_code in [
+            response = authenticated_client.post(reverse("records-list"), data, format="multipart")
+            assert response.status_code in (
                 status.HTTP_400_BAD_REQUEST,
                 status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                status.HTTP_500_INTERNAL_SERVER_ERROR
-            ]
-    
-    def test_image_is_stored_with_correct_filename(self, authenticated_client, collection):
-        """Test image is stored with correct filename"""
-        # This would require checking actual file storage
-        # For now, just verify the image field is set
+            )
+
+    def test_representative_image_in_response(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            image_file = create_test_image()
+            cid = collection["id"]
+            p = record_payload(cid, title="Filename Test", object_number="FN-1")
             data = {
-                'title': 'Filename Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': image_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": create_test_image(),
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
-            if response.status_code == status.HTTP_201_CREATED:
-                assert 'image' in response.data
-    
-    def test_image_url_generation(self, authenticated_client, collection):
-        """Test image URL generation"""
+            response = authenticated_client.post(reverse("records-list"), data, format="multipart")
+            assert response.status_code == status.HTTP_201_CREATED
+            assert response.data.get("representative_image")
+
+    def test_representative_image_url_is_string(self, authenticated_client, collection):
         if collection:
-            url = reverse('records-list')
-            image_file = create_test_image()
+            cid = collection["id"]
+            p = record_payload(cid, title="URL Generation Test", object_number="UG-1")
             data = {
-                'title': 'URL Generation Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': image_file
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": create_test_image(),
             }
-            response = authenticated_client.post(url, data, format='multipart')
-            
-            if response.status_code == status.HTTP_201_CREATED:
-                if 'image' in response.data and response.data['image']:
-                    assert isinstance(response.data['image'], str)
-    
-    def test_image_is_publicly_accessible(self, authenticated_client, collection):
-        """Test image is publicly accessible (no auth required to view)"""
-        # This would require actual HTTP request to image URL
-        # For now, just verify image URL is in response
-        if collection:
-            url = reverse('records-list')
-            image_file = create_test_image()
-            data = {
-                'title': 'Public Access Test',
-                'artist': 'Test Artist',
-                'collection': collection['id'],
-                'image': image_file
-            }
-            response = authenticated_client.post(url, data, format='multipart')
-            
-            if response.status_code == status.HTTP_201_CREATED:
-                assert 'image' in response.data
+            response = authenticated_client.post(reverse("records-list"), data, format="multipart")
+            assert response.status_code == status.HTTP_201_CREATED
+            assert isinstance(response.data["representative_image"], str)
 
 
 @pytest.mark.django_db
 class TestRecordPermissionEdgeCases:
-    """Test Permission Edge Cases"""
-    
     def test_anonymous_user_cannot_create_records(self):
-        """Test anonymous user cannot create/update/delete records"""
         client = APIClient()
-        url = reverse('records-list')
-        data = {
-            'title': 'Unauthorized Record',
-            'artist': 'Test Artist',
-            'collection': 1
-        }
-        response = client.post(url, data, format='json')
-        
+        response = client.post(
+            reverse("records-list"),
+            record_payload(1, title="Unauthorized Record", object_number="UR-2"),
+            format="json",
+        )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
-    def test_non_owner_authenticated_user_cannot_create_update_delete(self, authenticated_client, other_user):
-        """Test non-owner authenticated user cannot create/update/delete"""
-        # Create collection as other_user
+
+    def test_non_owner_authenticated_user_cannot_create_update_delete(
+        self, authenticated_client, other_user
+    ):
         other_client = APIClient()
-        login_url = reverse('auth-login')
-        other_client.post(login_url, {
-            'username': 'otheruser',
-            'password': 'testpass123'
-        }, format='json')
-        
-        other_collection_url = reverse('collections-list')
-        other_collection_data = {
-            'name': 'Other Collection',
-            'description': 'Test'
-        }
-        other_collection_response = other_client.post(other_collection_url, other_collection_data, format='json')
-        
+        other_client.post(
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
+        )
+        other_collection_response = other_client.post(
+            reverse("collections-list"),
+            {"name": "Other Collection", "description": "Test"},
+            format="json",
+        )
         if other_collection_response.status_code == status.HTTP_201_CREATED:
-            other_collection_id = other_collection_response.data['id']
-            
-            # Try to create record as different user
-            url = reverse('records-list')
-            data = {
-                'title': 'Unauthorized',
-                'artist': 'Test Artist',
-                'collection': other_collection_id
-            }
-            response = authenticated_client.post(url, data, format='json')
-            
+            oid = other_collection_response.data["id"]
+            response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(oid, title="Unauthorized", object_number="U-1"),
+                format="json",
+            )
             assert response.status_code == status.HTTP_403_FORBIDDEN
-    
+
     def test_owner_cannot_modify_records_in_closed_collection(self, authenticated_client, collection):
-        """Test owner cannot modify records in closed collection"""
         if collection:
-            # Create record
-            create_url = reverse('records-list')
-            data = {
-                'title': 'Closed Modify Test',
-                'artist': 'Test Artist',
-                'collection': collection['id']
-            }
-            create_response = authenticated_client.post(create_url, data, format='json')
-            
+            create_response = authenticated_client.post(
+                reverse("records-list"),
+                record_payload(
+                    collection["id"], title="Closed Modify Test", object_number="CMT-1"
+                ),
+                format="json",
+            )
             if create_response.status_code == status.HTTP_201_CREATED:
-                record_id = create_response.data['id']
-                
-                # Close collection
-                collection_url = reverse('collections-detail', kwargs={'pk': collection['id']})
-                authenticated_client.patch(collection_url, {'is_closed': True}, format='json')
-                
-                # Try to update
-                url = reverse('records-detail', kwargs={'pk': record_id})
-                update_response = authenticated_client.patch(url, {'title': 'Updated'}, format='json')
-                assert update_response.status_code == status.HTTP_403_FORBIDDEN
-                
-                # Try to delete
-                delete_response = authenticated_client.delete(url)
-                assert delete_response.status_code == status.HTTP_403_FORBIDDEN
+                rid = create_response.data["id"]
+                authenticated_client.patch(
+                    reverse("collections-detail", kwargs={"pk": collection["id"]}),
+                    {"is_closed": True},
+                    format="json",
+                )
+                url = reverse("records-detail", kwargs={"pk": rid})
+                new_data = record_payload(
+                    collection["id"], title="Updated", object_number="CMT-1"
+                )["data"]
+                assert (
+                    authenticated_client.patch(url, {"data": new_data}, format="json").status_code
+                    == status.HTTP_403_FORBIDDEN
+                )
+                assert authenticated_client.delete(url).status_code == status.HTTP_403_FORBIDDEN

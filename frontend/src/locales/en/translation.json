@@ -1,0 +1,171 @@
+{
+  "app": {
+    "brand": "Ekho",
+    "notFound": "404 - Page Not Found"
+  },
+  "nav": {
+    "collections": "Collections",
+    "records": "Records",
+    "actors": "Actors",
+    "login": "Login",
+    "register": "Register"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "fi": "Suomi"
+  },
+  "common": {
+    "loading": "Loading...",
+    "next": "Next",
+    "previous": "Previous",
+    "total": "Total: {{count}}",
+    "view": "View",
+    "edit": "Edit"
+  },
+  "theme": {
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode"
+  },
+  "auth": {
+    "loginTitle": "Login",
+    "registerTitle": "Register",
+    "username": "Username",
+    "password": "Password",
+    "loginSubmit": "Login",
+    "registerSubmit": "Register",
+    "logout": "Logout",
+    "loggingOut": "Logging out...",
+    "errors": {
+      "usernameRequired": "Username is required",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 8 characters",
+      "invalidCredentials": "Invalid credentials",
+      "usernameTaken": "Username already exists",
+      "invalidPassword": "Invalid password",
+      "registrationFailed": "Registration failed"
+    }
+  },
+  "collections": {
+    "title": "Collections",
+    "showAll": "Show all collections",
+    "hideClosed": "Hide closed collections",
+    "create": "+ Create Collection",
+    "createFirst": "Create Your First Collection",
+    "empty": "No collections found"
+  },
+  "records": {
+    "title": "Records",
+    "filterGroupAria": "Filter records",
+    "filters": {
+      "collectionName": "Collection name",
+      "collectionNamePlaceholder": "Filter by collection name",
+      "owner": "Owner",
+      "ownerPlaceholder": "Filter by owner username"
+    },
+    "card": {
+      "noImage": "No Image",
+      "collection": "Collection",
+      "year": "Year",
+      "untitled": "Untitled record"
+    },
+    "searchPlaceholder": "Search records…",
+    "searchAria": "Search records",
+    "empty": "No records found"
+  },
+  "actors": {
+    "title": "Actors",
+    "loading": "Loading actors…",
+    "addActor": "Add actor",
+    "intro": "Select actors from this catalog when editing records. Global entries are available to everyone; signed-in users can add their own.",
+    "catalogShared": "Catalog (shared)",
+    "addedBy": "Added by {{username}}",
+    "addedByUser": "user",
+    "actorNumber": "Actor #{{id}}",
+    "empty": "No actors in the catalog yet.",
+    "form": {
+      "backToActors": "← Actors",
+      "titleCreate": "Add actor",
+      "titleEdit": "Edit actor",
+      "readOnlyGlobal": "This catalog actor is read-only in the app. Changes require an administrator.",
+      "usageBanner": "Used on {{count}} record(s). Editing this entry updates how those records show this actor.",
+      "validation": {
+        "kindRequired": "Choose whether this catalog entry is a person or an organization.",
+        "identityRequired": "Add enough information to identify this actor (for example a person name or an organization name). A catalog entry must be either a person or an organization, not both."
+      },
+      "confirm": {
+        "updateUsedByRecords": "This actor is used on {{count}} record(s). Saving will change how those records display. Continue?"
+      },
+      "saving": "Saving…",
+      "save": "Save",
+      "create": "Create",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleteTitle": "Delete actor?",
+      "deleteUsedByRecords": "This actor is attached to {{count}} record(s). It will be removed from those records.",
+      "deleteUnused": "This actor is not referenced by any records.",
+      "person": "Person",
+      "organization": "Organization",
+      "introKind": "Choose the type of actor, then fill in the details below.",
+      "actorTypeLegend": "Actor type",
+      "ambiguousPersonAndOrganization": "This entry has identifying data for both a person and an organization. Choose Person or Organization above; the other side will be cleared when you select.",
+      "includeContactPerson": "Add contact person",
+      "contactPerson": "Contact person",
+      "introPrefix": "Fill",
+      "introAndOr": "and/or",
+      "introSuffix": "At least one side must include enough information to identify this actor (e.g. a person name or an organization name).",
+      "enablePersonSection": "Enable person section",
+      "enableOrganizationSection": "Enable organization section",
+      "personSectionDisabled": "Section off — enable the checkbox above to enter person details.",
+      "organizationSectionDisabled": "Section off — enable the checkbox above to enter organization details.",
+      "addRow": "Add row",
+      "otherNamesHint": "Alternate organization names with a documented type.",
+      "removeOtherName": "Remove other name",
+      "addOtherName": "Add other name",
+      "emptyOtherName": "Empty other name",
+      "fields": {
+        "finnish": "Finnish",
+        "english": "English",
+        "undefinedLanguage": "Undefined language",
+        "nameLabel": "Name (label)",
+        "associationRefText": "Association (ref text)",
+        "address": "Address",
+        "text": "Text",
+        "email": "Email",
+        "phone": "Phone",
+        "biographicalNote": "Biographical note",
+        "sourceType": "Source type",
+        "sourceDate": "Source date",
+        "nameType": "Name type",
+        "nameDate": "Name date",
+        "firstNames": "First names",
+        "lastName": "Last name",
+        "lastNameDate": "Last name date",
+        "otherNames": "Other names",
+        "additionsToName": "Additions to name",
+        "birthDate": "Birth date",
+        "deathDate": "Death date",
+        "placeOfBirth": "Place of birth",
+        "gender": "Gender",
+        "nationality": "Nationality",
+        "website": "Website",
+        "schoolOrStyleRefText": "School or style (ref text)",
+        "occupationRefText": "Occupation (ref text)",
+        "referenceNumberText": "Reference number text",
+        "referenceNumberType": "Reference number type",
+        "mainBody": "Main body",
+        "subBody": "Sub body",
+        "additionToName": "Addition to name",
+        "functionRefText": "Function (ref text)",
+        "referenceIdentifierText": "Reference / identifier text",
+        "identifierType": "Identifier type",
+        "organizationHistory": "Organization history",
+        "foundationDate": "Foundation date",
+        "dissolutionDate": "Dissolution date",
+        "foundationPlace": "Foundation place"
+      }
+    }
+  }
+}

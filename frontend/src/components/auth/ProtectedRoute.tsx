@@ -9,6 +9,7 @@
 
 import { ReactNode, useEffect } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useTranslation } from 'react-i18next'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -17,6 +18,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = observer(({ children }: ProtectedRouteProps) => {
+  const { t } = useTranslation()
   const authStore = useAuthStore()
   const location = useLocation()
 
@@ -28,7 +30,7 @@ export const ProtectedRoute = observer(({ children }: ProtectedRouteProps) => {
   }, [authStore])
 
   if (authStore.loading) {
-    return <div>Loading...</div>
+    return <div>{t('common.loading')}</div>
   }
 
   if (!authStore.isAuthenticated) {

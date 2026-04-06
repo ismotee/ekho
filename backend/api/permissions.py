@@ -7,7 +7,7 @@ Reference: docs/api-specification.md, docs/architecture/adr/003-permission-model
 from rest_framework import permissions
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.exceptions import AuthenticationFailed
-from .models import Collection, Record
+from .models import Actor, Collection, Record
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -106,3 +106,27 @@ class IsRecordOwnerOrReadOnly(IsAuthenticatedOrReadOnly):
             return False
         
         return True
+
+
+class IsActorEditorOrReadOnly(permissions.BasePermission):
+    """
+    Actor registry: anyone can read list/detail (filtered by queryset).
+    Create: authenticated. Update/delete: owner only for user-owned rows;
+    global rows (owner is null): read-only unless staff.
+    """
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        if not isinstance(obj, Actor):
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if obj.owner_id is None:
+            return bool(request.user.is_staff)
+        return obj.owner_id == request.user.id

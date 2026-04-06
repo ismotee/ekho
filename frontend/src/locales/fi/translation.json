@@ -1,0 +1,171 @@
+{
+  "app": {
+    "brand": "Ekho",
+    "notFound": "404 - Sivua ei löytynyt"
+  },
+  "nav": {
+    "collections": "Kokoelmat",
+    "records": "Tallenteet",
+    "actors": "Toimijat",
+    "login": "Kirjaudu",
+    "register": "Rekisteröidy"
+  },
+  "language": {
+    "label": "Kieli",
+    "en": "English",
+    "fi": "Suomi"
+  },
+  "common": {
+    "loading": "Ladataan…",
+    "next": "Seuraava",
+    "previous": "Edellinen",
+    "total": "Yhteensä: {{count}}",
+    "view": "Näytä",
+    "edit": "Muokkaa"
+  },
+  "theme": {
+    "switchToLight": "Vaihda vaaleaan teemaan",
+    "switchToDark": "Vaihda tummaan teemaan",
+    "lightMode": "Vaalea teema",
+    "darkMode": "Tumma teema"
+  },
+  "auth": {
+    "loginTitle": "Kirjaudu",
+    "registerTitle": "Rekisteröidy",
+    "username": "Käyttäjätunnus",
+    "password": "Salasana",
+    "loginSubmit": "Kirjaudu",
+    "registerSubmit": "Rekisteröidy",
+    "logout": "Kirjaudu ulos",
+    "loggingOut": "Kirjaudutaan ulos…",
+    "errors": {
+      "usernameRequired": "Käyttäjätunnus vaaditaan",
+      "passwordRequired": "Salasana vaaditaan",
+      "passwordMinLength": "Salasanan on oltava vähintään 8 merkkiä",
+      "invalidCredentials": "Virheelliset tunnukset",
+      "usernameTaken": "Käyttäjätunnus on jo käytössä",
+      "invalidPassword": "Virheellinen salasana",
+      "registrationFailed": "Rekisteröityminen epäonnistui"
+    }
+  },
+  "collections": {
+    "title": "Kokoelmat",
+    "showAll": "Näytä kaikki kokoelmat",
+    "hideClosed": "Piilota suljetut kokoelmat",
+    "create": "+ Luo kokoelma",
+    "createFirst": "Luo ensimmäinen kokoelmasi",
+    "empty": "Kokoelmia ei löytynyt"
+  },
+  "records": {
+    "title": "Tallenteet",
+    "filterGroupAria": "Suodata tallenteita",
+    "filters": {
+      "collectionName": "Kokoelman nimi",
+      "collectionNamePlaceholder": "Suodata kokoelman nimen mukaan",
+      "owner": "Omistaja",
+      "ownerPlaceholder": "Suodata omistajan käyttäjätunnuksen mukaan"
+    },
+    "card": {
+      "noImage": "Ei kuvaa",
+      "collection": "Kokoelma",
+      "year": "Vuosi",
+      "untitled": "Nimeämätön tallenne"
+    },
+    "searchPlaceholder": "Etsi tallenteita…",
+    "searchAria": "Etsi tallenteita",
+    "empty": "Tallenteita ei löytynyt"
+  },
+  "actors": {
+    "title": "Toimijat",
+    "loading": "Ladataan toimijoita…",
+    "addActor": "Lisää toimija",
+    "intro": "Valitse toimijoita tästä luettelosta tallenteita muokatessasi. Yleiset merkinnät ovat kaikkien käytettävissä; kirjautuneet käyttäjät voivat lisätä omiaan.",
+    "catalogShared": "Luettelo (jaettu)",
+    "addedBy": "Lisännyt {{username}}",
+    "addedByUser": "käyttäjä",
+    "actorNumber": "Toimija nro {{id}}",
+    "empty": "Luettelossa ei ole vielä toimijoita.",
+    "form": {
+      "backToActors": "← Toimijat",
+      "titleCreate": "Lisää toimija",
+      "titleEdit": "Muokkaa toimijaa",
+      "readOnlyGlobal": "Tämä luettelon toimija on sovelluksessa vain luettavissa. Muutokset vaativat ylläpitäjän.",
+      "usageBanner": "Käytössä {{count}} tallenteessa. Tämän merkinnän muokkaus päivittää, miten toimija näkyy näissä tallenteissa.",
+      "validation": {
+        "kindRequired": "Valitse, onko luettelomerkintä henkilö vai organisaatio.",
+        "identityRequired": "Lisää riittävästi tietoja toimijan tunnistamiseen (esim. henkilön nimi tai organisaation nimi). Merkinnän on oltava joko henkilö tai organisaatio, ei molemmat."
+      },
+      "confirm": {
+        "updateUsedByRecords": "Tätä toimijaa käytetään {{count}} tallenteessa. Tallennus muuttaa, miten se näkyy näissä tallenteissa. Jatketaanko?"
+      },
+      "saving": "Tallennetaan…",
+      "save": "Tallenna",
+      "create": "Luo",
+      "cancel": "Peruuta",
+      "delete": "Poista",
+      "deleteTitle": "Poistetaanko toimija?",
+      "deleteUsedByRecords": "Tämä toimija on liitetty {{count}} tallenteeseen. Se poistetaan näistä tallenteista.",
+      "deleteUnused": "Tähän toimijaan ei viitata missään tallenteessa.",
+      "person": "Henkilö",
+      "organization": "Organisaatio",
+      "introKind": "Valitse toimijan tyyppi ja täytä tiedot alle.",
+      "actorTypeLegend": "Toimijan tyyppi",
+      "ambiguousPersonAndOrganization": "Merkinnässä on tunnistetiedot sekä henkilölle että organisaatiolle. Valitse yllä Henkilö tai Organisaatio; valitsemasi tyypin ulkopuolinen puoli tyhjennetään.",
+      "includeContactPerson": "Lisää yhteyshenkilö",
+      "contactPerson": "Yhteyshenkilö",
+      "introPrefix": "Täytä",
+      "introAndOr": "ja/tai",
+      "introSuffix": "Vähintään toisella puolella on oltava riittävät tiedot toimijan tunnistamiseen (esim. henkilön nimi tai organisaation nimi).",
+      "enablePersonSection": "Ota henkilöosio käyttöön",
+      "enableOrganizationSection": "Ota organisaatio-osio käyttöön",
+      "personSectionDisabled": "Osio pois käytöstä — ota yllä oleva valinta käyttöön lisätäksesi henkilötiedot.",
+      "organizationSectionDisabled": "Osio pois käytöstä — ota yllä oleva valinta käyttöön lisätäksesi organisaatiotiedot.",
+      "addRow": "Lisää rivi",
+      "otherNamesHint": "Vaihtoehtoiset organisaationimet dokumentoidulla tyypillä.",
+      "removeOtherName": "Poista muu nimi",
+      "addOtherName": "Lisää muu nimi",
+      "emptyOtherName": "Tyhjä muu nimi",
+      "fields": {
+        "finnish": "Suomi",
+        "english": "Englanti",
+        "undefinedLanguage": "Määrittelemätön kieli",
+        "nameLabel": "Nimi (nimike)",
+        "associationRefText": "Yhteys (viiteteksti)",
+        "address": "Osoite",
+        "text": "Teksti",
+        "email": "Sähköposti",
+        "phone": "Puhelin",
+        "biographicalNote": "Elämäkerrallinen huomautus",
+        "sourceType": "Lähteen tyyppi",
+        "sourceDate": "Lähteen päiväys",
+        "nameType": "Nimen tyyppi",
+        "nameDate": "Nimen päiväys",
+        "firstNames": "Etunimet",
+        "lastName": "Sukunimi",
+        "lastNameDate": "Sukunimen päiväys",
+        "otherNames": "Muut nimet",
+        "additionsToName": "Nimen lisäykset",
+        "birthDate": "Syntymäaika",
+        "deathDate": "Kuolinaika",
+        "placeOfBirth": "Syntymäpaikka",
+        "gender": "Sukupuoli",
+        "nationality": "Kansallisuus",
+        "website": "Verkkosivu",
+        "schoolOrStyleRefText": "Koulukunta tai tyyli (viiteteksti)",
+        "occupationRefText": "Ammatti (viiteteksti)",
+        "referenceNumberText": "Viitenumeron teksti",
+        "referenceNumberType": "Viitenumeron tyyppi",
+        "mainBody": "Pääelin",
+        "subBody": "Alaelin",
+        "additionToName": "Nimen lisäys",
+        "functionRefText": "Toiminto (viiteteksti)",
+        "referenceIdentifierText": "Viite / tunnisteteksti",
+        "identifierType": "Tunnisteen tyyppi",
+        "organizationHistory": "Organisaation historia",
+        "foundationDate": "Perustamispäivä",
+        "dissolutionDate": "Lakkauttamispäivä",
+        "foundationPlace": "Perustamispaikka"
+      }
+    }
+  }
+}

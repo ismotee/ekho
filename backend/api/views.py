@@ -11,14 +11,25 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import ValidationError as DRFValidationError, PermissionDenied
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import Q, TextField
+from django.db.models.functions import Cast
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .models import Collection, Record
-from .serializers import UserSerializer, CollectionSerializer, RecordSerializer
-from .permissions import IsCollectionOwnerOrReadOnly, IsRecordOwnerOrReadOnly
+from .models import Actor, Collection, Record
+from .record_actor_refs import (
+    collect_actor_ids,
+    list_record_usage_for_actor,
+    strip_actor_id,
+)
+from .serializers import ActorSerializer, UserSerializer, CollectionSerializer, RecordSerializer
+from .permissions import (
+    IsActorEditorOrReadOnly,
+    IsCollectionOwnerOrReadOnly,
+    IsRecordOwnerOrReadOnly,
+)
 
 
 @api_view(['GET'])
@@ -284,6 +295,48 @@ class CollectionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+# Actor ViewSet
+
+
+class ActorViewSet(viewsets.ModelViewSet):
+    """
+    GET/POST /api/actors/
+    GET/PATCH/DELETE /api/actors/{id}/
+    GET /api/actors/{id}/usage/
+    """
+
+    queryset = Actor.objects.select_related("owner").all()
+    serializer_class = ActorSerializer
+    permission_classes = [IsActorEditorOrReadOnly]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:
+            return qs.filter(Q(owner__isnull=True) | Q(owner=user))
+        return qs.filter(owner__isnull=True)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+    def perform_destroy(self, instance):
+        pk = instance.pk
+        with transaction.atomic():
+            for rec in Record.objects.all():
+                d = rec.data if isinstance(rec.data, dict) else {}
+                if pk not in collect_actor_ids(d):
+                    continue
+                rec.data = strip_actor_id(d, pk)
+                rec.save(update_fields=["data", "updated_at"])
+            instance.delete()
+
+    @action(detail=True, methods=["get"], url_path="usage")
+    def usage(self, request, pk=None):
+        actor = self.get_object()
+        count, records = list_record_usage_for_actor(actor.pk, limit=50)
+        return Response({"count": count, "records": records})
+
+
 # Record ViewSet
 
 class RecordViewSet(viewsets.ModelViewSet):
@@ -323,14 +376,17 @@ class RecordViewSet(viewsets.ModelViewSet):
         if owner_username:
             queryset = queryset.filter(collection__owner__username=owner_username)
         if search:
-            queryset = queryset.filter(
-                Q(title__icontains=search)
-                | Q(artist__icontains=search)
+            queryset = queryset.annotate(
+                _record_data_search_blob=Cast("data", TextField())
+            ).filter(
+                Q(_record_data_search_blob__icontains=search)
                 | Q(collection__name__icontains=search)
                 | Q(collection__description__icontains=search)
             )
 
-        return queryset.select_related('collection', 'collection__owner').order_by('-created_at')
+        return queryset.select_related("collection", "collection__owner").order_by(
+            "-created_at"
+        )
     
     def list(self, request, *args, **kwargs):
         """List records - collection parameter is optional (omit to list all records)."""
@@ -432,15 +488,13 @@ class RecordViewSet(viewsets.ModelViewSet):
         if record.collection.is_closed:
             raise PermissionDenied('Cannot update records in a closed collection.')
         
-        # Handle image replacement - delete old image if new one is provided
-        if 'image' in self.request.data and record.image:
-            # Delete old image file
-            record.image.delete(save=False)
-        
+        if "representative_image" in self.request.data and record.representative_image:
+            record.representative_image.delete(save=False)
+
         serializer.save()
-    
+
     def perform_destroy(self, instance):
-        """Delete image file when record is deleted"""
-        if instance.image:
-            instance.image.delete(save=False)
+        """Delete stored image file when record is deleted."""
+        if instance.representative_image:
+            instance.representative_image.delete(save=False)
         instance.delete()

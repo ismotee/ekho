@@ -5,8 +5,9 @@
  * Reference: docs/plans/records-view-plan1-phase1.md, US-016; Plan 2 filters US-017; Plan 3 search US-018
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useTranslation } from 'react-i18next'
 import { useRecordStore } from '../../stores/recordStore'
 import { RecordCard } from './RecordCard'
 import { SearchInput } from '../shared/SearchInput'
@@ -18,14 +19,27 @@ const FILTER_DEBOUNCE_MS = 300
 /** Debounce for search input (ms). */
 const SEARCH_DEBOUNCE_MS = 300
 
-/** Filter config for extensibility (add new filters by extending this array). */
-const RECORD_LIST_FILTERS = [
-  { key: 'collection_name', label: 'Collection name', placeholder: 'Filter by collection name', type: 'text' as const },
-  { key: 'owner', label: 'Owner', placeholder: 'Filter by owner username', type: 'text' as const },
-]
-
 export const RecordsListPage = observer(() => {
+  const { t } = useTranslation()
   const recordStore = useRecordStore()
+  const recordFilters = useMemo(
+    () =>
+      [
+        {
+          key: 'collection_name' as const,
+          label: t('records.filters.collectionName'),
+          placeholder: t('records.filters.collectionNamePlaceholder'),
+          type: 'text' as const,
+        },
+        {
+          key: 'owner' as const,
+          label: t('records.filters.owner'),
+          placeholder: t('records.filters.ownerPlaceholder'),
+          type: 'text' as const,
+        },
+      ] as const,
+    [t],
+  )
   const [collectionName, setCollectionName] = useState('')
   const [owner, setOwner] = useState('')
   const [search, setSearch] = useState('')
@@ -54,10 +68,14 @@ export const RecordsListPage = observer(() => {
       return <div className="error-message">{recordStore.error}</div>
     }
     if (recordStore.loading) {
-      return <div className="record-list-content-loading" role="status">Loading...</div>
+      return (
+        <div className="record-list-content-loading" role="status">
+          {t('common.loading')}
+        </div>
+      )
     }
     if (recordStore.records.length === 0) {
-      return <div className="empty-state">No records found</div>
+      return <div className="empty-state">{t('records.empty')}</div>
     }
     return (
       <>
@@ -70,9 +88,9 @@ export const RecordsListPage = observer(() => {
         </div>
         {recordStore.pagination && recordStore.pagination.count > 0 && (
           <div className="pagination">
-            <span>Total: {recordStore.pagination.count}</span>
-            {recordStore.pagination.next && <span>Next</span>}
-            {recordStore.pagination.previous && <span>Previous</span>}
+            <span>{t('common.total', { count: recordStore.pagination.count })}</span>
+            {recordStore.pagination.next && <span>{t('common.next')}</span>}
+            {recordStore.pagination.previous && <span>{t('common.previous')}</span>}
           </div>
         )}
       </>
@@ -82,8 +100,8 @@ export const RecordsListPage = observer(() => {
   return (
     <div className="record-list-page">
       <div className="record-list-layout">
-        <aside className="record-list-filters" role="group" aria-label="Filter records">
-          {RECORD_LIST_FILTERS.map((filter) => (
+        <aside className="record-list-filters" role="group" aria-label={t('records.filterGroupAria')}>
+          {recordFilters.map((filter) => (
             <label key={filter.key} className="record-filter-label">
               <span className="record-filter-label-text">{filter.label}</span>
               <input
@@ -102,14 +120,14 @@ export const RecordsListPage = observer(() => {
           ))}
         </aside>
         <div className="record-list-main">
-          <h1 className="record-list-title">Records</h1>
+          <h1 className="record-list-title">{t('records.title')}</h1>
           <div className="record-list-search">
             <SearchInput
               value={search}
               onSearch={setSearch}
-              placeholder="Search records…"
+              placeholder={t('records.searchPlaceholder')}
               debounceMs={SEARCH_DEBOUNCE_MS}
-              ariaLabel="Search records"
+              ariaLabel={t('records.searchAria')}
             />
           </div>
           {renderContent()}

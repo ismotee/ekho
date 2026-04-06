@@ -8,7 +8,8 @@
 
 import { useEffect, useState } from 'react'
 import { observer } from 'mobx-react-lite'
-import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useCollectionStore } from '../../stores/collectionStore'
 import { useAuthStore } from '../../stores/authStore'
 import { CollectionCard } from './CollectionCard'
@@ -22,7 +23,7 @@ interface CollectionListProps {
 }
 
 export const CollectionList = observer((props: CollectionListProps) => {
-  const navigate = useNavigate()
+  const { t } = useTranslation()
   const collectionStore = useCollectionStore()
   const authStore = useAuthStore()
   const [showAllCollections, setShowAllCollections] = useState(false)
@@ -51,7 +52,7 @@ export const CollectionList = observer((props: CollectionListProps) => {
   }, [authStore.isAuthenticated, authStore.user?.username, showAllCollections, hideClosedCollections, props.collections])
 
   if (loading) {
-    return <div role="status">Loading...</div>
+    return <div role="status">{t('common.loading')}</div>
   }
 
   if (error) {
@@ -62,7 +63,7 @@ export const CollectionList = observer((props: CollectionListProps) => {
     <div className="collection-list-page">
       <div className="collection-list-header">
         <div className="collection-list-title-section">
-          <h1>Collections</h1>
+          <h1>{t('collections.title')}</h1>
           <div className="collection-filters">
             {authStore.isAuthenticated && (
               <label className="filter-toggle">
@@ -71,7 +72,7 @@ export const CollectionList = observer((props: CollectionListProps) => {
                   checked={showAllCollections}
                   onChange={(e) => setShowAllCollections(e.target.checked)}
                 />
-                <span>Show all collections</span>
+                <span>{t('collections.showAll')}</span>
               </label>
             )}
             <label className="filter-toggle">
@@ -80,23 +81,23 @@ export const CollectionList = observer((props: CollectionListProps) => {
                 checked={hideClosedCollections}
                 onChange={(e) => setHideClosedCollections(e.target.checked)}
               />
-              <span>Hide closed collections</span>
+              <span>{t('collections.hideClosed')}</span>
             </label>
           </div>
         </div>
         {authStore.isAuthenticated && (
           <Link to="/collections/new" className="btn btn-primary">
-            + Create Collection
+            {t('collections.create')}
           </Link>
         )}
       </div>
 
       {collections.length === 0 ? (
         <div className="empty-state">
-          <p>No collections found</p>
+          <p>{t('collections.empty')}</p>
           {authStore.isAuthenticated && (
             <Link to="/collections/new" className="btn btn-primary">
-              Create Your First Collection
+              {t('collections.createFirst')}
             </Link>
           )}
         </div>
@@ -112,9 +113,9 @@ export const CollectionList = observer((props: CollectionListProps) => {
           
           {pagination && pagination.count > 0 && (
             <div className="pagination">
-              <span>Total: {pagination.count}</span>
-              {pagination.next && <button>Next</button>}
-              {pagination.previous && <button>Previous</button>}
+              <span>{t('common.total', { count: pagination.count })}</span>
+              {pagination.next && <button type="button">{t('common.next')}</button>}
+              {pagination.previous && <button type="button">{t('common.previous')}</button>}
             </div>
           )}
         </>

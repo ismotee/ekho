@@ -7,31 +7,39 @@
  */
 
 import { observer } from 'mobx-react-lite'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../stores/authStore'
 import { LogoutButton } from '../auth/LogoutButton'
+import { ThemeToggle } from './ThemeToggle'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import './Layout.css'
 
 export const Navigation = observer(() => {
   const authStore = useAuthStore()
-  const navigate = useNavigate()
+  const { t } = useTranslation()
 
   return (
     <nav className="navigation">
       <div className="nav-container">
         <div className="nav-left">
           <Link to="/collections" className="nav-logo">
-            Ekho
+            {t('app.brand')}
           </Link>
           <Link to="/collections" className="nav-link">
-            Collections
+            {t('nav.collections')}
           </Link>
           <Link to="/records" className="nav-link">
-            Records
+            {t('nav.records')}
+          </Link>
+          <Link to="/actors" className="nav-link">
+            {t('nav.actors')}
           </Link>
         </div>
         
         <div className="nav-right">
+          <LanguageSwitcher />
+          <ThemeToggle />
           {authStore.isAuthenticated ? (
             <>
               <span className="nav-username">{authStore.user?.username}</span>
@@ -40,10 +48,10 @@ export const Navigation = observer(() => {
           ) : (
             <>
               <Link to="/login" className="btn btn-secondary">
-                Login
+                {t('nav.login')}
               </Link>
               <Link to="/register" className="btn btn-primary">
-                Register
+                {t('nav.register')}
               </Link>
             </>
           )}

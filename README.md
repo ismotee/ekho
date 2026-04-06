@@ -16,6 +16,7 @@ Project documentation lives in the **`docs/`** directory. Summary:
 | **[Design](docs/design/)** | UI/UX specs: authentication, collection and record management, navigation and layout, and the design system (colors, typography, components). |
 | **[Developer guide](docs/developer-guide.md)** | Prerequisites, project setup, development workflow, code structure, testing, API and frontend development, database management, and troubleshooting. |
 | **[Known Bugs](docs/known-bugs.md)** | List of confirmed product/application defects and their status; separate from troubleshooting and security. |
+| **[Customer support guide](docs/customer-support.md)** | Internal guide for helping end users: permissions, records (`data` + representative image), search, common issues, escalation. |
 | **[User stories](docs/user-stories/)** | Product-level user stories and acceptance criteria for authentication, collections, and records. |
 
 ---

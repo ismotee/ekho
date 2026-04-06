@@ -1,0 +1,237 @@
+.actors-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.actors-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.actors-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.actor-card {
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--color-surface, #fff);
+}
+
+.actor-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.actor-card-meta {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin-bottom: 0.75rem;
+}
+
+.actor-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.actor-form-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.actor-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.actor-data-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.actor-form-kind-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.actor-form-kind-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+}
+
+.actor-form-kind-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.actor-form-kind-radio input {
+  width: auto;
+  margin: 0;
+}
+
+.actor-form-ambiguous-hint {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  background: var(--color-banner-bg, #fff8e6);
+  border: 1px solid var(--color-border, #e6d4a8);
+  font-size: 0.92rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.actor-form-main-fieldset {
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 8px;
+  padding: 1rem 1rem 1.25rem;
+  margin: 0;
+}
+
+.actor-form-main-fieldset > legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+
+.actor-form-section-toggle.form-group {
+  margin-bottom: 0.75rem;
+}
+
+/* Override global .form-group label/input so checkbox + text stay one row */
+.actor-form-section-toggle.form-group .actor-form-enable-label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.actor-form-section-toggle.form-group .actor-form-enable-label input[type='checkbox'] {
+  width: auto;
+  max-width: none;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.actor-form-section-toggle .actor-form-enable-label input:disabled {
+  cursor: not-allowed;
+}
+
+.actor-form-section-disabled-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.actor-form-nested-fieldset {
+  border: 1px dashed var(--color-border, #ccc);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.actor-form-nested-fieldset > legend {
+  font-size: 0.9rem;
+  padding: 0 0.25rem;
+}
+
+.actor-form-label-group {
+  margin: 0.5rem 0;
+}
+
+.actor-form-sublegend {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.actor-form-repeatable-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border, #eee);
+}
+
+.actor-form-repeatable-inline:last-of-type {
+  border-bottom: none;
+}
+
+.actor-usage-banner {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: var(--color-banner-bg, #f0f4ff);
+  border: 1px solid var(--color-border, #ccd);
+  font-size: 0.95rem;
+}
+
+.actor-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.actor-modal {
+  background: var(--color-surface, #fff);
+  border-radius: 10px;
+  padding: 1.25rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.actor-modal h3 {
+  margin: 0 0 0.75rem;
+}
+
+.actor-modal ul {
+  margin: 0.5rem 0 0 1.25rem;
+  padding: 0;
+}
+
+.actor-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}

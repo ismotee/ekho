@@ -1,37 +1,37 @@
 /**
  * RecordStore
- * 
+ *
  * MobX store for managing art record data and operations.
- * Handles fetching, creating, updating, deleting records, and image uploads.
- * 
- * Reference: docs/architecture/system-architecture.md (State Management)
+ * Domain payload is under `data`; optional `representative_image` for thumbnails.
+ *
+ * Reference: docs/data/record-models.md, docs/architecture/system-architecture.md
  */
 
 import { makeAutoObservable, runInAction } from 'mobx'
 import { api, ApiError } from '../services/api'
+import type { Record, RecordPayload } from '../types/record'
 
-export interface Record {
-  id: number
-  title: string
-  artist: string
-  year?: number
-  medium?: string
-  dimensions?: string
-  description?: string
-  condition?: string
-  image?: string
-  collection: number
-  collection_name?: string
-  collection_owner_username?: string
-  created_at: string
-  updated_at: string
-}
+export type { Record, RecordPayload } from '../types/record'
 
 export interface PaginatedResponse<T> {
   count: number
   next: string | null
   previous: string | null
   results: T[]
+}
+
+function serializeDataForMultipart(data: RecordPayload): string {
+  return JSON.stringify(data ?? {})
+}
+
+export interface CreateRecordOptions {
+  data?: RecordPayload
+  representative_image?: File
+}
+
+export interface UpdateRecordOptions {
+  data?: RecordPayload
+  representative_image?: File
 }
 
 export class RecordStore {
@@ -69,7 +69,7 @@ export class RecordStore {
         collection: collectionId,
         ...params,
       })
-      
+
       runInAction(() => {
         if (response.results) {
           this.records = response.results
@@ -79,7 +79,6 @@ export class RecordStore {
             previous: response.previous || null,
           }
         } else if (response.data) {
-          // Handle single record response
           this.records = [response.data]
         }
         this.loading = false
@@ -137,12 +136,11 @@ export class RecordStore {
 
     try {
       const response = await api.get<Record>(`/records/${id}/`)
-      
+
       runInAction(() => {
         this.currentRecord = response.data || null
-        // Update in records array if it exists
         if (response.data) {
-          const index = this.records.findIndex(r => r.id === id)
+          const index = this.records.findIndex((r) => r.id === id)
           if (index >= 0) {
             this.records[index] = response.data
           } else {
@@ -164,47 +162,29 @@ export class RecordStore {
 
   async createRecord(
     collectionId: number,
-    data: {
-      title: string
-      artist: string
-      year?: number
-      medium?: string
-      dimensions?: string
-      description?: string
-      condition?: string
-      image?: File
-    }
+    options: CreateRecordOptions = {}
   ): Promise<Record> {
     this.loading = true
     this.error = null
 
+    const data = options.data ?? {}
+    const file = options.representative_image
+
     try {
-      const formData = new FormData()
-      formData.append('collection', String(collectionId))
-      formData.append('title', data.title)
-      formData.append('artist', data.artist)
-      
-      if (data.year !== undefined) {
-        formData.append('year', String(data.year))
-      }
-      if (data.medium) {
-        formData.append('medium', data.medium)
-      }
-      if (data.dimensions) {
-        formData.append('dimensions', data.dimensions)
-      }
-      if (data.description) {
-        formData.append('description', data.description)
-      }
-      if (data.condition) {
-        formData.append('condition', data.condition)
-      }
-      if (data.image) {
-        formData.append('image', data.image)
+      let response
+      if (file) {
+        const formData = new FormData()
+        formData.append('collection', String(collectionId))
+        formData.append('data', serializeDataForMultipart(data))
+        formData.append('representative_image', file)
+        response = await api.post<Record>('/records/', formData, true)
+      } else {
+        response = await api.post<Record>('/records/', {
+          collection: collectionId,
+          data,
+        })
       }
 
-      const response = await api.post<Record>('/records/', formData, true)
-      
       if (!response.data) {
         throw new Error('No data returned from create record')
       }
@@ -226,50 +206,34 @@ export class RecordStore {
     }
   }
 
-  async updateRecord(
-    id: number,
-    data: Partial<{
-      title: string
-      artist: string
-      year: number
-      medium: string
-      dimensions: string
-      description: string
-      condition: string
-      image: File
-    }>
-  ): Promise<Record> {
+  async updateRecord(id: number, options: UpdateRecordOptions = {}): Promise<Record> {
     this.loading = true
     this.error = null
 
-    try {
-      const hasFile = data.image instanceof File
-      let response: { data?: Record }
+    const { data, representative_image: file } = options
+    const hasFile = file instanceof File
 
+    try {
+      let response
       if (hasFile) {
-        // Use FormData for file uploads
         const formData = new FormData()
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            if (value instanceof File) {
-              formData.append(key, value)
-            } else {
-              formData.append(key, String(value))
-            }
-          }
-        })
+        if (data !== undefined) {
+          formData.append('data', serializeDataForMultipart(data))
+        }
+        formData.append('representative_image', file)
         response = await api.patch<Record>(`/records/${id}/`, formData, true)
+      } else if (data !== undefined) {
+        response = await api.patch<Record>(`/records/${id}/`, { data })
       } else {
-        // Use JSON for non-file updates
-        response = await api.patch<Record>(`/records/${id}/`, data)
+        response = await api.patch<Record>(`/records/${id}/`, {})
       }
-      
+
       if (!response.data) {
         throw new Error('No data returned from update record')
       }
 
       runInAction(() => {
-        const index = this.records.findIndex(r => r.id === id)
+        const index = this.records.findIndex((r) => r.id === id)
         if (index >= 0) {
           this.records[index] = response.data!
         }
@@ -297,9 +261,9 @@ export class RecordStore {
 
     try {
       await api.delete(`/records/${id}/`)
-      
+
       runInAction(() => {
-        this.records = this.records.filter(r => r.id !== id)
+        this.records = this.records.filter((r) => r.id !== id)
         if (this.currentRecord?.id === id) {
           this.currentRecord = null
         }
@@ -317,7 +281,6 @@ export class RecordStore {
   }
 }
 
-// Singleton instance
 let recordStoreInstance: RecordStore | null = null
 
 export const getRecordStore = (): RecordStore => {
@@ -327,7 +290,6 @@ export const getRecordStore = (): RecordStore => {
   return recordStoreInstance
 }
 
-// Hook for React components
 export const useRecordStore = (): RecordStore => {
   return getRecordStore()
 }

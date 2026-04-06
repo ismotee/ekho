@@ -497,8 +497,15 @@ cp db.sqlite3 db.sqlite3.backup
 
 ## Support
 
+### Developers and contributors
+
 For questions or issues, please:
+
 1. Check this developer guide
 2. Review project documentation
 3. Contact the development team
 4. Create an issue in the project repository
+
+### Customer support (helping end users)
+
+Use **[Customer support guide](customer-support.md)** for permissions, record structure (`data` JSON + `representative_image`), search behavior, typical user-facing issues, and when to escalate to engineering. It complements [Known bugs](known-bugs.md) (confirmed defects) and the [API specification](api-specification.md) (technical contract).

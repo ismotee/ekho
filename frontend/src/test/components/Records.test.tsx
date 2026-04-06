@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 // These imports will FAIL until components are implemented (TDD approach)
@@ -31,7 +31,9 @@ vi.mock('../../stores/recordStore', () => ({
     currentRecord: null,
     loading: false,
     error: null,
+    pagination: { count: 0, next: null, previous: null },
     fetchRecords: vi.fn(),
+    fetchAllRecords: vi.fn(),
     fetchRecord: vi.fn(),
     createRecord: vi.fn(),
     updateRecord: vi.fn(),
@@ -65,6 +67,24 @@ vi.mock('../../stores/authStore', () => ({
   })),
 }))
 
+vi.mock('../../stores/actorStore', () => ({
+  useActorStore: vi.fn(() => ({
+    actors: [],
+    currentActor: null,
+    loading: false,
+    error: null,
+    pagination: { count: 0, next: null, previous: null },
+    fetchActors: vi.fn().mockResolvedValue(undefined),
+    fetchActor: vi.fn().mockResolvedValue(undefined),
+    fetchUsage: vi.fn().mockResolvedValue({ count: 0, records: [] }),
+    createActor: vi.fn(),
+    updateActor: vi.fn(),
+    deleteActor: vi.fn(),
+    actorById: () => undefined,
+    invalidateListCache: vi.fn(),
+  })),
+}))
+
 vi.mock('../../services/api', () => ({
   api: {
     get: vi.fn(),
@@ -85,14 +105,26 @@ describe('RecordList Component Tests (US-013)', () => {
   it('renders record cards/grid', () => {
     // This test will FAIL until RecordList component is implemented
     const mockRecords = [
-      { id: 1, title: 'Test Record', artist: 'Test Artist', collection: 1, created_at: '2024-01-01T00:00:00Z' }
+      {
+        id: 1,
+        data: {
+          identification_details: { title: [{ value: 'Test Record' }] },
+          description: { content: { description: 'Artist: Test Artist' } },
+        },
+        representative_image: null,
+        collection: 1,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      },
     ]
     vi.mocked(useRecordStore).mockReturnValue({
       records: mockRecords,
       currentRecord: null,
       loading: false,
       error: null,
+      pagination: { count: 0, next: null, previous: null },
       fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
       fetchRecord: vi.fn(),
       createRecord: vi.fn(),
       updateRecord: vi.fn(),
@@ -144,39 +176,117 @@ describe('RecordList Component Tests (US-013)', () => {
 })
 
 describe('RecordCard Component Tests', () => {
-  it('renders record information correctly', () => {
-    expect(true).toBe(true)
+  const baseRecord = {
+    id: 1,
+    collection: 1,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  }
+
+  it('renders primary title line from identification_details', () => {
+    render(
+      <RecordCard
+        record={{
+          ...baseRecord,
+          data: { identification_details: { title: [{ value: 'Blue Period' }] } },
+          representative_image: null,
+        }}
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'Blue Period' })).toBeInTheDocument()
   })
 
   it('displays collection_name when present (US-016 global records list)', () => {
     const recordWithCollection = {
-      id: 1,
-      title: 'Artwork',
-      artist: 'Artist',
-      collection: 1,
+      ...baseRecord,
+      data: {
+        identification_details: { title: [{ value: 'Artwork' }] },
+        description: { content: { description: 'Artist: Artist' } },
+      },
+      representative_image: null,
       collection_name: 'My Collection',
       collection_owner_username: 'johndoe',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
     }
     render(<RecordCard record={recordWithCollection} />)
-    expect(screen.getByText(/My Collection/)).toBeInTheDocument()
+    expect(screen.getByText(/Collection: My Collection/)).toBeInTheDocument()
   })
 
   it('displays image thumbnail if available', () => {
-    expect(true).toBe(true)
+    render(
+      <RecordCard
+        record={{
+          ...baseRecord,
+          data: { identification_details: { title: [{ value: 'X' }] } },
+          representative_image: 'https://cdn.example/img.png',
+        }}
+      />
+    )
+    const img = screen.getByRole('img')
+    expect(img).toHaveAttribute('src', 'https://cdn.example/img.png')
   })
 
   it('displays image placeholder if no image', () => {
-    expect(true).toBe(true)
+    render(
+      <RecordCard
+        record={{
+          ...baseRecord,
+          data: { identification_details: { title: [{ value: 'X' }] } },
+          representative_image: null,
+        }}
+      />
+    )
+    expect(screen.getByText('No Image')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
-  it('displays title and artist prominently', () => {
-    expect(true).toBe(true)
+  it('displays secondary line (object type)', () => {
+    render(
+      <RecordCard
+        record={{
+          ...baseRecord,
+          data: {
+            identification_details: {
+              title: [{ value: 'Study' }],
+              object_type: 'drawing',
+              object_number: 'D-2',
+            },
+          },
+          representative_image: null,
+        }}
+      />
+    )
+    expect(screen.getByText('drawing')).toBeInTheDocument()
+    expect(screen.queryByText('D-2')).not.toBeInTheDocument()
   })
 
-  it('displays year if available', () => {
-    expect(true).toBe(true)
+  it('displays year when derivable from description or acquisition', () => {
+    const { rerender } = render(
+      <RecordCard
+        record={{
+          ...baseRecord,
+          data: {
+            identification_details: { title: [{ value: 'Old' }] },
+            description: { content: { description: 'Year: 1888' } },
+          },
+          representative_image: null,
+        }}
+      />
+    )
+    expect(screen.getByText('Year: 1888')).toBeInTheDocument()
+
+    rerender(
+      <RecordCard
+        record={{
+          ...baseRecord,
+          data: {
+            identification_details: { title: [{ value: 'Acq' }] },
+            aquisition_details: { date: [{ text: '1950' }] },
+          },
+          representative_image: null,
+        }}
+      />
+    )
+    expect(screen.getByText('Year: 1950')).toBeInTheDocument()
   })
 
   it('navigates to detail on click', () => {
@@ -287,6 +397,42 @@ describe('RecordForm Component Tests (US-010, US-011, US-015)', () => {
 })
 
 describe('RecordDetail Component Tests (US-014)', () => {
+  beforeEach(() => {
+    vi.mocked(useRecordStore).mockReturnValue({
+      records: [],
+      currentRecord: null,
+      loading: false,
+      error: null,
+      pagination: { count: 0, next: null, previous: null },
+      fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
+      fetchRecord: vi.fn(),
+      createRecord: vi.fn(),
+      updateRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+    })
+    vi.mocked(useCollectionStore).mockReturnValue({
+      collections: [],
+      currentCollection: null,
+      loading: false,
+      error: null,
+      pagination: null,
+      fetchCollections: vi.fn(),
+      fetchCollection: vi.fn(),
+      createCollection: vi.fn(),
+      updateCollection: vi.fn(),
+      closeCollection: vi.fn(),
+    })
+    vi.mocked(useAuthStore).mockReturnValue({
+      isAuthenticated: false,
+      user: null,
+      login: vi.fn(),
+      logout: vi.fn(),
+      register: vi.fn(),
+      fetchCurrentUser: vi.fn(),
+    })
+  })
+
   it('renders all record information', () => {
     expect(true).toBe(true)
   })
@@ -323,21 +469,76 @@ describe('RecordDetail Component Tests (US-014)', () => {
     expect(true).toBe(true)
   })
 
-  it('shows delete button to owner when collection not closed', () => {
-    const mockRecord = { id: 1, title: 'Test Record', collection: 1, created_at: '2024-01-01T00:00:00Z' }
-    const mockCollection = { id: 1, owner: { id: 1, username: 'testuser' }, is_closed: false }
-    vi.mocked(useRecordStore).mockReturnValueOnce({
+  it('renders domain accordion sections and nested identification fields', () => {
+    const mockRecord = {
+      id: 1,
+      data: {
+        identification_details: { object_number: 'OBJ-99', title: [{ value: 'Bronze' }] },
+      },
+      representative_image: null,
+      collection: 1,
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }
+    vi.mocked(useRecordStore).mockReturnValue({
       records: [],
       currentRecord: mockRecord,
       loading: false,
       error: null,
+      pagination: { count: 0, next: null, previous: null },
       fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
       fetchRecord: vi.fn(),
       createRecord: vi.fn(),
       updateRecord: vi.fn(),
       deleteRecord: vi.fn(),
     })
-    vi.mocked(useCollectionStore).mockReturnValueOnce({
+    vi.mocked(useCollectionStore).mockReturnValue({
+      collections: [],
+      currentCollection: null,
+      loading: false,
+      error: null,
+      pagination: null,
+      fetchCollections: vi.fn(),
+      fetchCollection: vi.fn(),
+      createCollection: vi.fn(),
+      updateCollection: vi.fn(),
+      closeCollection: vi.fn(),
+    })
+    render(<RecordDetail />)
+    const domain = screen.getByRole('region', { name: /record data by domain/i })
+    expect(within(domain).getByText('Identification')).toBeInTheDocument()
+    expect(within(domain).queryByText('Acquisition')).not.toBeInTheDocument()
+    const identificationBlock = screen.getByText('Identification').closest('details')
+    expect(identificationBlock).toBeTruthy()
+    expect(within(identificationBlock!).getByText('Object number')).toBeInTheDocument()
+    expect(within(identificationBlock!).getByText('OBJ-99')).toBeInTheDocument()
+  })
+
+  it('shows delete button to owner when collection not closed', () => {
+    const mockRecord = {
+      id: 1,
+      data: { identification_details: { title: [{ value: 'Test Record' }] } },
+      representative_image: null,
+      collection: 1,
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }
+    const mockCollection = { id: 1, owner: { id: 1, username: 'testuser' }, is_closed: false }
+    vi.mocked(useRecordStore).mockReturnValue({
+      records: [],
+      currentRecord: mockRecord,
+      loading: false,
+      error: null,
+      pagination: { count: 0, next: null, previous: null },
+      fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
+      fetchRecord: vi.fn(),
+      createRecord: vi.fn(),
+      updateRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+    })
+    vi.mocked(useCollectionStore).mockReturnValue({
       collections: [],
       currentCollection: mockCollection,
       loading: false,
@@ -349,7 +550,7 @@ describe('RecordDetail Component Tests (US-014)', () => {
       updateCollection: vi.fn(),
       closeCollection: vi.fn(),
     })
-    vi.mocked(useAuthStore).mockReturnValueOnce({
+    vi.mocked(useAuthStore).mockReturnValue({
       isAuthenticated: true,
       user: { id: 1, username: 'testuser' },
       login: vi.fn(),
@@ -363,14 +564,23 @@ describe('RecordDetail Component Tests (US-014)', () => {
 
   it('shows delete confirmation dialog when delete button clicked', async () => {
     const user = userEvent.setup()
-    const mockRecord = { id: 1, title: 'Test Record', collection: 1, created_at: '2024-01-01T00:00:00Z' }
+    const mockRecord = {
+      id: 1,
+      data: { identification_details: { title: [{ value: 'Test Record' }] } },
+      representative_image: null,
+      collection: 1,
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }
     const mockCollection = { id: 1, owner: { id: 1, username: 'testuser' }, is_closed: false }
     vi.mocked(useRecordStore).mockReturnValue({
       records: [],
       currentRecord: mockRecord,
       loading: false,
       error: null,
+      pagination: { count: 0, next: null, previous: null },
       fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
       fetchRecord: vi.fn(),
       createRecord: vi.fn(),
       updateRecord: vi.fn(),

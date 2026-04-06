@@ -31,6 +31,24 @@ vi.mock('../stores/collectionStore', () => ({
   }),
 }))
 
+vi.mock('../stores/actorStore', () => ({
+  useActorStore: () => ({
+    actors: [],
+    currentActor: null,
+    loading: false,
+    error: null,
+    pagination: { count: 0, next: null, previous: null },
+    fetchActors: vi.fn().mockResolvedValue(undefined),
+    fetchActor: vi.fn(),
+    fetchUsage: vi.fn(),
+    createActor: vi.fn(),
+    updateActor: vi.fn(),
+    deleteActor: vi.fn(),
+    actorById: () => undefined,
+    invalidateListCache: vi.fn(),
+  }),
+}))
+
 vi.mock('../stores/recordStore', () => ({
   useRecordStore: () => ({
     records: [],

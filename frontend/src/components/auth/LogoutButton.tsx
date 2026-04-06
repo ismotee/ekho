@@ -7,11 +7,13 @@
  */
 
 import { observer } from 'mobx-react-lite'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import './Auth.css'
 
 export const LogoutButton = observer(() => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const authStore = useAuthStore()
 
@@ -34,9 +36,9 @@ export const LogoutButton = observer(() => {
       onClick={handleLogout}
       className="btn btn-secondary"
       disabled={authStore.loading}
-      aria-label="Logout"
+      aria-label={t('auth.logout')}
     >
-      {authStore.loading ? 'Logging out...' : 'Logout'}
+      {authStore.loading ? t('auth.loggingOut') : t('auth.logout')}
     </button>
   )
 })

@@ -8,6 +8,7 @@
 
 import { useState, FormEvent } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import './Auth.css'
@@ -17,6 +18,7 @@ interface LoginFormProps {
 }
 
 export const LoginForm = observer(({ onLogin }: LoginFormProps) => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const authStore = useAuthStore()
   const [username, setUsername] = useState('')
@@ -27,11 +29,11 @@ export const LoginForm = observer(({ onLogin }: LoginFormProps) => {
     const newErrors: typeof errors = {}
     
     if (!username.trim()) {
-      newErrors.username = 'Username is required'
+      newErrors.username = t('auth.errors.usernameRequired')
     }
     
     if (!password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = t('auth.errors.passwordRequired')
     }
 
     setErrors(newErrors)
@@ -60,14 +62,14 @@ export const LoginForm = observer(({ onLogin }: LoginFormProps) => {
       // Navigate to collections
       navigate('/collections')
     } catch (error: any) {
-      const errorMessage = error?.error || error?.detail || 'Invalid credentials'
+      const errorMessage = error?.error || error?.detail || t('auth.errors.invalidCredentials')
       setErrors({ general: errorMessage })
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="auth-form" noValidate>
-      <h2>Login</h2>
+      <h2>{t('auth.loginTitle')}</h2>
       
       {errors.general && (
         <div className="error-message" role="alert">
@@ -76,7 +78,7 @@ export const LoginForm = observer(({ onLogin }: LoginFormProps) => {
       )}
 
       <div className="form-group">
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username">{t('auth.username')}</label>
         <input
           id="username"
           type="text"
@@ -94,7 +96,7 @@ export const LoginForm = observer(({ onLogin }: LoginFormProps) => {
       </div>
 
       <div className="form-group">
-        <label htmlFor="password">Password</label>
+        <label htmlFor="password">{t('auth.password')}</label>
         <input
           id="password"
           type="password"
@@ -116,7 +118,7 @@ export const LoginForm = observer(({ onLogin }: LoginFormProps) => {
         className="btn btn-primary"
         disabled={authStore.loading}
       >
-        {authStore.loading ? 'Loading...' : 'Login'}
+        {authStore.loading ? t('common.loading') : t('auth.loginSubmit')}
       </button>
     </form>
   )

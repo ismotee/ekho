@@ -15,6 +15,46 @@ The record management interface allows collection owners to create, view, edit, 
 - **US-014**: View Record Details
 - **US-015**: Upload Image for Record
 
+## Domain model UX (aligned with `record-models.md`)
+
+The UI reads and writes the **domain payload** exposed by the API as `data` (see `docs/data/record-models.md` and linked domain docs). **`representative_image`** is a separate top-level field for list/detail thumbnails only.
+
+### List cards: summary rules
+
+Keep card **density** similar to the legacy title/artist/year layout, but **derive** copy from `data.identification_details` where possible:
+
+| Line | Rule |
+|------|------|
+| **Thumbnail** | `representative_image` if present; otherwise the same placeholder as today. |
+| **Primary** | `identification_details.title.value`, else first usable `object_name`, else `object_number`, else the copy **Untitled record**. |
+| **Secondary** | Short hint: object type and/or object number when cheaply available from identification; avoid heavy nested actor rendering on cards. |
+| **Tertiary** | Show a single display year only if product defines one clear rule (for example from acquisition temporal text); otherwise omit. |
+| **Collection** | When the API provides `collection_name`, show it as today for context. |
+
+Centralize this mapping in one helper (for example `getRecordCardSummary(record)`) so list and delete-confirm copy stay consistent when the domain evolves.
+
+### Record detail: section order and structure
+
+- **Hero**: Large `representative_image` (or placeholder) plus a **one-line summary** using the same rules as the card primary/secondary line.
+- **Body**: **Accordion or subheaded sections** in this **fixed order**: **Identification** → **Acquisition** → **Description** → **History** → **Rights** → **Access** → **Object location** → **Confidentiality**.
+- **Inside each section**: Recursive label/value presentation for nested objects; lists as grouped bullets. **Empty sections**: short “No data” under the heading (keep headings visible for landmarks and screen readers).
+- **`Reference<T>` values**: For v1, show the stored Finnish label string; later these can move to i18n keys.
+- Avoid a single endless strip of fields without landmarks; optional later enhancement: sticky section nav on wide viewports.
+
+### Create and edit: form navigation
+
+- **Layout**: **Vertical stepper** or **left-hand nav** listing the **nine domain sections** in the same order as detail, plus an optional final **Review** step.
+- **State**: One object holding the full `data` payload; **Save** may send a full PUT/PATCH (simplest) until partial APIs exist.
+- **Progressive disclosure**: Repeatable domain lists (for example multiple titles, ownership rows) behind **Add …** actions with row components.
+- **Representative image**: Dedicated control at the **top** of the flow or inside Identification, clearly labeled as the **list/thumbnail** image (not a nested domain `Image` field unless product equates them).
+- **Validation**: Required fields only where product and backend agree; show errors at **section** level and a short **top summary**.
+
+### Delete confirmation
+
+Show the **same primary summary line** as the card (not a hard-coded “title by artist” pair) so wording matches sparse or partial records.
+
+---
+
 ## 1. Record List View (Within Collection)
 
 ### Layout (Grid View)
@@ -29,9 +69,10 @@ The record management interface allows collection owners to create, view, edit, 
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
 │  │  Image   │  │  Image   │  │  Image   │        │
 │  │          │  │          │  │          │        │
-│  │  Title   │  │  Title   │  │  Title   │        │
-│  │  Artist  │  │  Artist  │  │  Artist  │        │
-│  │  Year    │  │  Year    │  │  Year    │        │
+│  │  Primary │  │  Primary │  │  Primary │        │
+│  │  label   │  │  label   │  │  label   │        │
+│  │  Second. │  │  Second. │  │  Second. │        │
+│  │  Year?   │  │  Year?   │  │  Year?   │        │
 │  │  [View]  │  │  [View]  │  │  [View]  │        │
 │  └──────────┘  └──────────┘  └──────────┘        │
 │                                                      │
@@ -51,13 +92,13 @@ The record management interface allows collection owners to create, view, edit, 
 ├─────────────────────────────────────────────────────┤
 │                                                      │
 │  ┌────┐ ┌──────────────────────────────────────┐  │
-│  │Img │ │ Title                          [View] │  │
-│  │    │ │ Artist | Year | Medium                 │  │
+│  │Img │ │ Primary label                  [View] │  │
+│  │    │ │ Secondary | Year?                    │  │
 │  └────┘ └──────────────────────────────────────┘  │
 │                                                      │
 │  ┌────┐ ┌──────────────────────────────────────┐  │
-│  │Img │ │ Title                          [View] │  │
-│  │    │ │ Artist | Year | Medium                 │  │
+│  │Img │ │ Primary label                  [View] │  │
+│  │    │ │ Secondary | Year?                    │  │
 │  └────┘ └──────────────────────────────────────┘  │
 │                                                      │
 └─────────────────────────────────────────────────────┘
@@ -67,11 +108,11 @@ The record management interface allows collection owners to create, view, edit, 
 
 - **Header**: Section title "Records" with count and "Add Record" button (only if owner and collection not closed)
 - **Record Card**:
-  - Image thumbnail (or placeholder if no image)
-  - Title (heading)
-  - Artist name
-  - Year (if available)
-  - Medium (if available, optional)
+  - Thumbnail from `representative_image`, or placeholder
+  - **Primary line** (heading): best label from identification (see **Domain model UX**)
+  - **Secondary line**: object type / object number as available
+  - **Tertiary**: year only when a single display rule applies; else omit
+  - Optional **collection** context when `collection_name` is present
   - "View" button/link
 - **Empty State**: Centered message with "Add Record" button
 - **Pagination**: Bottom of page
@@ -83,70 +124,32 @@ The record management interface allows collection owners to create, view, edit, 
 ### Layout
 
 ```
-┌─────────────────────────────────────┐
-│  Add Art Record            [X]     │
-├─────────────────────────────────────┤
-│                                     │
-│  Title *                           │
-│  [_____________________________]    │
-│                                     │
-│  Artist *                          │
-│  [_____________________________]    │
-│                                     │
-│  Year                               │
-│  [____] (e.g., 2024)               │
-│                                     │
-│  Medium                             │
-│  [_____________________________]    │
-│                                     │
-│  Dimensions                         │
-│  [_____________________________]    │
-│  (e.g., 24x36 inches)              │
-│                                     │
-│  Description                        │
-│  [_____________________________]    │
-│  [_____________________________]    │
-│  [_____________________________]    │
-│                                     │
-│  Condition                          │
-│  [_____________________________]    │
-│                                     │
-│  Image                              │
-│  [Choose File] No file chosen       │
-│  [Image Preview Area]               │
-│                                     │
-│  [Cancel]  [Create Record]          │
-│                                     │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Add record                                      [X]    │
+├─────────────────────────────────────────────────────────┤
+│  [Steps or left nav: Id → Acq → Desc → Hist → … → Rev] │
+├─────────────────────────────────────────────────────────┤
+│  Representative image (list thumbnail)                  │
+│  [Choose File]   [preview]                              │
+├─────────────────────────────────────────────────────────┤
+│  <Fields for active domain section only>                │
+│  … repeatable “Add …” rows for list-shaped domains …    │
+├─────────────────────────────────────────────────────────┤
+│  [Back]  [Next section]     [Cancel]  [Create record]    │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### Design Specifications
 
-- **Modal/Dialog**: Large modal or full-page form (depending on screen size)
-- **Fields**:
-  - Title: Required text input, max 200 characters
-  - Artist: Required text input, max 200 characters
-  - Year: Optional number input, placeholder "e.g., 2024"
-  - Medium: Optional text input, max 100 characters
-  - Dimensions: Optional text input, max 100 characters, placeholder "e.g., 24x36 inches"
-  - Description: Optional textarea, max 2000 characters
-  - Condition: Optional text input, max 200 characters
-  - Image: File input with preview
-- **Image Upload**:
-  - File input button: "Choose File" or "Browse"
-  - Accepted formats: JPG, PNG, GIF
-  - Max size: 10MB
-  - Preview area: Shows selected image before upload
-  - Remove image option (X button on preview)
-- **Validation**:
-  - Real-time validation for required fields
-  - File type validation
-  - File size validation
-  - Error messages below fields
+- **Shell**: Large modal or full-page form by breakpoint
+- **Navigation**: Stepper or left nav covering **Identification**, **Acquisition**, **Description**, **History**, **Rights**, **Access**, **Object location**, **Confidentiality**, optional **Review**
+- **Representative image**: First-class control; labeled as thumbnail for lists/detail hero; same file rules as **Image Upload Component** (JPG/PNG/GIF, 10MB)
+- **Fields**: Driven by domain types in `docs/data/*-models.md`; use progressive disclosure for repeating structures
+- **Validation**: Align required fields with API/backend; section-level errors + short summary at top
 - **Buttons**:
-  - Cancel: Secondary button, closes modal
-  - Create: Primary button, disabled if required fields empty
-- **Success**: Modal closes, redirect to record detail or collection page, success toast
+  - Cancel: Secondary, closes without save (confirm if dirty, product decision)
+  - Create: Primary; enabled per validation rules
+- **Success**: Close shell, navigate to record detail or collection, toast
 
 ## 3. Record Detail View
 
@@ -154,90 +157,48 @@ The record management interface allows collection owners to create, view, edit, 
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Navigation Bar                                     │
-├─────────────────────────────────────────────────────┤
 │  ← Back to Collection                               │
 ├─────────────────────────────────────────────────────┤
-│                                                      │
-│  ┌──────────────┐  Artwork Title                   │
-│  │              │  by Artist Name                   │
-│  │   Image      │                                   │
-│  │              │  Year: 2024                       │
-│  │              │  Medium: Oil on Canvas            │
-│  ┌──────────────┘  Dimensions: 24x36 inches        │
-│                                                      │
-│  Description:                                       │
-│  This is a detailed description of the artwork...   │
-│                                                      │
-│  Condition: Excellent                               │
-│                                                      │
-│  [Edit] [Delete] (only if owner and not closed)     │
-│                                                      │
-└─────────────────────────────────────────────────────┘
-```
-
-### Alternative Layout (Image Left, Details Right)
-
-```
-┌─────────────────────────────────────────────────────┐
-│  ← Back to Collection                               │
+│  ┌──────────────┐  One-line summary (card rules)      │
+│  │  Hero image  │  Optional collection context       │
+│  │  or placeholder                                   │
+│  └──────────────┘  [Edit] [Delete] if owner + open   │
 ├─────────────────────────────────────────────────────┤
-│                                                      │
-│  ┌──────────┐  Artwork Title                       │
-│  │          │  by Artist Name                      │
-│  │  Image   │                                       │
-│  │          │  Year: 2024                          │
-│  │          │  Medium: Oil on Canvas               │
-│  │          │  Dimensions: 24x36 inches            │
-│  └──────────┘                                       │
-│            Description:                             │
-│            This is a detailed description...         │
-│                                                      │
-│            Condition: Excellent                     │
-│                                                      │
-│            [Edit] [Delete]                          │
-│                                                      │
+│  ▼ Identification        … content or “No data” …   │
+│  ▼ Acquisition           …                            │
+│  ▼ Description           …                            │
+│  ▼ History               …                            │
+│  ▼ Rights                …                            │
+│  ▼ Access                …                            │
+│  ▼ Object location       …                            │
+│  ▼ Confidentiality       …                            │
 └─────────────────────────────────────────────────────┘
 ```
 
 ### Design Specifications
 
-- **Image Section**:
-  - Large image display (responsive)
-  - Click to view full-size (lightbox/modal)
-  - Placeholder if no image
-- **Details Section**:
-  - Title (large heading)
-  - Artist (subheading or prominent text)
-  - Year, Medium, Dimensions (metadata, formatted)
-  - Description (full text, formatted)
-  - Condition (if provided)
-- **Action Buttons** (only visible to owner if collection not closed):
-  - Edit: Primary button
-  - Delete: Danger button (red)
-- **Breadcrumb**: Back link to collection
-- **Owner vs Non-Owner**: Action buttons conditionally rendered
+- **Hero**: `representative_image` (lightbox on click) or placeholder; summary lines match **Domain model UX** card rules
+- **Body**: Accordion or stacked sections in the **fixed order** listed above; nested objects as label/value trees; reference types show stored label text for v1
+- **Empty sections**: Visible heading + “No data” (do not remove headings)
+- **Action Buttons** (owner, collection not closed): Edit (primary), Delete (danger)
+- **Back link** to collection; respect read-only closed collection (hide or disable actions)
 
 ## 4. Edit Record Form
 
 ### Layout
 
-Similar to Create Record Form, but:
-- Pre-populated with current data
-- Title: "Edit Art Record"
-- Current image displayed (if exists) with option to replace
-- Button: "Save Changes" instead of "Create Record"
+Same shell as **Create Record Form** (stepper / section nav + representative image + domain sections), but:
+
+- Title: **Edit record** (or equivalent)
+- **Pre-populated** from API `data` and current `representative_image`
+- Primary action: **Save changes**
 
 ### Design Specifications
 
-- **Modal/Dialog**: Same as create form
-- **Pre-population**: All fields filled with current record data
-- **Image Handling**:
-  - Current image displayed (if exists)
-  - "Replace Image" button or file input
-  - Option to remove image (if exists)
-- **Validation**: Same as create form
-- **Success**: Modal closes, record detail page updates, success toast
+- **Navigation**: Same nine domain sections + optional Review
+- **Representative image**: Show current thumbnail; allow replace or clear if product supports clearing
+- **Payload**: Editing updates `data` (and image when changed) per API contract
+- **Validation** and **success feedback**: Same patterns as create
 
 ### Restrictions
 
@@ -258,8 +219,8 @@ Similar to Create Record Form, but:
 │  Are you sure you want to    │
 │  delete this record?         │
 │                              │
-│  "Artwork Title"             │
-│  by Artist Name              │
+│  <Primary summary line       │
+│   from card helper>          │
 │                              │
 │  This action cannot be       │
 │  undone. The record and its  │
@@ -275,7 +236,7 @@ Similar to Create Record Form, but:
 
 - **Modal/Dialog**: Warning-style dialog
 - **Warning Icon**: Prominent warning icon
-- **Record Info**: Shows title and artist for confirmation
+- **Record Info**: Shows the **primary summary line** (same as list card) for confirmation
 - **Message**: Clear explanation of permanent deletion
 - **Buttons**:
   - Cancel: Secondary button, closes dialog
@@ -413,44 +374,36 @@ Similar to Create Record Form, but:
 
 ### Create Record Flow
 
-1. Owner clicks "Add Record" button (only if collection not closed)
-2. Modal opens with form
-3. Owner fills required fields (Title, Artist)
-4. Owner optionally fills other fields
-5. Owner selects image file (optional)
-6. Image preview appears
-7. Owner clicks "Create Record"
-8. On success: Modal closes, redirect to record detail or collection page
-9. On error: Display error message
+1. Owner clicks "Add Record" (only if collection not closed)
+2. Modal or page opens with **section navigation** and **representative image** control
+3. Owner completes domain sections (required fields per product/backend)
+4. Owner optionally sets representative image; preview when selected
+5. Owner submits **Create record**
+6. On success: Close shell, go to record detail or collection, toast
+7. On error: Section or field errors + top summary
 
 ### Edit Record Flow
 
-1. Owner clicks "Edit" button on record detail page
-2. Modal opens with pre-populated form
-3. Owner modifies fields
-4. Owner optionally replaces image
-5. Owner clicks "Save Changes"
-6. On success: Modal closes, page updates with new data
-7. On error: Display error message
+1. Owner clicks **Edit** on record detail
+2. Same shell as create, **pre-filled** from `data` and current image
+3. Owner moves between sections and updates fields
+4. Owner saves **Save changes**
+5. On success: Close or stay on detail with refreshed data, toast
+6. On error: Same error pattern as create
 
 ### Delete Record Flow
 
 1. Owner clicks "Delete" button
-2. Confirmation dialog appears with record info
-3. Owner reads warning
-4. Owner clicks "Delete Record" to confirm
-5. Record is deleted, redirect to collection page, success message
+2. Confirmation dialog shows **primary summary line** and warning copy
+3. Owner confirms **Delete record**
+4. Record and **representative_image** file are removed per API; redirect to collection, toast
 
-### Image Upload Flow
+### Image Upload Flow (representative image)
 
-1. User clicks "Choose File" button
-2. File picker opens
-3. User selects image file
-4. File is validated (type and size)
-5. If valid: Preview appears
-6. If invalid: Error message displayed
-7. User can remove and reselect
-8. On form submit: Image is uploaded with record data
+1. User activates file control for **representative image**
+2. Picker opens; user selects JPG/PNG/GIF within size limit
+3. Validation feedback inline; preview when valid
+4. On save: Multipart or follow-up PATCH per API; nested `Image` fields inside `data` follow the same component patterns where applicable
 
 ## 12. Design Assets Needed
 

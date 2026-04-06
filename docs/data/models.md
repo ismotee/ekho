@@ -110,109 +110,83 @@ class Collection(models.Model):
 
 ### Purpose
 
-Represents an art record (artwork) within a collection. Records contain artwork information and optional image.
+Represents an art record within a collection. **Domain content** (identification, acquisition, rights, etc.) is **not** modeled as separate Django tables in v1; it lives in a single JSON payload. An optional **representative image** supports list and detail thumbnails without scanning nested JSON for a file.
 
-### Model Definition
+### Canonical domain shape
+
+The structure of `data` is defined in **[record-models.md](record-models.md)** and linked domain modules (`identification-models.md`, `aqcuisition-models.md`, etc.). The API exposes that payload under the key **`data`** on each record resource; see [API specification](../api-specification.md) (Record endpoints).
+
+### Model definition (implementation)
 
 ```python
-from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-
 class Record(models.Model):
-    title = models.CharField(max_length=200)
-    artist = models.CharField(max_length=200)
-    year = models.IntegerField(
-        null=True,
-        blank=True,
-        validators=[
-            MinValueValidator(1000),
-            MaxValueValidator(2100)
-        ]
-    )
-    medium = models.CharField(max_length=100, blank=True)
-    dimensions = models.CharField(max_length=100, blank=True)
-    description = models.TextField(max_length=2000, blank=True)
-    condition = models.CharField(max_length=200, blank=True)
-    image = models.ImageField(
-        upload_to='records/',
+    data = models.JSONField(default=dict, blank=True)
+    representative_image = models.ImageField(
+        upload_to="records/",
         blank=True,
         null=True,
-        max_length=255
+        max_length=255,
     )
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    collection = models.ForeignKey(
+        Collection, on_delete=models.CASCADE, related_name="records"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['collection']),
+            models.Index(fields=["collection"]),
         ]
-    
-    def __str__(self):
-        return f"{self.title} by {self.artist}"
 ```
 
 ### Fields
 
-| Field | Type | Required | Max Length | Description |
-|-------|------|----------|------------|-------------|
-| `id` | AutoField | Auto | - | Primary key |
-| `title` | CharField | Yes | 200 | Artwork title |
-| `artist` | CharField | Yes | 200 | Artist name |
-| `year` | IntegerField | No | - | Creation year (1000-2100) |
-| `medium` | CharField | No | 100 | Art medium |
-| `dimensions` | CharField | No | 100 | Dimensions |
-| `description` | TextField | No | 2000 | Description |
-| `condition` | CharField | No | 200 | Condition |
-| `image` | ImageField | No | 255 | Image file path |
-| `collection` | ForeignKey | Yes | - | Parent collection |
-| `created_at` | DateTimeField | Auto | - | Creation timestamp |
-| `updated_at` | DateTimeField | Auto | - | Update timestamp |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | AutoField | Auto | Primary key |
+| `data` | JSONField | No (defaults `{}`) | Domain payload; top-level keys must match [record-models.md](record-models.md) when present (validated in API) |
+| `representative_image` | ImageField | No | Optional thumbnail for list/detail; **not** part of the `data` graph |
+| `collection` | ForeignKey | Yes | Parent collection (`related_name="records"`) |
+| `created_at` | DateTimeField | Auto | Creation timestamp |
+| `updated_at` | DateTimeField | Auto | Update timestamp |
+
+### Storage notes
+
+- **Normalization**: The full domain graph is intentionally **not** split into many relational tables for v1; migration and product cost outweigh benefit while the app is pre-production.
+- **`representative_image`**: Presentation-only; document in UX/API as separate from nested `Image` / domain references inside `data`.
+- **Search**: List filtering by `search` uses DB-appropriate queries over collection metadata and a text representation of `data` (implementation may evolve; PostgreSQL is the natural production target for richer JSON search).
 
 ### Relationships
 
-- **Collection**: Many-to-one relationship
-  - One collection can have many records
-  - If collection is deleted, records are deleted (CASCADE)
-
-- **Owner (via Collection)**: Indirect relationship
-  - Records belong to collection owner
-  - Access via `record.collection.owner`
+- **Collection**: Many-to-one; CASCADE delete.
+- **Owner**: Via `record.collection.owner`.
 
 ### Indexes
 
-- Index on `collection` for efficient filtering by collection
+- Index on `collection` for filtering by collection.
 
-### Image Field
+### Representative image
 
-- **Upload Path**: `records/` directory within media root
-- **File Types**: JPEG, PNG, GIF (validated in serializer)
-- **Max Size**: 10MB (validated in serializer)
-- **Storage**: Local filesystem (development), configurable (production)
+- **Upload path**: `records/` under `MEDIA_ROOT`
+- **Validation** (API): JPEG, PNG, GIF; max 10MB
+- **Deletion**: Removing a record should remove the stored file when applicable
 
-### Business Rules
+### Business rules
 
-1. Only the collection owner can create, edit, or delete records
-2. Records in closed collections cannot be modified
-3. Records can be viewed by anyone
-4. Image upload is optional
-5. When record is deleted, image file should also be deleted
+1. Only the collection owner can create, update, or delete records.
+2. Records in closed collections cannot be modified.
+3. Records are readable by anyone (same visibility rules as collections for list/detail).
+4. `representative_image` is optional.
 
 ### Validation
 
-- `title`: Required, non-empty, max 200 characters
-- `artist`: Required, non-empty, max 200 characters
-- `year`: Optional, if provided must be integer between 1000-2100
-- `medium`: Optional, max 100 characters if provided
-- `dimensions`: Optional, max 100 characters if provided
-- `description`: Optional, max 2000 characters if provided
-- `condition`: Optional, max 200 characters if provided
-- `image`: Optional, if provided must be valid image file (JPEG, PNG, GIF), max 10MB
+- **`data`**: Must be a JSON object; only known top-level domain keys are allowed (see `record_validators.py`). Deeper structural validation may be tightened over time.
+- **`representative_image`**: Optional; type and size enforced in the serializer.
 
 ### Methods
 
-- `__str__()`: Returns "Title by Artist" for display
+- **`__str__()`**: Uses `identification_details` when present (first `title[]` entry with `value`, else legacy single `title` object, else `object_number`), otherwise falls back to `Record {pk}`.
 
 ## Model Relationships Summary
 
@@ -264,13 +238,12 @@ User (1) ──< (N) Collection (1) ──< (N) Record
 
 ### Record Model
 
-- `__str__()`: Returns "Title by Artist"
+- `__str__()`: Derives a short label from `data.identification_details` when possible
 
 ### Future Considerations
 
 - Add `record_count` property to Collection (cached count)
-- Add `has_image` property to Record
-- Add `image_url` property to Record
+- Richer JSON schema validation or normalized sub-models if the domain stabilizes
 
 ## Migration Notes
 

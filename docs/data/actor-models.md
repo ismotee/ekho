@@ -94,7 +94,15 @@ välittäjä,
 
 Reference<OtherNameType> options in finnish
 ```
-entinen nimi, koko nimi, muu nimi, peitenimi, puumerkki, rinnakkaisnimi, uusi nimi, vieraskielinen nimi, virallinen nimi
+entinen nimi,
+koko nimi,
+muu nimi,
+peitenimi,
+puumerkki,
+rinnakkaisnimi,
+uusi nimi,
+vieraskielinen nimi,
+virallinen nimi
 ```
 
 Reference<SpatialAssociation> options in finnish
@@ -228,7 +236,7 @@ Temporal
     earliest: DateDetail
     latest: DateDetail
     period: Reference<DatePeriod>
-    text: CharField # description of the temporal detail
+    note: CharField # description of the temporal detail
 ```
 
 SpatialNameType
@@ -352,11 +360,93 @@ Organization
     address: Address
     website: CharField # URL validation
     reference_number: Identifier
+    contact_person: Person # optional; does not replace organization identity
 ```
 
 Actor
 ```
     person: Person
     organization: Organization
-    group: Group
+```
+
+**Registry and record references:** The application stores catalog actors via `POST /api/actors/` with a JSON body `{ "data": { "person": …, "organization": … } }`. **Exactly one** of `person` or `organization` must contain enough information to identify the actor (not both, not neither). An organization entry may include optional `contact_person`. In **record** `data` payloads, actor-shaped fields reference that catalog with `{ "id": <actor pk> }` only (see [record-models.md](record-models.md)).
+
+Reference<ActorAssociation> options, in finnish
+```
+aikaisempi omistaja
+alkuperäinen omistaja
+alkuperäisen aineiston omistaja
+arkistonmuodostaja
+arkkitehti
+asian hoitaja
+esittäjä
+haastateltu
+haastattelija
+hankinnan suorittaja
+inventoija
+julkaisija
+kaivaja
+kaivausten johtaja
+kaivertaja
+kehystäjä
+kenttätyön tekijä
+kerääjä
+kirjailija
+kirjoittaja
+konservaattori
+korjaaja
+kuljettaja
+kuriiri
+kustantaja
+kuvauksen kohde
+kuvittaja
+kyselyvastaaja
+käsikirjoittaja
+käyttäjä
+laatija
+lahjan antaja
+lahjoittaja
+lainan vastaanottaja
+lainanantaja
+lainapäätöksen tekijä
+liikemerkin käyttäjä
+lisenssin omistaja
+luetteloija
+luovuttaja
+lähettäjä
+löytäjä
+maahantuoja
+myyjä
+omistaja
+paikan omistaja
+painaja
+piirtäjä
+päätöksen tekijä
+rahoittaja
+rakennuttaja
+skannaaja
+suunnittelija
+säveltäjä
+taiteilija
+tallettaja
+tavaramerkin omistaja
+tekijä
+tilaaja
+toimittaja
+tuottaja
+tutkija
+valaja
+valmistaja
+valmistuttaja
+valokuvaaja
+valosuunnittelija
+vastaanottaja
+välittäjä
+äänisuunnittelija
+```
+
+RoledActor
+```
+actor: Actor
+association: Reference<ActorAssociation>
 ```
