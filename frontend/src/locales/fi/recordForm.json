@@ -406,7 +406,15 @@
       "inscriptionDate": { "note": "Ajankohta, jolloin merkintä on tehty." },
       "contentDescription": "Sisällön yleisluontoinen sanallinen kuvaus.",
       "contentNote": "Lisätietoja sisällöstä.",
-      "contentDate": { "note": "Objektissa kuvattu tai objektin kuvailema aika." }
+      "contentDate": { "note": "Objektissa kuvattu tai objektin kuvailema aika." },
+      "contentActivity": "Objektissa kuvattu tai objektin kuvailema toiminta.",
+      "contentPosition": "Kohta tai paikka objektissa, jossa kuvailtu tieto sijaitsee.",
+      "contentScript": "Kirjoitusjärjestelmä, jota käyttäen objektin tekstuaalinen sisältö on kirjoitettu.",
+      "contentLanguage": "Kieli, jolla objektin tekstuaalinen sisältö on kirjoitettu.",
+      "contentGeneralConcept": "Objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita objektin ominaisuuksia kuvaavia sanoja.",
+      "contentClassification": "Luokitusjärjestelmät sisältävät luokkia, joiden avulla voidaan kuvailla objektin tyyppiä, merkitystä, kontekstia, ulkoasua ja muita ominaisuuksia.",
+      "contentEventName": "Objektissa kuvattu tai objektin kuvailema tapahtuma.",
+      "contentEventType": "Termi, joka kuvaa sisältöön liittyvän tapahtuman luonnetta."
     }
   }
 }

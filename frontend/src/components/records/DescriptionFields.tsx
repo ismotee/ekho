@@ -1023,6 +1023,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <ReferenceSelect
           id="rf-desc-content-activity"
           label={t('recordForm.labels.activity')}
+          infoKey="recordForm.info.description.contentActivity"
           allowlist={EMPTY_REFERENCE_FI}
           valueFi={referenceFieldFi(content.activity)}
           onChangeFi={(fi) =>
@@ -1038,6 +1039,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <ReferenceSelect
           id="rf-desc-content-position"
           label={t('recordForm.labels.position')}
+          infoKey="recordForm.info.description.contentPosition"
           allowlist={EMPTY_REFERENCE_FI}
           valueFi={referenceFieldFi(content.position)}
           onChangeFi={(fi) =>
@@ -1053,6 +1055,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <ReferenceSelect
           id="rf-desc-content-script"
           label={t('recordForm.labels.script')}
+          infoKey="recordForm.info.description.contentScript"
           allowlist={EMPTY_REFERENCE_FI}
           valueFi={referenceFieldFi(content.script)}
           onChangeFi={(fi) =>
@@ -1068,6 +1071,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <ReferenceSelect
           id="rf-desc-content-lang"
           label={t('recordForm.labels.language')}
+          infoKey="recordForm.info.description.contentLanguage"
           allowlist={LANGUAGE_FI}
           valueFi={referenceFieldFi(content.language)}
           onChangeFi={(fi) =>
@@ -1083,6 +1087,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <ReferenceSelect
           id="rf-desc-content-general-concept"
           label={t('recordForm.labels.generalConcept')}
+          infoKey="recordForm.info.description.contentGeneralConcept"
           allowlist={EMPTY_REFERENCE_FI}
           valueFi={referenceFieldFi(content.general_concept)}
           onChangeFi={(fi) =>
@@ -1098,6 +1103,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <ReferenceSelect
           id="rf-desc-content-class"
           label={t('recordForm.labels.classification')}
+          infoKey="recordForm.info.description.contentClassification"
           allowlist={EMPTY_REFERENCE_FI}
           valueFi={referenceFieldFi(content.classification)}
           onChangeFi={(fi) =>
@@ -1133,6 +1139,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               <ReferenceSelect
                 id={`rf-desc-ce-name-${evIdx}`}
                 label={t('recordForm.labels.eventName')}
+                infoKey="recordForm.info.description.contentEventName"
                 allowlist={EMPTY_REFERENCE_FI}
                 valueFi={referenceFieldFi(ev.name)}
                 onChangeFi={(fi) => {
@@ -1149,6 +1156,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               <ReferenceSelect
                 id={`rf-desc-ce-type-${evIdx}`}
                 label={t('recordForm.labels.eventType')}
+                infoKey="recordForm.info.description.contentEventType"
                 allowlist={EMPTY_REFERENCE_FI}
                 valueFi={referenceFieldFi(ev.type)}
                 onChangeFi={(fi) => {

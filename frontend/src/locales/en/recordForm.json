@@ -406,7 +406,15 @@
       "inscriptionDate": { "note": "Date when the inscription was made." },
       "contentDescription": "General verbal description of content.",
       "contentNote": "Additional details about content.",
-      "contentDate": { "note": "Date represented or described by the object." }
+      "contentDate": { "note": "Date represented or described by the object." },
+      "contentActivity": "Activity depicted in or described by the object.",
+      "contentPosition": "The part or location in the object where the described information is located.",
+      "contentScript": "The writing system used for textual content on the object.",
+      "contentLanguage": "The language in which the object's textual content is written.",
+      "contentGeneralConcept": "Keywords that describe the object's content, context, meaning, appearance, or other properties.",
+      "contentClassification": "Classification systems contain classes used to describe object type, meaning, context, appearance, and other properties.",
+      "contentEventName": "An event depicted in or described by the object.",
+      "contentEventType": "A term that describes the nature of the event related to the content."
     }
   }
 }

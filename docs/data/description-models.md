@@ -292,3 +292,81 @@ inscription: List<Inscription>
 dimension: List<Measurement>
 content: Content
 ```
+
+## Description field hints (from `tables/OHJEET.csv`)
+
+### PhysicalDescription
+
+- `object_status`: Luetteloitavan objektin asema tai status suhteessa muihin samanlaisiin.
+- `object_component_name`: Objektin kiinteä osa tai komponentti, jota kuvaillaan.
+- `text` (Fyysinen kuvaus): Objektin ulkoasun tai ulkonäön sanallinen kuvaus. Kuvaus kirjoitetaan kokonaisin lausein kieliopin mukaisesti.
+- `photo_format`: Termi, joka kuvaa objektin ulkoista olemusta.
+- `orientation`: Objektin kuva-alan suuntaa kuvaava määre.
+- `color`: Objektin väri. Kirjataan värit, jotka ovat tärkeitä objektin tunnistamisen tai löytämisen kannalta.
+- `audio`: Audiovisuaalisen aineiston äänellisyys.
+- `form`: Näytteen tai objektin kiinnitys- tai säilytysmenetelmä.
+- `edition_number`: Numero, joka on annettu valmistajan samaan aikaan valmistamalle objektiryhmälle.
+- `copy_number`: Valmistajan objektille antama numero, kun objektia on tehty rajattu erä tai erityispainos.
+
+### Material
+
+- `type`: Perusmateriaalit, joista objekti muodostuu.
+- `name`: Materiaalista yleensä käytetty nimi tai perusmateriaalin tarkempi määrittely.
+- `source`: Objektin valmistamisessa käytetyn materiaalin tai objektin maantieteellinen alkuperä.
+- `component[].type`: Objektin materiaaliin liittyvän merkittävän ainesosan, lisäyksen tai jäljen nimitys.
+- `component[].note`: Tarkentavaa tietoa materiaalin ainesosasta.
+
+### Technical attributes and dimensions
+
+- `technical_attribute[].unit` / `dimension[].unit`: Suure on mitattava ominaisuus, kuten pituus tai paino.
+- `technical_attribute[].value` / `dimension[].value`: Numeraalinen tieto suureen mitasta.
+- `technical_attribute[].measurement_unit` / `dimension[].measurement_unit`: Mittayksikkö, joka ilmoitetaan mittaluvun yhteydessä.
+- `technical_attribute[].value_qualifier` / `dimension[].value_qualifier`: Mittaluvun tilastollinen poikkeama eli annetun luvun tarkkuus, kun siitä ei olla varmoja.
+
+### Inscriptions
+
+- `position`: Kohta tai osa objektista, jossa merkintä sijaitsee.
+- `content`: Objektissa oleva tekstimuotoinen merkintä sillä kielellä, jolla merkintä objektissa on.
+- `description`: Objektissa olevan ei-tekstuaalisen merkinnän kuvailu.
+- `script`: Kirjoitusjärjestelmä, jolla merkintä on tehty.
+- `language`: Kieli, jolla tekstuaalinen merkintä on kirjoitettu objektiin.
+- `translation[].text`: Tekstuaalisen merkinnän käännös museon käyttämälle kielelle, jos merkintä on tehty muulla kuin museon yleisesti käyttämällä kielellä.
+- `transliteration`: Tekstuaalisen merkinnän translitteroitu versio.
+- `type`: Merkinnän muoto tai tyyppi.
+- `method`: Menetelmä, jolla merkintä on tehty objektiin.
+- `direction`: Merkinnän sijainti- tai kirjoitussuunta.
+- `inscriber`: Merkinnän tehnyt henkilö, henkilöryhmä tai organisaatio.
+- `date`: Ajankohta, jolloin merkintä on tehty.
+- `interpretation[].text`: Tulkinta objektissa olevasta merkinnästä.
+- `interpretation[].interpretator`: Henkilö tai organisaatio, joka on tehnyt tulkinnan merkinnästä.
+- `interpretation[].date`: Ajankohta, jolloin merkinnän tulkinta tehtiin.
+- `interpretation[].photo`: Merkintään liittyvä kuva.
+
+### Content
+
+- `description`: Sanallinen, yleisluontoinen kuvaus objektista tai objektissa kuvaillusta asiasta.
+- `person`: Objektissa kuvattu tai objektin kuvailema henkilö, organisaatio tai henkilöryhmä.
+- `date`: Objektissa kuvattu tai objektin kuvailema aika.
+- `place`: Objektissa kuvattu tai objektin kuvailema paikka.
+- `activity`: Objektissa kuvattu tai objektin kuvailema toiminta.
+- `event[].name`: Objektissa kuvattu tai objektin kuvailema tapahtuma.
+- `event[].type`: Termi, joka kuvaa sisältöön liittyvän tapahtuman luonnetta.
+- `position`: Kohta tai paikka objektissa, jossa kuvailtu tieto sijaitsee.
+- `script`: Kirjoitusjärjestelmä, jota käyttäen objektin tekstuaalinen sisältö on kirjoitettu.
+- `language`: Kieli, jolla objektin tekstuaalinen sisältö on kirjoitettu.
+- `note`: Lisätietoja objektin sisällöstä. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu.
+- `style`: Tyylit ja koulukunnat, jotka liittyvät objektiin.
+- `general_concept`: Objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita ominaisuuksia kuvaavat asiasanat.
+- `classification`: Luokitusjärjestelmien luokat, joilla kuvaillaan objektin tyyppiä, merkitystä, kontekstia, ulkoasua tai muita ominaisuuksia.
+
+### Content hints with Finnish field labels
+
+- `Toiminta` (`content.activity`): Objektissa kuvattu tai objektin kuvailema toiminta. Esimerkki: soittaminen, maanpuolustus, veneenrakennus.
+- `Sijainti` (`content.position`): Kohta tai paikka objektissa, jossa kuvailtu tieto sijaitsee.
+- `Kirjoitusjärjestelmä` (`content.script`): Kirjoitusjärjestelmä, jota käyttäen objektin tekstuaalinen sisältö on kirjoitettu.
+- `Kieli` (`content.language`): Kieli, jolla objektin tekstuaalinen sisältö on kirjoitettu.
+- `Asiasanat` (`content.general_concept`): Objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita objektin ominaisuuksia kuvaavia sanoja.
+- `Luokitus` (`content.classification`): Luokitusjärjestelmät sisältävät luokkia, joiden avulla voidaan kuvailla objektin tyyppiä, merkitystä, kontekstia, ulkoasua ja muita ominaisuuksia.
+- `Sisällön tapahtumat` (`content.event[]`):
+  - `Sisällön tapahtuma` (`content.event[].name`): Objektissa kuvattu tai objektin kuvailema tapahtuma.
+  - `Sisällön tapahtuman tyyppi` (`content.event[].type`): Termi, joka kuvaa sisältöön liittyvän tapahtuman luonnetta.
