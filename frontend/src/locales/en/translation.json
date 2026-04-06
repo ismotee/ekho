@@ -125,6 +125,7 @@
       "removeOtherName": "Remove other name",
       "addOtherName": "Add other name",
       "emptyOtherName": "Empty other name",
+      "saveCollapsibleEntryNoun": "other name",
       "fields": {
         "finnish": "Finnish",
         "english": "English",

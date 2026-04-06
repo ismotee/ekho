@@ -19,7 +19,7 @@
     "stepBadgeHasData": "Täytetty",
     "stepBadgeEmpty": "Tyhjä",
     "review": "Tarkistus",
-    "reviewPrimaryLabel": "Pääotsikko:",
+    "reviewPrimaryLabel": "Päänimeke:",
     "reviewSecondary": "Toissijainen:",
     "reviewYear": "Vuosi:",
     "reviewChecklistAria": "Osioiden tila",
@@ -31,13 +31,13 @@
     "next": "Seuraava",
     "saveChanges": "Tallenna muutokset",
     "createRecord": "Luo tallenne",
-    "representativeImageLabel": "Kuvaedustaja (lista ja pikkukuva)",
+    "representativeImageLabel": "Kuvatiedosto",
     "loadingSave": "Tallennetaan…"
   },
   "validation": {
-    "identificationRequired": "Anna otsikko tai objektinumero.",
-    "titleMaxLength": "Otsikko saa olla enintään 200 merkkiä",
-    "objectNumberMaxLength": "Objektinumero saa olla enintään 200 merkkiä",
+    "identificationRequired": "Anna nimeke tai objektitunnus.",
+    "titleMaxLength": "Nimeke saa olla enintään 200 merkkiä",
+    "objectNumberMaxLength": "Objektitunnus saa olla enintään 200 merkkiä",
     "yearRange": "Vuoden on oltava välillä 1000–2100",
     "collectionIdRequired": "Kokoelman tunniste vaaditaan"
   },
@@ -50,15 +50,34 @@
   },
   "repeatable": {
     "edit": "Muokkaa",
-    "ready": "Valmis!",
+    "save": "Tallenna",
+    "saveItem": "Tallenna {{item}}",
     "remove": "Poista",
-    "entryActionsAria": "Rivin toiminnot"
+    "entryActionsAria": "Rivin toiminnot",
+    "saveItemLabels": {
+      "title": "nimeke",
+      "objectName": "objektin nimi",
+      "acquisitionDate": "hankintapäivämäärä",
+      "acquisitionPlace": "hankintapaikka",
+      "acquisitionActor": "hankintaosapuoli",
+      "ownerHistory": "omistusmerkintä",
+      "production": "valmistusmerkintä",
+      "usageHistory": "käyttömerkintä",
+      "objectHistory": "objektihistoria-merkintä",
+      "rightsEntry": "oikeusmerkintä",
+      "material": "materiaali",
+      "technique": "tekniikkatieto",
+      "dimension": "mitta",
+      "inscription": "merkintä",
+      "contentEvent": "tapahtuma",
+      "contentStyle": "tyyli"
+    }
   },
   "temporal": {
     "date": "Päivämäärä",
     "dateCertainty": "Päivämäärän varmuus",
     "dateQualifier": "Päivämäärän määrite",
-    "note": "Huomautus",
+    "note": "Lisätietoa päivämäärästä",
     "association": "Assosiaatio",
     "period": "Jakso",
     "earliest": "Varhaisin",
@@ -66,7 +85,32 @@
   },
   "labels": {
     "actor": "Toimija",
-    "note": "Huomautus",
+    "note": "Lisätietoja",
+    "noteNimeke": "Lisätietoja nimekkeestä",
+    "noteAcquisitionPlace": "Lisätietoja hankintapaikasta",
+    "noteAcquisition": "Lisätietoja hankinnasta",
+    "noteProduction": "Lisätietoja valmistuksesta",
+    "noteUsageHistory": "Lisätietoja käyttöhistoriasta",
+    "noteObjectHistoryPlace": "Lisätietoja objektihistorian paikasta",
+    "noteObjectHistoryEventPlace": "Lisätietoja tapahtuman paikasta",
+    "noteObjectHistory": "Lisätietoja objektihistoriasta",
+    "noteRights": "Lisätietoja oikeudesta",
+    "noteAccess": "Lisätietoja käyttörajoituksesta",
+    "noteLocation": "Lisätietoja sijainnista",
+    "noteConfidentiality": "Lisätietoja luottamuksellisuudesta",
+    "noteMaterialComponent": "Lisätietoja komponentista",
+    "noteContent": "Lisätietoja sisällöstä",
+    "notePlaceOwnerHistory": "Lisätietoja omistuspaikasta",
+    "notePlaceProduction": "Lisätietoja valmistuspaikasta",
+    "notePlaceContent": "Lisätietoja sisällön paikasta",
+    "noteExchangeOwnerHistory": "Lisätietoja omistajuuden vaihtumisesta",
+    "noteLocationSpatial": "Lisätietoja tilapäisestä sijaintipaikasta",
+    "noteObjectHistoryEvent": "Lisätietoja tapahtumasta",
+    "noteObjectHistoryActivity": "Lisätietoja liittyvästä toiminnasta",
+    "noteMaterialSource": "Lisätietoja materiaalin lähteestä",
+    "noteActorSource": "Lisätietoja lähteestä",
+    "noteActorPlace": "Lisätietoja paikasta",
+    "noteActorBiographical": "Lisätietoja elämäkerrasta",
     "nameFinnish": "Nimi (suomi)",
     "value": "Arvo",
     "type": "Tyyppi",
@@ -75,16 +119,13 @@
     "reason": "Syy",
     "remove": "Poista",
     "place": "Paikka",
-    "placeNote": "Paikan huomautus",
     "exchangePrice": "Vaihdon hinta",
     "priceDenomination": "Hinnan valuutta",
-    "exchangeNote": "Vaihdon huomautus",
     "comments": "Kommentit",
     "relevance": "Relevanssi",
     "holder": "Haltija",
     "creditLine": "Krediitti",
     "identifier": "Tunniste",
-    "locationNote": "Sijainnin huomautus",
     "usage": "Käyttötarkoitus",
     "position": "Sijainti",
     "description": "Kuvaus",
@@ -104,9 +145,7 @@
     "eventName": "Tapahtuman nimi",
     "nameType": "Nimityyppi",
     "eventNameType": "Tapahtuman nimityyppi",
-    "eventNote": "Tapahtuman huomautus",
     "activityType": "Toiminnan tyyppi",
-    "activityNote": "Toiminnan huomautus",
     "culturalAffinity": "Kulttuurinen kytkentä",
     "usageInstructions": "Käyttöohjeet",
     "technique": "Tekniikka",
@@ -118,11 +157,11 @@
     "exchangeMethod": "Vaihdon tapa",
     "personActor": "Henkilö (toimija)",
     "placeFinnish": "Paikka (suomi)",
-    "objectNumber": "Objektinumero",
+    "objectNumber": "Objektitunnus",
     "objectType": "Objektin tyyppi",
-    "titleText": "Otsikon teksti",
-    "titleType": "Otsikon tyyppi",
-    "titleLanguage": "Otsikon kieli",
+    "titleText": "Nimeke",
+    "titleType": "Nimekkeen tyyppi",
+    "titleLanguage": "Nimekkeen kieli",
     "referenceNumber": "Hankintatunnus",
     "provisos": "Hankinnan ehdot",
     "groupPurchasePrice": "Objektiryhmän hankintahinta",
@@ -148,7 +187,6 @@
     "formInstallation": "Kiinnitys- tai säilytysmenetelmä",
     "materialType": "Materiaalin tyyppi",
     "sourcePlaceFinnish": "Lähdepaikka (suomi)",
-    "sourceNote": "Lähteen huomautus",
     "componentType": "Komponentin tyyppi",
     "script": "Kirjoitusjärjestelmä",
     "inscriptionType": "Merkinnän tyyppi",
@@ -162,6 +200,7 @@
     "content": "Sisältö",
     "contentEvents": "Sisällön tapahtumat",
     "styles": "Tyylit",
+    "objectNameValue": "Objektin nimi",
     "objectNameType": "Objektin nimen tyyppi",
     "prefLabel": "Ensisijainen nimitys",
     "inScheme": "Skeemassa"
@@ -184,24 +223,23 @@
     "truncated": "…"
   },
   "identification": {
-    "titlesLegend": "Otsikot",
+    "titlesLegend": "Nimekkeet",
     "objectNamesLegend": "Objektin nimet",
-    "hint": "Anna ensisijainen otsikko tai objektinumero, jotta tallenne tunnistetaan listoissa.",
-    "titlesHint": "Lisää vähintään yksi otsikko tekstillä tai käytä objektinumeroa alla listatunnistukseen.",
-    "emptyTitle": "Tyhjä otsikko",
-    "addTitle": "Lisää otsikko",
+    "titlesHint": "Lisää vähintään yksi nimeke tekstillä tai käytä objektitunnusta alla listatunnistukseen.",
+    "emptyTitle": "Tyhjä nimeke",
+    "addTitle": "Lisää nimeke",
     "namesHint": "Valinnaiset vaihtoehtoiset nimet tai nimitykset.",
     "emptyObjectName": "Tyhjä objektin nimi",
     "addObjectName": "Lisää objektin nimi"
   },
   "acquisition": {
     "dateEntriesLegend": "Päivämäärät",
-    "datesHint": "Aikaperusteet riviä kohti (assosiaatio, jakso, varhaisin/myöhäisin, huomautus).",
+    "datesHint": "Aikaperusteet riviä kohti (assosiaatio, jakso, varhaisin/myöhäisin, lisätiedot päivämäärästä).",
     "emptyDateEntry": "Tyhjä päivämerkintä",
     "dateEntryLegend": "Päivämerkintä {{n}}",
     "addDate": "Lisää päivämäärä",
     "placesLegend": "Paikat",
-    "placesHint": "Hankintaan liittyvät paikat (suomenkielinen nimi ja valinnainen huomautus).",
+    "placesHint": "Hankintaan liittyvät paikat (suomenkielinen nimi ja lisätiedot hankintapaikasta).",
     "emptyPlace": "Tyhjä paikka",
     "addPlace": "Lisää paikka",
     "actorsLegend": "Toimijat",
@@ -265,7 +303,7 @@
   "location": {
     "locationLegend": "Sijainti",
     "locationDateLegend": "Sijainnin päivä",
-    "hint": "Paikkatiedot (suomenkielinen nimi ja valinnainen huomautus)."
+    "hint": "Paikkatiedot (suomenkielinen nimi ja lisätiedot sijaintipaikasta)."
   },
   "description": {
     "materialsAdd": "Lisää materiaali",
@@ -295,7 +333,6 @@
     "addTranslation": "Lisää käännös",
     "addInterpretation": "Lisää tulkinta",
     "addTechniqueType": "Lisää tekniikkatyyppi",
-    "addComponent": "Lisää komponentti",
     "addStyle": "Lisää tyyli",
     "addContentEvent": "Lisää sisällön tapahtuma",
     "addEvent": "Lisää tapahtuma",
@@ -309,111 +346,123 @@
     "inscriptionDateLegend": "Merkinnän tekoaika"
   },
   "info": {
-    "identification": {
-      "objectNumber": "Objektin tunnus muodostetaan museon käytäntöjen mukaisesti.",
-      "objectType": "Luokittelutieto kuvaa objektin tyyppiä ja kontekstia.",
-      "titleText": "Objektin otsikko kirjataan sen tunnistamista varten.",
-      "titleNote": "Lisätietoa otsikosta tai sen käytöstä.",
-      "titleType": "Otsikon tyyppi ilmaistaan termillä.",
-      "titleLanguage": "Kieli, jolla otsikko on kirjoitettu."
-    },
     "acquisition": {
-      "referenceNumber": "Yksilöivä hankintatunnus, joka viittaa hankintadokumentaatioon.",
+      "referenceNumber": "Tunnus muodostetaan kunkin museon käytäntöjä noudattaen. Tunnus voi sisältää numeroita, kirjaimia ja välimerkkejä. Tunnus voi koostua esimerkiksi vuosiluvusta ja juoksevasta numeroinnista. Katso vastaava ohje kohdasta Objektin tunnus. Sama hankintatunnus voidaan antaa yhdelle tai useammalle yhdessä hankitulle objektille.",
       "date": {
-        "note": "Aikatieto kirjataan mahdollisimman tarkasti. Jos tarkkaa aikaa ei tiedetä, se arvioidaan.",
-        "association": "Ajan suhde kuvattavaan tapahtumaan.",
-        "period": "Aikajakso tai aikakausi.",
-        "earliest": { "date": "Varhaisin mahdollinen ajankohta." },
-        "latest": { "date": "Myöhäisin mahdollinen ajankohta." }
+        "note": "Aikatieto kirjataan aina mahdollisimman tarkasti. Jos tarkkaa aikaa ei tiedetä, se pyritään arvioimaan. Katso tarkat merkitsemisohjeet kohdasta Aikatiedot. Kirjataan objektille niin monta hankinnan muuta aikatietoa kuin on tarpeen.",
+        "earliest": {
+          "date": "Aikatieto kirjataan aina mahdollisimman tarkasti. Jos tarkkaa aikaa ei tiedetä, se pyritään arvioimaan. Katso tarkat merkitsemisohjeet kohdasta Aikatiedot. Kirjataan objektille vain yksi hankinta-aika, ellei omistusoikeutta siirretä vaiheittain."
+        },
+        "latest": {
+          "date": "Aikatieto kirjataan aina mahdollisimman tarkasti. Jos tarkkaa aikaa ei tiedetä, se pyritään arvioimaan. Katso tarkat merkitsemisohjeet kohdasta Aikatiedot. Kirjataan objektille vain yksi hankinta-aika, ellei omistusoikeutta siirretä vaiheittain."
+        }
       },
-      "method": "Hankintatapa ilmaistaan yksittäisellä termillä.",
-      "reason": "Hankinnan perusteet kirjataan kokonaisin lausein.",
-      "placeName": "Hankinnan paikka. Paikasta voi kirjata useita luettelointitietoja.",
-      "placeNote": "Tarkentava lisätieto hankinnan paikasta.",
-      "provisos": "Hankinnan objekteihin kohdistuvat rajoitukset ja ehdot.",
-      "note": "Yleistä taustatietoa hankintatapahtumasta.",
-      "groupPurchasePrice": "Museoon hankitusta objektiryhmästä maksettu kokonaishinta.",
+      "method": "Hankintatapa ilmaistaan yksittäisellä termillä. Välimerkkejä ja isoja kirjaimia ei käytetä. Valitse termi alla olevasta listasta. Kirjataan objektille vain yksi hankintatapa.",
+      "reason": "Hankinnan perusteet kirjataan kokonaisin lausein kieliopin mukaisesti. Hankinnan peruste kirjataan aina. Mikäli hankintaperustetta ei tiedetä, kirjataan tieto siitä. Hankinnan perusteet kirjataan objektille vain kerran.",
+      "placeName": "Paikasta voi olla tarpeellista kirjata useita luettelointitietoja, kuten esimerkiksi kylä tai kaupunki ja valtio. Katso tarkat merkitsemisohjeet kohdasta Paikkatiedot. Kirjataan objektille niin monta hankinnan paikkatietoa kuin on tarpeen.",
+      "provisos": "Hankinnan objekteihin kohdistuvat rajoitukset ja ehdot. Esimerkiksi: Teoksen päällä ei saa kävellä. Teokset on oltava näytteillä samaan aikaan. Lahjoittaja pääsee katsomaan teosta niin halutessaan.",
+      "note": "Yleistä tietoa tai taustatietoa hankintatapahtumasta (ei hankinnan sisällöstä). Lisätieto voi olla esimerkiksi tieto hankintapaikalla vallinneesta tilanteesta tai siitä, millä summalla rahoittaja on tukenut hankintaa.",
+      "groupPurchasePrice": "Museoon hankitusta objektiryhmästä maksettu hinta. Ilmoitetaan kokonaishinta, johon sisältyvät mahdolliset verot. Hinta ilmoitetaan numeroina. Desimaalit erotetaan pilkulla. Hankintahinnaksi merkitään se summa, joka maksettiin hankintahetken valuutalla.",
       "groupPurchaseDenomination": "Valuutta, jolla hankintahinta maksettiin.",
-      "originalPurchasePrice": "Museoon hankitusta yksittäisestä objektista maksettu hinta.",
-      "originalPriceDenomination": "Valuutta, jolla hinta maksettiin.",
-      "transferOfTitle": "Hankintatapahtuman tai omistusoikeuden vaihdoksen numero."
+      "originalPurchasePrice": "Museoon hankitusta yksittäisestä objektista maksettu hinta. Ilmoitetaan kokonaishinta, johon sisältyvät mahdolliset verot. Hinta ilmoitetaan numeroina. Desimaalit erotetaan pilkulla.",
+      "originalPriceDenomination": "Valuutta, jolla hankintahinta maksettiin.",
+      "transferOfTitle": "Hankintatapahtuman tai omistusoikeuden vaihtumisen yksilöivä identifiointinumero. Numeron tulisi toimia viitteenä omistusoikeuden vaihtumisesta tai hankintaprosessista olemassa olevaan kirjalliseen dokumentaatioon. Numero voi olla omistusoikeuden vaihtumisasiakirjan numero."
     },
     "history": {
-      "ownershipDate": { "note": "Omistusaika kirjataan mahdollisimman tarkasti." },
-      "ownershipPlace": "Paikka, jossa omistaja omisti objektin.",
-      "ownershipPlaceNote": "Lisätietoa omistuspaikasta.",
-      "exchangeMethod": "Tapa, jolla omistusoikeus on vaihtunut.",
-      "exchangePrice": "Omistajuuden vaihtumisen yhteydessä maksettu hinta.",
+      "ownershipDate": {
+        "note": "Ajankohta, jolloin henkilö, henkilöryhmä tai organisaatio omisti objektin. Ajasta voi olla tarpeellista kirjata useita luettelointitietoja, kuten esimerkiksi tarkka ajankohta, sanallinen kuvaus tai aikakausi."
+      },
+      "ownershipPlace": "Paikka, jossa omistaja omisti objektin ennen objektin omistusoikeuden siirtymistä museolle.",
+      "exchangeMethod": "Tapa, jolla objektin omistusoikeus on vaihtunut kahden omistajan välillä. Koskee omistajanvaihdoksia ennen objektin omistusoikeuden siirtymistä museolle.",
+      "exchangePrice": "Objektista omistajanvaihdoksen yhteydessä maksettu hinta. Ilmoitetaan kokonaishinta, johon sisältyvät mahdolliset verot.",
       "exchangeDenomination": "Valuutta, jolla hinta maksettiin.",
-      "exchangeNote": "Lisätietoa omistajuuden vaihtumisesta.",
-      "productionDate": { "note": "Valmistukseen liittyvä aika kirjataan mahdollisimman tarkasti." },
+      "exchangeNote": "Lisätietoja omistajan vaihtumisesta. Koskee omistajan vaihdoksia ennen objektin omistusoikeuden siirtymistä museolle. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu. Esimerkiksi: Omistajuus vaihtui kun edellisen omistajan kuoltua kuolinpesän osalliset myivät irtaimiston kirpputorilla. Omistaja vaihdettiin laajempien osapuolia koskevien järjestelyjen osana.",
+      "productionDate": {
+        "note": "Ajankohta, jolloin jokin vaihe objektin suunnittelussa, luomisessa tai tuottamisessa tehtiin. Jos tarkkaa aikaa ei tiedetä, se pyritään arvioimaan."
+      },
       "productionPlace": "Paikka, jossa objekti suunniteltiin, luotiin tai tuotettiin.",
-      "productionPlaceNote": "Tarkentava lisätieto valmistuspaikasta.",
-      "productionReason": "Syy, jonka vuoksi objekti valmistettiin.",
-      "productionNote": "Lisätietoja objektin valmistuksesta.",
-      "technique": "Prosessi, metodi tai tekniikka, jota käytettiin valmistuksessa.",
-      "associatedDate": { "note": "Objektiin liittyvä aika, jota ei ole kirjattu muihin kenttiin." },
-      "associatedEventDate": { "note": "Objektiin liittyvän tapahtuman ajankohta." }
+      "productionReason": "Syy, jonka vuoksi objekti valmistettiin. Syy kirjataan kokonaisin lausein kieliopin mukaisesti. Kirjataan objektille niin monta valmistuksen syytä kuin on tarpeen. Esimerkiksi: Teos valmistettiin Pariisin maailmannäyttelyä varten. Muotokuva osakunnan inspehtorista tilattiin osakunnan perinteiden mukaisesti. Jokaisesta inspehtorista tilataan muotokuva inspehtorin työuran päätyttyä. Teos ripustetaan osakunnan juhlasalin seinälle.",
+      "productionNote": "Lisätietoja objektin valmistuksesta. Lisätiedot kirjataan kokonaisin lausein kieliopin mukaisesti. Lisätietoja ovat seuraavat aihealueet: Yksityiskohtaiset kuvaukset tekniikoista, valmistuksessa käytettyjen materiaalien reseptit, kuvaukset malleista tai mallikappaleista, joita käytettiin objektin luomisessa. Esimerkiksi: Liinassa käytetyt kirjontapistot ovat: ketjupisto, aitapisto, pykäpisto, varsipisto ja linnunsilmäpisto. Tilkkuina on käytetty Marimekon painokankaita ja kankaat on yhdistetty toisiinsa koneella ommellen.",
+      "technique": "Prosessit, metodit, tekniikat tai työkalut, joita on käytetty objektin valmistamisessa tai koristelussa.",
+      "associatedDate": {
+        "note": "Ajankohta, joka liittyy objektin historiaan. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu."
+      },
+      "associatedEventDate": {
+        "note": "Objektiin liittyvään historialliseen tapahtumaan liittyvä ajankohta. Ajasta voi olla tarpeellista kirjata useita luettelointitietoja, kuten esimerkiksi ajanjakso tai sanallinen kuvaus ajasta."
+      }
     },
     "rights": {
-      "type": "Oikeuden luonne.",
-      "beginDate": { "note": "Ajankohta, jolloin oikeus alkaa." },
-      "endDate": { "note": "Ajankohta, jolloin oikeus päättyy." },
-      "referenceNumber": "Oikeuden yksilöivä viitenumero."
+      "type": "Museon myöntämän oikeuden luonne.",
+      "beginDate": {
+        "note": "Ajankohta, jolloin oikeus astuu tai astui voimaan."
+      },
+      "endDate": {
+        "note": "Ajankohta, jolloin oikeus päättyy tai päättyi."
+      },
+      "referenceNumber": "Oikeuden yksilöllinen identifiointinumero."
     },
     "access": {
-      "accessCategory": "Tieto siitä, miten rajoitettu tai rajoittamaton pääsy objektiin on.",
-      "accessDate": { "note": "Ajankohta, jolloin käyttörajoitus kirjattiin." },
-      "museologicalValue": "Objektin museoarvoluokka.",
-      "displayStatus": "Esille pantavan objektin saavuttama käsittelyvaihe.",
-      "displayStatusDate": { "note": "Ajankohta, jolloin käsittelyvaihe kirjattiin." },
-      "creditLine": "Teksti, jossa mainitaan lahjoittajan, lainanantajan tai omistajan tiedot.",
-      "note": "Lisätietoja käyttörajoituksesta."
+      "accessCategory": "Tieto siitä, miten rajoitettu tai rajoittamaton pääsy objektiin on. Pääsyyn viittaava määritelmä perustuu objektin tarpeisiin ja merkitykseen.",
+      "accessDate": {
+        "note": "Ajankohta, jolloin käyttörajoitus kirjattiin."
+      },
+      "museologicalValue": "Objektin museoarvoluokka, joka kuvaa objektin sopivuutta museon kokoelmaprofiiliin, objektin museoarvoa ja suhdetta objektin tulevaan hoitoon, säilytykseen, käyttöön ja muuhun kokoelmaan.",
+      "displayStatus": "Näytteille pantavan objektin saavuttama käsittelyvaihe Kokoelmien käyttötiedot -prosessissa.",
+      "displayStatusDate": {
+        "note": "Ajankohta, jolloin esille pantavan objektin käsittelyvaihe kirjattiin."
+      },
+      "creditLine": "Teksti, jossa mainitaan objektin lahjoittajan, lainanantajan tai omistajan tiedot. Tekstiä käytetään yleensä näyttelyteksteissä. Esimerkki: Lahjoittanus Ms. B. Smith, Sydney, Australia.",
+      "note": "Lisätietoja objektille kirjatusta käyttörajoituksesta. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu. Esimerkki: Tutkijat saavat tutkia teosta ainoastaan valvotuissa tiloissa."
     },
     "location": {
-      "identifier": "Sijaintipaikan yksilöllinen nimi, numero tai tunniste.",
-      "placeName": "Vakituinen tai tilapäinen sijaintipaikka.",
-      "placeNote": "Lisätietoja tilapäisestä sijaintipaikasta.",
-      "type": "Sijaintipaikan tyyppi.",
-      "date": { "note": "Ajankohta, jolloin objekti sijoitettiin sijaintipaikkaan." },
-      "note": "Yleistieto sijaintitiedosta.",
-      "fitness": "Miten sijaintipaikan olosuhteet vastaavat objektin vaatimuksia."
+      "identifier": "Yksilöllinen nimi, numero tai tunniste näyttelytilalle tai säilytyspaikalle. Tunniste voi myös viitata digitaalisen objektin sijaintiin tietojärjestelmässä.",
+      "placeName": "Tila tai paikka, jossa objekti tavallisesti sijaitsee. Tila tai paikka, johon objekti on sijoitettu tällä hetkellä.",
+      "placeNote": "Tiedot siitä, miksi objektia säilytetään tilapäisessä sijaintipaikassaan. Kuvaillaan kokonaisin lausein kieliopin mukaisesti.",
+      "date": {
+        "note": "Ajankohta, jolloin objekti sijoitettiin tilapäiseen sijaintipaikkaansa."
+      },
+      "note": "Tiedot siitä, miksi objektia säilytetään tilapäisessä sijaintipaikassaan. Kuvaillaan kokonaisin lausein kieliopin mukaisesti.",
+      "fitness": "Termi, jolla kuvataan, miten säilytysolosuhteet tilapäisessä sijaintipaikassa vastaavat objektin säilyttämiselle asetettuja vaatimuksia."
     },
     "confidentiality": {
-      "note": "Objektin tietojen luottamuksellisuuteen liittyvät rajoitukset.",
-      "usage": "Tietojen käyttöä kuvaava tieto."
+      "note": "Objektin tietojen, henkilötietojen, sijaintitietojen tai muiden objektiin liittyvien tietojen julkaisemista koskevat rajoitukset, joista museo on sopinut. Esimerkki: Lahjoittajan nimeä ei saa julkaista.",
+      "usage": "Tiedot siitä, miten objektin tietoja tai muita tietoihin liittyviä resursseja käytettiin. Esimerkki: Käytetty viikingeistä kertovassa multimediaesityksessä."
     },
     "description": {
-      "objectStatus": "Objektin status suhteessa muihin samanlaisiin.",
+      "objectStatus": "Luetteloitavan objektin asema tai status suhteessa muihin samanlaisiin.",
       "objectComponentName": "Objektin kiinteä osa tai komponentti, jota kuvaillaan.",
-      "physicalDescription": "Objektin ulkoasun sanallinen kuvaus.",
+      "physicalDescription": "Objektin ulkoasun tai ulkonäön sanallinen kuvaus. Kuvaus kirjoitetaan kokonaisin lausein kieliopin mukaisesti. Kuvaus voi sisältää myös maininnat objektin kokonaisuudesta (esim. vasen käsi puuttuu). Objektin kuntoa kommentoidaan vain, jos tieto liittyy objektin kokonaisuuteen. Kuvaillaan objektista/objektilla mahdollisesti valmistettavat tuotteet (esim. paperinarusta voidaan tehdä vaatteita). Kehystä ja tukea kuvaillaan myös, kun tarpeellista. Esimerkiksi: Minkä muotoinen objekti on? Kuinka ja mistä kohdista objekti on koristeltu? Miten se on kehystetty tai tuettu? Mitä värejä on käytetty? Mitta mittakaavaa on käytetty?",
       "photoType": "Termi, joka kuvaa objektin ulkoista olemusta.",
       "orientation": "Objektin kuva-alan suuntaa kuvaava määre.",
-      "color": "Objektin väri tunnistamisen kannalta merkityksellisellä tarkkuudella.",
+      "color": "Objektin väri. Kirjataan värit, jotka ovat tärkeitä objektin tunnistamisen tai löytämisen kannalta. Jos objekti koostuu monesta väristä, kirjaa tieto siitä vain, jos se on merkityksellistä.",
       "audio": "Audiovisuaalisen aineiston äänellisyys.",
       "form": "Näytteen tai objektin kiinnitys- tai säilytysmenetelmä.",
-      "editionNumber": "Valmistuserän numero.",
-      "copyNumber": "Kopion numero rajatusta erästä.",
-      "inscriptionPosition": "Kohta tai osa objektista, jossa merkintä sijaitsee.",
-      "inscriptionContent": "Objektissa oleva tekstimuotoinen merkintä alkuperäisessä muodossaan.",
-      "inscriptionDescription": "Objektissa olevan ei-tekstuaalisen merkinnän kuvailu.",
+      "editionNumber": "Numero, joka on annettu valmistajan samaan aikaan valmistamalle objektiryhmälle. Tallenna tietoa numerosta ja rajatun erän luonteesta tai erityispainoksesta, kuten esimerkiksi vedoksista tai valuista, joista objekti on yksi kappale.",
+      "copyNumber": "Valmistajan objektille antama numero (esimerkiksi valokuvateoksen, veistoksen tai grafiikan teoksen yksilöllinen editionumero), kun objektia on tehty rajattu erä tai erityispainos. Kirjataan objektille annettu numero ja sen perään erän tai painoksen kokonaislukumäärä, mikäli se on tiedossa. Ilmoita jos kokonaismäärää ei tiedetä.",
+      "inscriptionPosition": "Kohta tai osa objektista, jossa merkintä sijaitsee. Merkinnän sijainti kirjoitetaan yleiskielellä kieliopin mukaisesti. Esimerkki: pohja, oikea puoli, vasen",
+      "inscriptionContent": "Objektissa oleva tekstimuotoinen merkintä sillä kielellä, jolla merkintä objektissa on. Merkintä kirjataan täsmälleen samalla tavalla, kuin se on merkitty objektiin. Oikeinkirjoitusta, välimerkkejä tai isoja kirjaimia ei korjata tai muuteta. Jos merkintä ulottuu useammalle riville, merkitään rivinvaihto käyttämällä merkintätapaa: välilyönti/välilyönti (SPACE/SPACE). Jos merkintä tai osa siitä on lukukelvoton, laitetaan se hakasulkeisiin. Kirjataan yksi merkintä jokaisesta objektissa olevasta merkinnästä. Objektissa olevat merkinnät kuvaillan yleensä sanallisesti, mutta merkinnöistä on myös hyvä ottaa valokuvat ja liittää ne objektin tietojen yhteyteen. Esi]merkki: 18[epäselvä]9",
+      "inscriptionDescription": "Objektissa olevan ei-tekstuaalisen merkinnän kuvailu. Kuvaus kirjoitetaan yleiskielellä kieliopin mukaisesti. Huomioi merkinnän muoto, koko ja sisältö kuvauksessa. Esimerkki: Leijonan pää ympyrän sisällä.",
       "inscriptionScript": "Kirjoitusjärjestelmä, jolla merkintä on tehty.",
-      "inscriptionLanguage": "Kieli, jolla tekstuaalinen merkintä on kirjoitettu.",
-      "inscriptionTransliteration": "Merkinnän translitteroitu versio.",
+      "inscriptionLanguage": "Kieli, jolla tekstuaalinen merkintä on kirjoitettu objektiin.",
+      "inscriptionTransliteration": "Tekstuaalisen merkinnän translitteroitu versio. Kirjataan noudattaen tarkasti alkuperäistekstin kielioppia ja välimerkkejä.",
       "inscriptionType": "Merkinnän muoto tai tyyppi.",
-      "inscriptionMethod": "Menetelmä, jolla merkintä on tehty.",
+      "inscriptionMethod": "Menetelmä, jolla merkintä on tehty objektiin.",
       "inscriptionDirection": "Merkinnän sijainti- tai kirjoitussuunta.",
-      "inscriptionDate": { "note": "Ajankohta, jolloin merkintä on tehty." },
-      "contentDescription": "Sisällön yleisluontoinen sanallinen kuvaus.",
-      "contentNote": "Lisätietoja sisällöstä.",
-      "contentDate": { "note": "Objektissa kuvattu tai objektin kuvailema aika." },
-      "contentActivity": "Objektissa kuvattu tai objektin kuvailema toiminta.",
+      "inscriptionDate": {
+        "note": "Ajankohta, jolloin merkintä on tehty. Aikatieto kirjataan aina mahdollisimman tarkasti."
+      },
+      "contentDescription": "Sanallinen, yleisluontoinen kuvaus objektista tai objektissa kuvaillusta asiasta. Sisällön kuvaus kirjoitetaan myös av-aineiston tai visuaalisen teoksen sisällöstä. Liikkuvan kuvan ja äänen sisällön kuvaus tehdään aikaleimojen avulla. Kuvaus kirjoitetaan kokonaisin lausein kieliopin mukaisesti. Kirjataan objektille vain yksi sisällön kuvaus. Valokuvaa tai esimerkiksi maalausta katsotaan edestäpäin. Tällöin kuvailu tehdään käyttämällä käsitteitä etuala, taka-ala, oikea laita, vasen laita, yläosa. Esimerkki: Merimaisema, jossa etualalla majakka ja vasemmassa laidassa vene. Metsästystilanne, jossa näkyy kaksi hahmoa hevosten selässä.",
+      "contentNote": "Lisätietoja objektin sisällöstä. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu. Esimerkki: Piirustuksessa olevaa designia tullaan käyttämään lähtökohtana teetettäessä Milleniumia kuvaavaa veistosta.",
+      "contentDate": {
+        "note": "Objektissa kuvattu tai objektin kuvailema aika."
+      },
+      "contentActivity": "Objektissa kuvattu tai objektin kuvailema toiminta. Esimerkki: soittaminen, maanpuolustus, veneenrakennus.",
       "contentPosition": "Kohta tai paikka objektissa, jossa kuvailtu tieto sijaitsee.",
       "contentScript": "Kirjoitusjärjestelmä, jota käyttäen objektin tekstuaalinen sisältö on kirjoitettu.",
       "contentLanguage": "Kieli, jolla objektin tekstuaalinen sisältö on kirjoitettu.",
-      "contentGeneralConcept": "Objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita objektin ominaisuuksia kuvaavia sanoja.",
-      "contentClassification": "Luokitusjärjestelmät sisältävät luokkia, joiden avulla voidaan kuvailla objektin tyyppiä, merkitystä, kontekstia, ulkoasua ja muita ominaisuuksia.",
-      "contentEventName": "Objektissa kuvattu tai objektin kuvailema tapahtuma.",
+      "contentGeneralConcept": "Objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita objektin ominaisuuksia kuvaavia sanoja. Esimerkki: taiteilijat, guassi, ryijyt, juomat",
+      "contentClassification": "Luokitusjärjestelmät sisältävät luokkia, joiden avulla voidaan kuvailla objektin tyyppiä, merkitystä, kontekstia, ulkoasua ja muita ominaisuuksia. Luokka sisältää yleensä notaation ja sanallisen kuvauksen. Kirjataan objektille niin monta luokitusta kuin on tarpeen.",
+      "contentEventName": "Objektissa kuvattu tai objektin kuvailema tapahtuma. Tapahtuman nimi ilmaistaan yksittäisellä termillä. Välimerkkejä ja isoja kirjaimia käytetään vain, jos ne kuuluvat nimen oikeaan kirjoitusasuun.",
       "contentEventType": "Termi, joka kuvaa sisältöön liittyvän tapahtuman luonnetta."
     }
   }

@@ -125,6 +125,7 @@
       "removeOtherName": "Poista muu nimi",
       "addOtherName": "Lisää muu nimi",
       "emptyOtherName": "Tyhjä muu nimi",
+      "saveCollapsibleEntryNoun": "muu nimi",
       "fields": {
         "finnish": "Suomi",
         "english": "Englanti",
@@ -135,7 +136,7 @@
         "text": "Teksti",
         "email": "Sähköposti",
         "phone": "Puhelin",
-        "biographicalNote": "Elämäkerrallinen huomautus",
+        "biographicalNote": "Elämäkerralliset lisätiedot",
         "sourceType": "Lähteen tyyppi",
         "sourceDate": "Lähteen päiväys",
         "nameType": "Nimen tyyppi",

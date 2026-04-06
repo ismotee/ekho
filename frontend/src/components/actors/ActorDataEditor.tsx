@@ -143,7 +143,7 @@ function SpatialMiniInputs({
         includeUndefinedLanguage={includeUndefinedLanguage}
       />
       <div className="form-group">
-        <label htmlFor={`${idPrefix}-note`}>{t('recordForm.labels.note')}</label>
+        <label htmlFor={`${idPrefix}-note`}>{t('recordForm.labels.noteActorPlace')}</label>
         <textarea
           id={`${idPrefix}-note`}
           value={s.note ?? ''}
@@ -276,7 +276,7 @@ function BiographicalNoteInputs({
     <fieldset className="actor-form-nested-fieldset">
       <legend>{t('actors.form.fields.biographicalNote')}</legend>
       <div className="form-group">
-        <label htmlFor={`${idPrefix}-note`}>{t('recordForm.labels.note')}</label>
+        <label htmlFor={`${idPrefix}-note`}>{t('recordForm.labels.noteActorBiographical')}</label>
         <textarea
           id={`${idPrefix}-note`}
           value={b.note ?? ''}
@@ -313,7 +313,7 @@ function BiographicalNoteInputs({
         disabled={disabled}
       />
       <div className="form-group">
-        <label htmlFor={`${idPrefix}-src-note`}>{t('recordForm.labels.sourceNote')}</label>
+        <label htmlFor={`${idPrefix}-src-note`}>{t('recordForm.labels.noteActorSource')}</label>
         <input
           id={`${idPrefix}-src-note`}
           type="text"
@@ -654,6 +654,7 @@ function OtherNameListEditor({
           onToggleCollapse={() => otherNamesCol.toggle(i)}
           onRemove={() => onChangeRows(rows.filter((_, j) => j !== i))}
           disabled={disabled}
+          saveItemNoun={t('actors.form.saveCollapsibleEntryNoun')}
           summary={organizationOtherNameSummary(row, t('actors.form.emptyOtherName'))}
           removeLabel={t('actors.form.removeOtherName')}
         >

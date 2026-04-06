@@ -583,7 +583,7 @@
   border-bottom: 1px solid var(--color-border-muted);
 }
 
-.record-form-repeatable-row:last-of-type {
+.record-form-repeatable-row:last-of-type:not(.record-form-repeatable-row--collapsible) {
   border-bottom: none;
   margin-bottom: 0.5rem;
   padding-bottom: 0;
@@ -605,15 +605,21 @@
 }
 
 .record-form-repeatable-row--collapsible {
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border-muted);
+  margin-bottom: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background-color: var(--color-surface, transparent);
+}
+
+.record-form-repeatable-row--collapsible:not(.record-form-repeatable-row--collapsed) {
+  border-width: 2px;
+  border-color: var(--color-primary);
+  padding: 0.875rem 1.125rem;
 }
 
 .record-form-repeatable-row--collapsible:last-of-type {
-  border-bottom: none;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0;
+  margin-bottom: 0.75rem;
 }
 
 .record-form-repeatable-row-toolbar {
@@ -655,6 +661,9 @@
 
 .record-form-repeatable-row-toggle {
   flex-shrink: 0;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
 }
 
 .record-form-repeatable-edit {
@@ -680,18 +689,6 @@
   background-color: var(--color-btn-remove-hover-bg) !important;
   color: var(--color-btn-remove-hover-text) !important;
   border-color: var(--color-btn-remove-hover-border) !important;
-}
-
-.record-form-repeatable-ready {
-  background-color: var(--color-btn-ready-bg) !important;
-  color: var(--color-btn-ready-text) !important;
-  border-color: var(--color-btn-ready-border) !important;
-}
-
-.record-form-repeatable-ready:hover:not(:disabled) {
-  background-color: var(--color-btn-ready-hover-bg) !important;
-  color: var(--color-btn-ready-hover-text) !important;
-  border-color: var(--color-btn-ready-hover-border) !important;
 }
 
 .record-form-wizard-footer {

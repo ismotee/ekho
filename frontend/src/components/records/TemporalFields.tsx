@@ -68,7 +68,6 @@ export function DateDetailInputs({
       <ReferenceSelect
         id={`${idPrefix}-cert`}
         label={t('recordForm.temporal.dateCertainty')}
-        infoKey={infoPrefix ? `${infoPrefix}.dateCertainty` : undefined}
         allowlist={DATE_CERTANITY_FI}
         valueFi={referenceFieldFi(d.certanity as never)}
         onChangeFi={(fi) => patchDetail({ certanity: fi.trim() ? fi : undefined })}
@@ -78,7 +77,6 @@ export function DateDetailInputs({
       <ReferenceSelect
         id={`${idPrefix}-qual`}
         label={t('recordForm.temporal.dateQualifier')}
-        infoKey={infoPrefix ? `${infoPrefix}.dateQualifier` : undefined}
         allowlist={DATE_QUALIFIER_FI}
         valueFi={referenceFieldFi(d.qualifier as never)}
         onChangeFi={(fi) => patchDetail({ qualifier: fi.trim() ? fi : undefined })}
@@ -137,7 +135,6 @@ export function TemporalFields({
       <ReferenceSelect
         id={`${idPrefix}-assoc`}
         label={t('recordForm.temporal.association')}
-        infoKey={infoPrefix ? `${infoPrefix}.association` : undefined}
         allowlist={DATE_ASSOCIATION_FI}
         valueFi={referenceFieldFi(temporal.association)}
         onChangeFi={(fi) => patch({ association: referenceFieldToPayload(fi) })}
@@ -147,7 +144,6 @@ export function TemporalFields({
       <ReferenceSelect
         id={`${idPrefix}-period`}
         label={t('recordForm.temporal.period')}
-        infoKey={infoPrefix ? `${infoPrefix}.period` : undefined}
         allowlist={DATE_PERIOD_FI}
         valueFi={referenceFieldFi(temporal.period)}
         onChangeFi={(fi) => patch({ period: referenceFieldToPayload(fi) })}

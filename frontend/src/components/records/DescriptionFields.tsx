@@ -354,6 +354,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               onToggleCollapse={() => materialsCol.toggle(index)}
               onRemove={() => setMaterials(materials.filter((_, i) => i !== index))}
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.material')}
               removeLabel={t('recordForm.description.removeMaterial')}
               summary={
                 row.name?.trim() ||
@@ -401,7 +402,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
                 />
               </div>
               <div className="form-group form-group--grow">
-                <label htmlFor={`rf-desc-mat-src-note-${index}`}>{t('recordForm.labels.sourceNote')}</label>
+                <label htmlFor={`rf-desc-mat-src-note-${index}`}>{t('recordForm.labels.noteMaterialSource')}</label>
                 <textarea
                   id={`rf-desc-mat-src-note-${index}`}
                   value={row.source?.note ?? ''}
@@ -434,7 +435,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
                       emptyLabel="—"
                     />
                     <div className="form-group form-group--grow">
-                      <label htmlFor={`rf-desc-mat-comp-note-${index}-${cIdx}`}>{t('recordForm.labels.note')}</label>
+                      <label htmlFor={`rf-desc-mat-comp-note-${index}-${cIdx}`}>{t('recordForm.labels.noteMaterialComponent')}</label>
                       <textarea
                         id={`rf-desc-mat-comp-note-${index}-${cIdx}`}
                         value={comp.note ?? ''}
@@ -486,6 +487,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
             onToggleCollapse={() => techCol.toggle(index)}
             onRemove={() => setTech(tech.filter((_, j) => j !== index))}
             disabled={disabled}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.technique')}
             summary={
               [
                 referenceFieldFi(row.unit),
@@ -521,6 +523,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
             onToggleCollapse={() => dimsCol.toggle(index)}
             onRemove={() => setDims(dims.filter((_, j) => j !== index))}
             disabled={disabled}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.dimension')}
             summary={
               [
                 referenceFieldFi(row.unit),
@@ -577,6 +580,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               onToggleCollapse={() => inscriptionsCol.toggle(index)}
               onRemove={() => setInscriptions(inscriptions.filter((_, i) => i !== index))}
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.inscription')}
               removeLabel={t('recordForm.description.removeInscription')}
               summary={
                 row.position?.trim() ||
@@ -929,7 +933,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
           />
         </div>
         <div className="form-group">
-          <label htmlFor="rf-desc-content-note">{t('recordForm.labels.note')}</label>
+          <label htmlFor="rf-desc-content-note">{t('recordForm.labels.noteContent')}</label>
           <FieldInfoText infoKey="recordForm.info.description.contentNote" />
           <textarea
             id="rf-desc-content-note"
@@ -976,7 +980,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
           />
         </div>
         <div className="form-group form-group--grow">
-          <label htmlFor="rf-desc-content-place-note">{t('recordForm.labels.placeNote')}</label>
+          <label htmlFor="rf-desc-content-place-note">{t('recordForm.labels.notePlaceContent')}</label>
           <textarea
             id="rf-desc-content-place-note"
             value={content.place?.note ?? ''}
@@ -1131,6 +1135,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
                 })
               }
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.contentEvent')}
               summary={
                 [referenceFieldFi(ev.name), referenceFieldFi(ev.type)].filter(Boolean).join(' · ') ||
                 t('recordForm.description.eventEmpty')
@@ -1200,6 +1205,7 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
                 })
               }
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.contentStyle')}
               summary={
                 (typeof st === 'string' ? st.trim() : referenceFieldFi(st)) || t('recordForm.description.styleEmpty')
               }

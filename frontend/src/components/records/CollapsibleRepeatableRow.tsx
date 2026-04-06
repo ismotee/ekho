@@ -10,6 +10,8 @@ export interface CollapsibleRepeatableRowProps {
   disabled?: boolean
   children: ReactNode
   removeLabel?: string
+  /** Short noun for the save action, e.g. translated "title" → "Tallenna nimeke" */
+  saveItemNoun?: string
 }
 
 export function CollapsibleRepeatableRow({
@@ -21,9 +23,14 @@ export function CollapsibleRepeatableRow({
   disabled,
   children,
   removeLabel,
+  saveItemNoun,
 }: CollapsibleRepeatableRowProps) {
   const { t } = useTranslation()
   const resolvedRemove = removeLabel ?? t('recordForm.repeatable.remove')
+  const item = saveItemNoun?.trim()
+  const saveLabel = item
+    ? t('recordForm.repeatable.saveItem', { item })
+    : t('recordForm.repeatable.save')
   const panelId = `${id}-panel`
   const headingId = `${id}-heading`
 
@@ -37,7 +44,7 @@ export function CollapsibleRepeatableRow({
         <button
           type="button"
           className={`btn btn-sm record-form-repeatable-row-toggle ${
-            collapsed ? 'record-form-repeatable-edit' : 'record-form-repeatable-ready'
+            collapsed ? 'record-form-repeatable-edit' : 'btn-primary'
           }`}
           onClick={onToggleCollapse}
           disabled={disabled}
@@ -45,7 +52,7 @@ export function CollapsibleRepeatableRow({
           aria-controls={panelId}
           id={headingId}
         >
-          {collapsed ? t('recordForm.repeatable.edit') : t('recordForm.repeatable.ready')}
+          {collapsed ? t('recordForm.repeatable.edit') : saveLabel}
         </button>
         {collapsed && (
           <div className="record-form-repeatable-summary" aria-live="polite">

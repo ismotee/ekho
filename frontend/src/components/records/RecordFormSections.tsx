@@ -27,6 +27,7 @@ import {
   MUSEOLOGICAL_VALUE_FI,
   OBJECT_DISPLAY_STATUS_TYPE_FI,
   OBJECT_NAME_TYPE_FI,
+  OBJECT_NAME_VALUE_FI,
   OBJECT_TYPE_FI,
   OWNERSHIP_EXCHANGE_METHOD_FI,
   RIGHTS_TYPE_FI,
@@ -148,7 +149,6 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
 
   return (
     <div className="record-form-section-fields">
-      <p className="record-form-section-hint">{t('recordForm.identification.hint')}</p>
       {errors.identification && (
         <p className="field-error record-form-section-error" role="alert">
           {errors.identification}
@@ -156,7 +156,6 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
       )}
       <div className="form-group">
         <label htmlFor="rf-object-number">{t('recordForm.labels.objectNumber')}</label>
-        <FieldInfoText infoKey="recordForm.info.identification.objectNumber" />
         <input
           id="rf-object-number"
           type="text"
@@ -177,7 +176,6 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
       <ReferenceSelect
         id="rf-object-type"
         label={t('recordForm.labels.objectType')}
-        infoKey="recordForm.info.identification.objectType"
         allowlist={OBJECT_TYPE_FI}
         valueFi={objectTypeFi}
         onChangeFi={(fi) =>
@@ -201,6 +199,7 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
             onToggleCollapse={() => titlesCol.toggle(index)}
             onRemove={() => removeTitle(index)}
             disabled={disabled}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.title')}
             summary={
               row.value?.trim()
                 ? row.value
@@ -210,7 +209,6 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
           >
             <div className="form-group">
               <label htmlFor={`rf-title-value-${index}`}>{t('recordForm.labels.titleText')}</label>
-              <FieldInfoText infoKey="recordForm.info.identification.titleText" />
               <input
                 id={`rf-title-value-${index}`}
                 type="text"
@@ -225,8 +223,7 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
               />
             </div>
             <div className="form-group">
-              <label htmlFor={`rf-title-note-${index}`}>{t('recordForm.labels.note')}</label>
-              <FieldInfoText infoKey="recordForm.info.identification.titleNote" />
+              <label htmlFor={`rf-title-note-${index}`}>{t('recordForm.labels.noteNimeke')}</label>
               <textarea
                 id={`rf-title-note-${index}`}
                 value={row.note ?? ''}
@@ -241,7 +238,6 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
             <ReferenceSelect
               id={`rf-title-type-${index}`}
               label={t('recordForm.labels.titleType')}
-              infoKey="recordForm.info.identification.titleType"
               allowlist={TITLE_TYPE_FI}
               valueFi={referenceFieldFi(row.type)}
               onChangeFi={(fi) => updateTitle(index, { type: referenceFieldToPayload(fi) })}
@@ -251,7 +247,6 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
             <ReferenceSelect
               id={`rf-title-language-${index}`}
               label={t('recordForm.labels.titleLanguage')}
-              infoKey="recordForm.info.identification.titleLanguage"
               allowlist={LANGUAGE_FI}
               valueFi={referenceFieldFi(row.language)}
               onChangeFi={(fi) => updateTitle(index, { language: referenceFieldToPayload(fi) })}
@@ -276,6 +271,7 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
             onToggleCollapse={() => namesCol.toggle(index)}
             onRemove={() => removeObjectName(index)}
             disabled={disabled}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.objectName')}
             summary={
               referenceFieldFi(row.value)?.trim()
                 ? referenceFieldFi(row.value)
@@ -284,18 +280,22 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
             }
           >
             <div className="form-group">
-              <label htmlFor={`rf-on-value-${index}`}>{t('recordForm.labels.value')}</label>
-              <input
+              <label htmlFor={`rf-on-value-${index}`}>{t('recordForm.labels.objectNameValue')}</label>
+              <select
                 id={`rf-on-value-${index}`}
-                type="text"
                 value={referenceFieldFi(row.value)}
                 onChange={(e) =>
-                  updateObjectName(index, {
-                    value: e.target.value.trim() ? e.target.value.trim() : undefined,
-                  })
+                  updateObjectName(index, { value: referenceFieldToPayload(e.target.value) })
                 }
                 disabled={disabled}
-              />
+              >
+                <option value="">—</option>
+                {referenceSelectOptions(OBJECT_NAME_VALUE_FI, referenceFieldFi(row.value)).map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form-group">
               <label htmlFor={`rf-on-type-${index}`}>{t('recordForm.labels.type')}</label>
@@ -440,6 +440,7 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
             onToggleCollapse={() => datesCol.toggle(index)}
             onRemove={() => setDates(dates.filter((_, i) => i !== index))}
             disabled={disabled}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.acquisitionDate')}
             summary={temporalSummaryLine(row) || t('recordForm.acquisition.emptyDateEntry')}
           >
             <TemporalFields
@@ -512,6 +513,7 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
             onToggleCollapse={() => placesCol.toggle(index)}
             onRemove={() => setPlaces(places.filter((_, i) => i !== index))}
             disabled={disabled}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.acquisitionPlace')}
             summary={
               row.name?.fi?.trim() ||
               row.note?.trim() ||
@@ -535,9 +537,8 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
                 disabled={disabled}
               />
             </div>
-            <div className="form-group form-group--grow">
-              <label htmlFor={`rf-acq-place-note-${index}`}>{t('recordForm.labels.note')}</label>
-              <FieldInfoText infoKey="recordForm.info.acquisition.placeNote" />
+          <div className="form-group form-group--grow">
+            <label htmlFor={`rf-acq-place-note-${index}`}>{t('recordForm.labels.noteAcquisitionPlace')}</label>
               <textarea
                 id={`rf-acq-place-note-${index}`}
                 value={row.note ?? ''}
@@ -570,6 +571,7 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
             onToggleCollapse={() => actorsCol.toggle(index)}
             onRemove={() => setActors(actors.filter((_, i) => i !== index))}
             disabled={disabled}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.acquisitionActor')}
             summary={recordActorSlotSummary(actor)}
           >
             <ActorRefSelect
@@ -605,7 +607,7 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
         />
       </div>
       <div className="form-group">
-        <label htmlFor="rf-acq-note">{t('recordForm.labels.note')}</label>
+        <label htmlFor="rf-acq-note">{t('recordForm.labels.noteAcquisition')}</label>
         <FieldInfoText infoKey="recordForm.info.acquisition.note" />
         <textarea
           id="rf-acq-note"
@@ -856,6 +858,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               onToggleCollapse={() => ownerCol.toggle(index)}
               onRemove={() => setOwners(owners.filter((_, i) => i !== index))}
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.ownerHistory')}
               summary={
                 !isActorSlotEmpty(owner)
                   ? ownerSummary
@@ -910,8 +913,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 />
               </div>
               <div className="form-group form-group--grow">
-                <label htmlFor={`rf-oh-place-note-${index}`}>{t('recordForm.labels.placeNote')}</label>
-                <FieldInfoText infoKey="recordForm.info.history.ownershipPlaceNote" />
+                <label htmlFor={`rf-oh-place-note-${index}`}>{t('recordForm.labels.notePlaceOwnerHistory')}</label>
                 <textarea
                   id={`rf-oh-place-note-${index}`}
                   value={place.note ?? ''}
@@ -1001,7 +1003,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 emptyLabel="—"
               />
               <div className="form-group form-group--grow">
-                <label htmlFor={`rf-oh-ex-note-${index}`}>{t('recordForm.labels.exchangeNote')}</label>
+                <label htmlFor={`rf-oh-ex-note-${index}`}>{t('recordForm.labels.noteExchangeOwnerHistory')}</label>
                 <FieldInfoText infoKey="recordForm.info.history.exchangeNote" />
                 <textarea
                   id={`rf-oh-ex-note-${index}`}
@@ -1047,6 +1049,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               onToggleCollapse={() => productionCol.toggle(pIndex)}
               onRemove={() => setProduction(production.filter((_, i) => i !== pIndex))}
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.production')}
               summary={
                 actors[0] && !isActorSlotEmpty(actors[0].actor)
                   ? firstActorSummary
@@ -1101,8 +1104,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 />
               </div>
               <div className="form-group form-group--grow">
-                <label htmlFor={`rf-opi-place-note-${pIndex}`}>{t('recordForm.labels.placeNote')}</label>
-                <FieldInfoText infoKey="recordForm.info.history.productionPlaceNote" />
+                <label htmlFor={`rf-opi-place-note-${pIndex}`}>{t('recordForm.labels.notePlaceProduction')}</label>
                 <textarea
                   id={`rf-opi-place-note-${pIndex}`}
                   value={place.note ?? ''}
@@ -1145,7 +1147,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 />
               </div>
               <div className="form-group form-group--grow">
-                <label htmlFor={`rf-opi-note-${pIndex}`}>{t('recordForm.labels.note')}</label>
+                <label htmlFor={`rf-opi-note-${pIndex}`}>{t('recordForm.labels.noteProduction')}</label>
                 <FieldInfoText infoKey="recordForm.info.history.productionNote" />
                 <textarea
                   id={`rf-opi-note-${pIndex}`}
@@ -1264,6 +1266,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               onToggleCollapse={() => usageCol.toggle(index)}
               onRemove={() => setUsage(usage.filter((_, i) => i !== index))}
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.usageHistory')}
               summary={summary}
             >
               <ReferenceSelect
@@ -1281,7 +1284,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 emptyLabel="—"
               />
               <div className="form-group">
-                <label htmlFor={`rf-uh-note-${index}`}>{t('recordForm.labels.note')}</label>
+                <label htmlFor={`rf-uh-note-${index}`}>{t('recordForm.labels.noteUsageHistory')}</label>
                 <textarea
                   id={`rf-uh-note-${index}`}
                   value={row.note ?? ''}
@@ -1347,6 +1350,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               onToggleCollapse={() => objectHistCol.toggle(index)}
               onRemove={() => setObjectHist(objectHist.filter((_, i) => i !== index))}
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.objectHistory')}
               summary={summary}
             >
               <fieldset className="record-form-nested-fieldset">
@@ -1376,7 +1380,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                   emptyLabel="—"
                 />
                 <div className="form-group form-group--grow">
-                  <label htmlFor={`rf-objh-act-note-${index}`}>{t('recordForm.labels.activityNote')}</label>
+                  <label htmlFor={`rf-objh-act-note-${index}`}>{t('recordForm.labels.noteObjectHistoryActivity')}</label>
                   <textarea
                     id={`rf-objh-act-note-${index}`}
                     value={act.note ?? ''}
@@ -1503,7 +1507,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                       />
                     </div>
                     <div className="form-group form-group--grow">
-                      <label htmlFor={`rf-objh-pl-note-${index}-${pi}`}>{t('recordForm.labels.note')}</label>
+                      <label htmlFor={`rf-objh-pl-note-${index}-${pi}`}>{t('recordForm.labels.noteObjectHistoryPlace')}</label>
                       <textarea
                         id={`rf-objh-pl-note-${index}-${pi}`}
                         value={p.note ?? ''}
@@ -1597,7 +1601,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                   emptyLabel="—"
                 />
                 <div className="form-group form-group--grow">
-                  <label htmlFor={`rf-objh-ev-note-${index}`}>{t('recordForm.labels.eventNote')}</label>
+                  <label htmlFor={`rf-objh-ev-note-${index}`}>{t('recordForm.labels.noteObjectHistoryEvent')}</label>
                   <textarea
                     id={`rf-objh-ev-note-${index}`}
                     value={ev.note ?? ''}
@@ -1711,7 +1715,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                         />
                       </div>
                       <div className="form-group form-group--grow">
-                        <label htmlFor={`rf-objh-evp-note-${index}-${pi}`}>{t('recordForm.labels.note')}</label>
+                        <label htmlFor={`rf-objh-evp-note-${index}-${pi}`}>{t('recordForm.labels.noteObjectHistoryEventPlace')}</label>
                         <textarea
                           id={`rf-objh-evp-note-${index}-${pi}`}
                           value={p.note ?? ''}
@@ -1770,7 +1774,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 </fieldset>
               </fieldset>
               <div className="form-group form-group--grow">
-                <label htmlFor={`rf-objh-note-${index}`}>{t('recordForm.labels.note')}</label>
+                <label htmlFor={`rf-objh-note-${index}`}>{t('recordForm.labels.noteObjectHistory')}</label>
                 <textarea
                   id={`rf-objh-note-${index}`}
                   value={row.note ?? ''}
@@ -1886,6 +1890,7 @@ export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'e
               onToggleCollapse={() => rightsCol.toggle(index)}
               onRemove={() => setEntries(entries.filter((_, i) => i !== index))}
               disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.rightsEntry')}
               removeLabel={t('recordForm.rights.removeEntry')}
             >
               <ReferenceSelect
@@ -1980,7 +1985,7 @@ export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'e
                 </button>
               </fieldset>
               <div className="form-group">
-                <label htmlFor={`rf-rights-note-${index}`}>{t('recordForm.labels.note')}</label>
+                <label htmlFor={`rf-rights-note-${index}`}>{t('recordForm.labels.noteRights')}</label>
                 <textarea
                   id={`rf-rights-note-${index}`}
                   value={r.note ?? ''}
@@ -2139,7 +2144,7 @@ export function AccessFields({ data, onChange, disabled }: Omit<SectionProps, 'e
         />
       </div>
       <div className="form-group">
-        <label htmlFor="rf-access-note">{t('recordForm.labels.note')}</label>
+        <label htmlFor="rf-access-note">{t('recordForm.labels.noteAccess')}</label>
         <FieldInfoText infoKey="recordForm.info.access.note" />
         <textarea
           id="rf-access-note"
@@ -2214,7 +2219,7 @@ export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionP
             />
           </div>
           <div className="form-group form-group--grow">
-            <label htmlFor="rf-loc-spatial-note">{t('recordForm.labels.locationNote')}</label>
+            <label htmlFor="rf-loc-spatial-note">{t('recordForm.labels.noteLocationSpatial')}</label>
             <FieldInfoText infoKey="recordForm.info.location.placeNote" />
             <textarea
               id="rf-loc-spatial-note"
@@ -2237,7 +2242,6 @@ export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionP
       <ReferenceSelect
         id="rf-loc-type"
         label={t('recordForm.labels.locationType')}
-        infoKey="recordForm.info.location.type"
         allowlist={LOCATION_TYPE_FI}
         valueFi={referenceFieldFi(o.type)}
         onChangeFi={(fi) =>
@@ -2259,7 +2263,7 @@ export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionP
         disabled={disabled}
       />
       <div className="form-group">
-        <label htmlFor="rf-loc-note">{t('recordForm.labels.note')}</label>
+        <label htmlFor="rf-loc-note">{t('recordForm.labels.noteLocation')}</label>
         <FieldInfoText infoKey="recordForm.info.location.note" />
         <textarea
           id="rf-loc-note"
@@ -2312,7 +2316,7 @@ export function ConfidentialityFields({ data, onChange, disabled }: Omit<Section
   return (
     <div className="record-form-section-fields">
       <div className="form-group">
-        <label htmlFor="rf-conf-note">{t('recordForm.labels.note')}</label>
+        <label htmlFor="rf-conf-note">{t('recordForm.labels.noteConfidentiality')}</label>
         <FieldInfoText infoKey="recordForm.info.confidentiality.note" />
         <textarea
           id="rf-conf-note"
