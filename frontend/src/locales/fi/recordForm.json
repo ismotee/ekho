@@ -343,7 +343,13 @@
     "clear": "Tyhjennä",
     "contentDateLegend": "Sisällön päivä",
     "interpretationDateLegend": "Tulkinnan päivä",
-    "inscriptionDateLegend": "Merkinnän tekoaika"
+    "inscriptionDateLegend": "Merkinnän tekoaika",
+    "classificationSelect": {
+      "placeholder": "Hae ja valitse luokituksia...",
+      "typeMinChars": "Kirjoita vähintään 2 merkkiä",
+      "noResults": "Ei Iconclass-hakutuloksia",
+      "loading": "Haetaan Iconclass-luokkia..."
+    }
   },
   "info": {
     "acquisition": {

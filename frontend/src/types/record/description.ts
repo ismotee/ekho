@@ -84,7 +84,7 @@ export interface Content {
   note?: string
   style?: ReferenceField[]
   general_concept?: ReferenceField
-  classification?: ReferenceField
+  classification?: ReferenceField[]
 }
 
 export interface Description {

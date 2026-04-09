@@ -38,6 +38,7 @@ import { useTranslation } from 'react-i18next'
 import { ActorRefSelect } from './ActorRefSelect'
 import { CollapsibleRepeatableRow } from './CollapsibleRepeatableRow'
 import { FieldInfoText } from './FieldInfoText'
+import { IconclassReferenceSelect } from './IconclassReferenceSelect'
 import { ReferenceSelect } from './ReferenceSelect'
 import { TemporalFields } from './TemporalFields'
 import { useRepeatableCollapsedRows } from './useRepeatableCollapsedRows'
@@ -1104,21 +1105,28 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
           disabled={disabled}
           emptyLabel="—"
         />
-        <ReferenceSelect
+        <IconclassReferenceSelect
           id="rf-desc-content-class"
           label={t('recordForm.labels.classification')}
           infoKey="recordForm.info.description.contentClassification"
-          allowlist={EMPTY_REFERENCE_FI}
-          valueFi={referenceFieldFi(content.classification)}
-          onChangeFi={(fi) =>
+          value={
+            Array.isArray(content.classification)
+              ? content.classification.map((item) =>
+                  typeof item === 'string' ? referenceFieldToPayload(item) : item,
+                ).filter((item): item is NonNullable<typeof item> => item != null)
+              : typeof content.classification === 'string'
+                ? [referenceFieldToPayload(content.classification)].filter((item): item is NonNullable<typeof item> => item != null)
+                : content.classification
+                  ? [content.classification]
+                  : []
+          }
+          onChange={(next) =>
             patchContent((c) => {
-              const ref = referenceFieldToPayload(fi)
-              if (ref) c.classification = ref
+              if (next.length) c.classification = next
               else delete c.classification
             })
           }
           disabled={disabled}
-          emptyLabel="—"
         />
         <fieldset className="record-form-repeatable-fieldset">
           <legend>{t('recordForm.description.contentEventsLegend')}</legend>

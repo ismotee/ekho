@@ -104,6 +104,7 @@ export function physicalDescriptionHasContent(p: PhysicalDescription): boolean {
 
 export function contentHasPersistableContent(c: Content): boolean {
   const styleOk = c.style?.some((s) => (typeof s === 'string' ? s.trim() : referenceFieldFi(s)))
+  const classificationOk = c.classification?.some((s) => (typeof s === 'string' ? s.trim() : referenceFieldFi(s)))
   return !!(
     c.description?.trim() ||
     c.note?.trim() ||
@@ -117,7 +118,7 @@ export function contentHasPersistableContent(c: Content): boolean {
     referenceFieldFi(c.language) ||
     styleOk ||
     referenceFieldFi(c.general_concept) ||
-    referenceFieldFi(c.classification)
+    classificationOk
   )
 }
 

@@ -344,7 +344,13 @@
     "clear": "Clear",
     "contentDateLegend": "Content date",
     "interpretationDateLegend": "Interpretation date",
-    "inscriptionDateLegend": "Inscription date"
+    "inscriptionDateLegend": "Inscription date",
+    "classificationSelect": {
+      "placeholder": "Search and select classifications...",
+      "typeMinChars": "Type at least 2 characters",
+      "noResults": "No Iconclass results",
+      "loading": "Searching Iconclass..."
+    }
   },
   "info": {
     "acquisition": {
