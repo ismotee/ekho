@@ -23,6 +23,8 @@ export interface DateDetail {
   single?: string
   certanity?: ReferenceString
   qualifier?: ReferenceString
+  /** @deprecated Legacy wire payloads; prefer `note` when merged with temporal metadata. */
+  text?: string
 }
 
 export interface Temporal {
@@ -36,22 +38,20 @@ export interface Temporal {
   text?: string
 }
 
+/** DateDetail row that may carry Temporal metadata (note, association, period) on the same object (e.g. acquisition dates). */
+export type DateDetailWithTemporalMeta = DateDetail &
+  Partial<Pick<Temporal, 'note' | 'text' | 'association' | 'period'>>
+
 export interface Coordinates {
   text?: string
-  coordinates_qualifier?: number
+  /** Accuracy or precision of the coordinates (free text). */
+  coordinates_qualifier?: string
   coordinates_type?: ReferenceString
 }
 
 export interface ReferenceNumber {
   text?: string
   type?: ReferenceString
-}
-
-export interface SpatialNameType {
-  address?: string
-  address_type?: ReferenceString
-  email?: string
-  phone_number?: string
 }
 
 export interface SpatialContext {
@@ -67,6 +67,8 @@ export interface SpatialFeature {
 }
 
 export interface SourceBase {
+  /** Free-text source reference (lähde), above source type. */
+  citation?: string
   source_type?: ReferenceString
   source_date?: DateDetail
   note?: string

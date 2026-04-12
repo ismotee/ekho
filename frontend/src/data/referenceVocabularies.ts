@@ -10,8 +10,7 @@ export const OBJECT_TYPE_FI: readonly string[] = [
   'esine',
   'liikkuva kuva',
   'luonnonympäristö',
-  'muu',
-  'näyte',
+  'muu näyte',
   'painettu tekstijulkaisu',
   'rakennettu ympäristö',
   'rakennus',
@@ -44,8 +43,8 @@ export const OBJECT_NAME_VALUE_FI: readonly string[] = [
 /** docs/data/identification-models.md — Reference<ObjectNameType> */
 export const OBJECT_NAME_TYPE_FI: readonly string[] = ['pääluokka', 'erikoisluokka']
 
-/** docs/data/common-models.md — Reference<Language> */
-export const LANGUAGE_FI: readonly string[] = ['suomi', 'englanti', 'ruotsi']
+/** Reference<Language> — YSO http://www.yso.fi/onto/yso/p3749 (groups = language families) */
+export { LANGUAGE_FI, LANGUAGE_GROUPS } from './ysoKieliGroups'
 
 /** docs/data/identification-models.md — Reference<TitleType> */
 export const TITLE_TYPE_FI: readonly string[] = [
@@ -97,6 +96,15 @@ export const OBJECT_DISPLAY_STATUS_TYPE_FI: readonly string[] = [
   'valokuvattu',
 ]
 
+/** Organization history biographical source — Reference<SourceType> (actor catalog). */
+export const ORGANIZATION_HISTORY_SOURCE_TYPE_FI: readonly string[] = [
+  'CD',
+  'valokuva',
+  'verkkoaineisto',
+  'kirja',
+  'lehti',
+]
+
 /** docs/data/object-location-models.md — Reference<LocationType> */
 export const LOCATION_TYPE_FI: readonly string[] = ['vakituinen', 'väliaikainen']
 
@@ -106,6 +114,169 @@ export const LOCATION_FITNESS_FI: readonly string[] = [
   'kohtuullinen',
   'vaarallinen',
   'hyvä',
+]
+
+/** Spatial.name_type — paikannimen tyyppi (closed list). */
+export const SPATIAL_PLACE_NAME_TYPE_FI: readonly string[] = [
+  'alue',
+  'aukio',
+  'avaruus/taivaankappale',
+  'entinen Suomen kunta/pitäjä',
+  'hautausmaa',
+  'joki',
+  'järvi',
+  'kaivauskerros',
+  'kaivausruutu',
+  'kartano',
+  'katuosoite',
+  'kauppala',
+  'kaupunginosa',
+  'kortteli',
+  'kunta/ kaupunki (Suomi)',
+  'kunta/kaupunki (ulkomainen)',
+  'kylä',
+  'laiva',
+  'luokittelematon paikka',
+  'luonnon paikka',
+  'lääni',
+  'maa/valtio',
+  'maakunta (Suomi)',
+  'maakunta (ulkomainen)',
+  'maanosa',
+  'maantieteellinen alue/paikka',
+  'muinaisjäännös',
+  'nykyinen tai entinen hallinnollinen alue',
+  'osavaltio',
+  'pelto',
+  'pitäjä (ulkomainen)',
+  'puisto',
+  'rakennus',
+  'saari',
+  'satama',
+  'taajama',
+  'tie',
+  'tila',
+  'tontti',
+  'tori',
+  'vesistö',
+]
+
+/** Spatial.status — paikan asema. */
+export const SPATIAL_PLACE_STATUS_FI: readonly string[] = [
+  'entinen pääkaupunki',
+  'kansallispuisto',
+  'luonnonsuojelualue',
+  'pääkaupunki',
+  'Unescon maailmanperintökohde',
+  'valtakunnallisesti arvokas maisema-alue',
+  'valtakunnallisesti merkittävä rakennettu kulttuuriympäristö',
+]
+
+/** Spatial.acquisition_place_role — hankintapaikan rooli (hankinnan paikkatiedot). */
+export const ACQUISITION_PLACE_ROLE_FI: readonly string[] = [
+  'alkuperäinen käyttöpaikka',
+  'hankintapaikka',
+  'keruupaikka',
+  'kuvauspaikka',
+  'käyttöpaikka',
+  'laatimispaikka',
+  'lahjoituspaikka',
+  'luovutuspaikka',
+  'löytöpaikka',
+  'pääasiallinen käyttöpaikka',
+  'rakennuksen sijaintipaikka',
+  'valmistuspaikka',
+  'vastauspaikka',
+]
+
+/** Coordinates.coordinates_type — koordinaattijärjestelmä. */
+export const COORDINATE_SYSTEM_FI: readonly string[] = [
+  'ETRS-TM35FIN -tasokoordinaatit',
+  'KKJ maantieteelliset koordinaatit',
+]
+
+/** ReferenceNumber.type on Spatial — paikan viitenumeron tyyppi. */
+export const SPATIAL_REFERENCE_NUMBER_TYPE_FI: readonly string[] = [
+  'kaupunginosan numero',
+  'korttelin numero',
+  'muinaisjäännöstunnus',
+  'projektin numero',
+  'rakennustunnus',
+  'tontin numero',
+]
+
+/** docs/data/aqcuisition-models.md — Reference<AcquisitionActorRole> (hankinnan toimijan rooli). */
+export const ACQUISITION_ACTOR_ROLE_FI: readonly string[] = [
+  'aikaisempi omistaja',
+  'alkuperäinen omistaja',
+  'alkuperäisen aineiston omistaja',
+  'arkistonmuodostaja',
+  'arkkitehti',
+  'asian hoitaja',
+  'esittäjä',
+  'haastateltu',
+  'haastattelija',
+  'hankinnan suorittaja',
+  'inventoija',
+  'julkaisija',
+  'kaivaja',
+  'kaivausten johtaja',
+  'kaivertaja',
+  'kehystäjä',
+  'kenttätyön tekijä',
+  'kerääjä',
+  'kirjailija',
+  'kirjoittaja',
+  'konservaattori',
+  'korjaaja',
+  'kuljettaja',
+  'kuriiri',
+  'kustantaja',
+  'kuvauksen kohde',
+  'kuvittaja',
+  'kyselyvastaaja',
+  'käsikirjoittaja',
+  'käyttäjä',
+  'laatija',
+  'lahjan antaja',
+  'lahjoittaja',
+  'lainan vastaanottaja',
+  'lainanantaja',
+  'lainapäätöksen tekijä',
+  'liikemerkin käyttäjä',
+  'lisenssin omistaja',
+  'luetteloija',
+  'luovuttaja',
+  'lähettäjä',
+  'löytäjä',
+  'maahantuoja',
+  'myyjä',
+  'omistaja',
+  'paikan omistaja',
+  'painaja',
+  'piirtäjä',
+  'päätöksen tekijä',
+  'rahoittaja',
+  'rakennuttaja',
+  'skannaaja',
+  'suunnittelija',
+  'säveltäjä',
+  'taiteilija',
+  'tallettaja',
+  'tavaramerkin omistaja',
+  'tekijä',
+  'tilaaja',
+  'toimittaja',
+  'tuottaja',
+  'tutkija',
+  'valaja',
+  'valmistaja',
+  'valmistuttaja',
+  'valokuvaaja',
+  'valosuunnittelija',
+  'vastaanottaja',
+  'välittäjä',
+  'äänisuunnittelija',
 ]
 
 /** docs/data/aqcuisition-models.md — Reference<AqcuisitionMethod> */
@@ -1133,21 +1304,52 @@ export const PHOTO_FORMAT_FI: readonly string[] = ['dia', 'kuvatiedosto', 'negat
 export const ORIENTATION_FI: readonly string[] = ['pysty', 'vaaka', 'muu']
 
 /** docs/data/description-models.md — Reference<Audio> */
-export const AUDIO_FI: readonly string[] = ['mykkä', 'ääni']
-
-/** docs/data/description-models.md — Reference<MeasurementName> (field `unit` on Measurement) */
-export const MEASUREMENT_NAME_FI: readonly string[] = [
-  'leveys',
-  'pituus',
-  'syvyys',
-  'korkeus',
-  'paino',
-  'tilavuus',
-  'pinta-ala',
+export const AUDIO_FI: readonly string[] = [
+  'mykkä',
+  'mono',
+  'stereo 2.0',
+  'Dolby Digital 5.1',
+  'Dolby Surround 7.1',
 ]
 
-/** docs/data/description-models.md — Reference<MeasurementUnit> */
-export const MEASUREMENT_UNIT_FI: readonly string[] = ['m', 'g', 'm^2', 'm^3', 'pixel']
+/**
+ * YSA värit (http://www.yso.fi/onto/ysa/Y100352) — narrower concepts from Finto
+ * https://finto.fi/ysa/fi/page/Y100352
+ */
+export const COLOR_FI: readonly string[] = [
+  'harmaa',
+  'indigo',
+  'keltainen',
+  'liturgiset värit',
+  'musta',
+  'oranssi',
+  'punainen',
+  'ruskea',
+  'sininen',
+  'tunnusvärit',
+  'valkoinen',
+  'vihreä',
+  'violetti',
+]
+
+/** docs/data/description-models.md — Reference<FormOfInstallation> (kiinnitys- tai säilytysmenetelmä) */
+export const FORM_INSTALLATION_FI: readonly string[] = [
+  'märkänä säilytettynä',
+  'kuivana säilytettynä',
+  'pingotettuna',
+  'passe-partout',
+  'kehystetty',
+  'kuvakulmilla kiinnitetty',
+  'liimattu',
+  'lasitettuna',
+  'pohjustettuna',
+]
+
+/** docs/data/description-models.md — Reference<MeasurementName> (field `unit` on Measurement); YSO suureet */
+export { MEASUREMENT_NAME_FI, MEASUREMENT_NAME_GROUPS } from './ysoSuureetGroups'
+
+/** docs/data/description-models.md — Reference<MeasurementUnit>; SI symbols from fi.wikipedia + pixel */
+export { MEASUREMENT_UNIT_FI, MEASUREMENT_UNIT_GROUPS } from './siMeasurementUnitSymbols'
 
 /** docs/data/description-models.md — Reference<InscriptionType> */
 export const INSCRIPTION_TYPE_FI: readonly string[] = [
@@ -1234,6 +1436,9 @@ export const INSCRIPTION_METHOD_FI: readonly string[] = [
   'viiltäminen',
   'värileima',
 ]
+
+/** docs/data/description-models.md — Reference<InscriptionDirection> (merkinnän suunta) */
+export const INSCRIPTION_DIRECTION_FI: readonly string[] = ['diagonaali', 'pysty', 'vaaka']
 
 /** docs/data/description-models.md — Reference<ObjectComponentName> / Form / MaterialType / … (empty for now) */
 export const EMPTY_REFERENCE_FI: readonly string[] = []

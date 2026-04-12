@@ -127,7 +127,7 @@ def main() -> None:
     # Description
     d = info["description"]
     d["objectStatus"] = G(by, "Objektin status", "Object status")
-    d["objectComponentName"] = G(by, "Objektin osa", "Object component name")
+    d["objectComponents"] = G(by, "Objektin osa", "Object component name")
     d["physicalDescription"] = G(by, "Fyysinen kuvaus", "Physical description")
     d["photoType"] = G(by, "Kuvatyyppi", "Type of image")
     d["orientation"] = G(by, "Suunta", "0")

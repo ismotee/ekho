@@ -32,7 +32,8 @@ export interface RecordPayload {
   history?: History | null
   description?: Description | null
   access?: Access | null
-  object_location?: ObjectLocation | null
+  /** docs/data/object-location-models.md — list of location entries */
+  object_location?: ObjectLocation[] | null
   confidentiality?: InformationConfidentiality | null
 }
 

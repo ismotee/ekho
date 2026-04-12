@@ -9,10 +9,10 @@ export type {
   Label,
   ImageRef,
   DateDetail,
+  DateDetailWithTemporalMeta,
   Temporal,
   Coordinates,
   ReferenceNumber,
-  SpatialNameType,
   SpatialContext,
   SpatialFeature,
   SourceBase,
@@ -28,23 +28,22 @@ export type {
   Address,
   Spatial,
   RoledActor,
-  OtherName,
+  NameDetail,
   BiographicalNote,
   OrganizationHistory,
   OrganizationIdentifier,
 } from './actor'
 
-export type {
-  IdentificationDetails,
-  ObjectName,
-  Title,
-  TitleTranslation,
-} from './identification'
+export type { IdentificationDetails, ObjectName, Title, TitleTranslation } from './identification'
 
-export type { AqcuisitionDetails } from './aqcuisition'
+export type {
+  AcquisitionActorListItem,
+  AcquisitionActorRow,
+  AqcuisitionDetails,
+} from './aqcuisition'
 export type { Rights } from './rights'
-export type { History } from './history'
-export type { Description } from './description'
+export type { History, Technique } from './history'
+export type { ContentDateEntry, ContentEvent, Description, ObjectComponent } from './description'
 export type { Access } from './access'
 export type { ObjectLocation } from './object-location'
 export type { InformationConfidentiality } from './confidentiality'

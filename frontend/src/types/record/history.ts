@@ -2,8 +2,14 @@
  * docs/data/history-models.md
  */
 
-import type { ReferenceField, Temporal } from './common'
+import type { DateDetail, ReferenceField } from './common'
 import type { ActorField, RoledActor, Spatial } from './actor'
+
+/** One production technique row: technique name + optional type (Reference<TechniqueType>). */
+export interface Technique {
+  name?: ReferenceField
+  type?: ReferenceField
+}
 
 export interface OwnershipExchange {
   method?: ReferenceField
@@ -14,19 +20,21 @@ export interface OwnershipExchange {
 
 export interface Ownership {
   owner?: ActorField
-  date?: Temporal
+  date?: DateDetail
   place?: Spatial
   exchange?: OwnershipExchange
 }
 
 export interface ObjectProductInformation {
   actor?: RoledActor[]
-  date?: Temporal
-  place?: Spatial
+  /** Valmistukseen liittyvät aikatiedot (each row may include ajan rooli via temporal metadata on DateDetail). */
+  date?: DateDetail[]
+  /** Valmistukseen liittyvät paikat. */
+  place?: Spatial[]
   reason?: string
   note?: string
-  technique?: ReferenceField
-  technique_type?: ReferenceField[]
+  /** Valmistustekniikat (each row: tekniikka + tyyppi). */
+  techniques?: Technique[]
 }
 
 export interface UsageHistory {
@@ -44,16 +52,15 @@ export interface AssociatedEvent {
   name?: ReferenceField
   name_type?: ReferenceField
   actor?: RoledActor[]
-  date?: Temporal[]
+  date?: DateDetail[]
   place?: Spatial[]
-  note?: string
 }
 
 export interface ObjectHistory {
   activity?: AssociatedActivity
   cultural_affinity?: ReferenceField
   actor?: RoledActor[]
-  date?: Temporal[]
+  date?: DateDetail[]
   place?: Spatial[]
   event?: AssociatedEvent
   note?: string

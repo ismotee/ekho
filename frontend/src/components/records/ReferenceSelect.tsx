@@ -10,6 +10,8 @@ export interface ReferenceSelectProps {
   onChangeFi: (fi: string) => void
   disabled?: boolean
   emptyLabel?: string
+  /** Merged onto the outer `.form-group` wrapper */
+  className?: string
 }
 
 /**
@@ -24,10 +26,11 @@ export function ReferenceSelect({
   onChangeFi,
   disabled,
   emptyLabel = '—',
+  className,
 }: ReferenceSelectProps) {
   const options = referenceSelectOptions(allowlist, valueFi)
   return (
-    <div className="form-group">
+    <div className={['form-group', className].filter(Boolean).join(' ')}>
       <label htmlFor={id}>{label}</label>
       <FieldInfoText infoKey={infoKey} />
       <select id={id} value={valueFi} onChange={(e) => onChangeFi(e.target.value)} disabled={disabled}>

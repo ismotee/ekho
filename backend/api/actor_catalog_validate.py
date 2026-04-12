@@ -85,7 +85,29 @@ def _spatial_nonempty(s: Any) -> bool:
         v = s.get(k)
         if isinstance(v, str) and v.strip():
             return True
-    return _ref_nonempty(s.get("association")) or _ref_nonempty(s.get("status"))
+    if _ref_nonempty(s.get("name_type")) or _ref_nonempty(s.get("status")):
+        return True
+    coords = s.get("coordinates")
+    if isinstance(coords, dict):
+        t = coords.get("text")
+        if isinstance(t, str) and t.strip():
+            return True
+        cq = coords.get("coordinates_qualifier")
+        if cq is not None and str(cq).strip():
+            return True
+        if _ref_nonempty(coords.get("coordinates_type")):
+            return True
+    rn = s.get("reference_number")
+    if isinstance(rn, dict):
+        rt = rn.get("text")
+        if isinstance(rt, str) and rt.strip():
+            return True
+        if _ref_nonempty(rn.get("type")):
+            return True
+    owner = s.get("owner")
+    if isinstance(owner, dict) and isinstance(owner.get("id"), int) and owner["id"] > 0:
+        return True
+    return False
 
 
 def _bio_nonempty(b: Any) -> bool:
@@ -97,6 +119,8 @@ def _bio_nonempty(b: Any) -> bool:
     src = b.get("source")
     if not isinstance(src, dict):
         return False
+    if isinstance(src.get("citation"), str) and src["citation"].strip():
+        return True
     if isinstance(src.get("note"), str) and src["note"].strip():
         return True
     if _ref_nonempty(src.get("source_type")):
@@ -110,15 +134,30 @@ def _bio_nonempty(b: Any) -> bool:
 def _org_history_nonempty(h: Any) -> bool:
     if not isinstance(h, dict):
         return False
-    if _temporal_nonempty(h.get("foundation_date")):
+    if _date_detail_nonempty(h.get("foundation_date")):
         return True
-    if _temporal_nonempty(h.get("dissolution_date")):
+    if _date_detail_nonempty(h.get("dissolution_date")):
         return True
     if _spatial_nonempty(h.get("foundation_place")):
         return True
     if _bio_nonempty(h.get("biographical_note")):
         return True
     return False
+
+
+def _person_name_date_nonempty(d: Any) -> bool:
+    """PersonName.date is DateDetail (optionally merged with note/association/period); legacy Temporal allowed."""
+    if not isinstance(d, dict):
+        return False
+    if _date_detail_nonempty(d):
+        return True
+    for k in ("note", "text"):
+        v = d.get(k)
+        if isinstance(v, str) and v.strip():
+            return True
+    if _ref_like_nonempty(d.get("association")) or _ref_like_nonempty(d.get("period")):
+        return True
+    return _temporal_nonempty(d)
 
 
 def _person_name_row_nonempty(row: Any) -> bool:
@@ -129,7 +168,7 @@ def _person_name_row_nonempty(row: Any) -> bool:
         return True
     if _ref_nonempty(row.get("name_type")):
         return True
-    return _temporal_nonempty(row.get("date"))
+    return _person_name_date_nonempty(row.get("date"))
 
 
 def _person_has_identity(p: Any) -> bool:
@@ -150,9 +189,9 @@ def _person_has_identity(p: Any) -> bool:
     an = p.get("additions_to_name")
     if isinstance(an, str) and an.strip():
         return True
-    if _temporal_nonempty(p.get("birth_date")):
+    if _person_name_date_nonempty(p.get("birth_date")):
         return True
-    if _temporal_nonempty(p.get("death_date")):
+    if _person_name_date_nonempty(p.get("death_date")):
         return True
     if _spatial_nonempty(p.get("place_of_birth")):
         return True
@@ -177,27 +216,27 @@ def _person_has_identity(p: Any) -> bool:
     return False
 
 
-def _other_name_nonempty(o: Any) -> bool:
-    if not isinstance(o, dict):
+def _name_detail_nonempty(row: Any) -> bool:
+    if not isinstance(row, dict):
         return False
-    if _label_nonempty(o.get("name")):
+    if _label_nonempty(row.get("name")):
         return True
-    return _ref_nonempty(o.get("type"))
+    if _ref_nonempty(row.get("name_type")):
+        return True
+    addn = row.get("addition_to_name")
+    if isinstance(addn, str) and addn.strip():
+        return True
+    if _date_detail_nonempty(row.get("earliest")) or _date_detail_nonempty(row.get("latest")):
+        return True
+    return False
 
 
 def _org_has_identity(o: Any) -> bool:
     """True if organization core fields identify the actor (ignores nested contact_person)."""
     if not isinstance(o, dict):
         return False
-    if _label_nonempty(o.get("main_body")) or _label_nonempty(o.get("sub_body")):
-        return True
-    on = o.get("other_name")
-    if isinstance(on, list) and any(_other_name_nonempty(x) for x in on):
-        return True
-    an = o.get("addition_to_name")
-    if isinstance(an, str) and an.strip():
-        return True
-    if _temporal_nonempty(o.get("name_date")):
+    names = o.get("name")
+    if isinstance(names, list) and any(_name_detail_nonempty(x) for x in names):
         return True
     if _ref_nonempty(o.get("function")):
         return True
@@ -221,6 +260,19 @@ def actor_catalog_data_has_identity(data: Any) -> bool:
     pi = _person_has_identity(data.get("person"))
     oi = _org_has_identity(data.get("organization"))
     return (pi and not oi) or (oi and not pi)
+
+
+def actor_catalog_kind(data: Any) -> str | None:
+    """Return 'person', 'organization', or None if data does not identify exactly one kind."""
+    if not isinstance(data, dict):
+        return None
+    pi = _person_has_identity(data.get("person"))
+    oi = _org_has_identity(data.get("organization"))
+    if pi and not oi:
+        return "person"
+    if oi and not pi:
+        return "organization"
+    return None
 
 
 def validate_actor_catalog_data(value: Any) -> Any:

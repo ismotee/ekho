@@ -19,6 +19,25 @@ The API uses Django session authentication. Clients must include session cookies
 3. Client includes session cookie in subsequent requests
 4. Server validates session for protected endpoints
 
+## Catalog visibility (`is_listed`)
+
+Collections may be **listed** (default) or **unlisted**. Unlisted collections are hidden from the public catalog and from other users; only the owner can list, retrieve, or export their contents through the rules below. The `is_listed` flag is stored on the server and is **not** part of the default collection or record JSON responses (behavior is visible through which resources appear and which return `404`).
+
+**Collections**
+
+- **Anonymous** `GET /api/collections/`: only collections with `is_listed=true`.
+- **Authenticated** `GET /api/collections/`: listed collections from all users, plus **your own** listed and unlisted collections (other users’ unlisted collections are omitted).
+- **Retrieve** `GET /api/collections/{id}/`: if the collection is unlisted and the caller is not the owner, the API responds with **`404 Not Found`** (same pattern as a missing id).
+
+**Records**
+
+- **List** `GET /api/records/` and **retrieve** `GET /api/records/{id}/`: only records belonging to a collection the caller is allowed to see (listed collections, or any collection you own). Unlisted collections owned by someone else do not surface their records.
+- If `collection={id}` is provided and that collection is not visible to the caller, the API responds with **`404 Not Found`** (treats the collection as not found for that user).
+
+## System identity (export provenance)
+
+Each deployment persists a single **Ekho instance id** (UUID) used for cross-system provenance. It appears in record exports as `source_ekho_instance_id`. Collections may store `origin_ekho_instance_id` for lineage; that field is not included in normal collection list/detail responses.
+
 ## Response Format
 
 ### Success Response
@@ -225,6 +244,8 @@ Returns a paginated list of all collections. Accessible to both authenticated an
 - `is_closed`: Filter by closed status (true/false, optional)
 - `search`: string (optional). Matches collections where the term appears (case-insensitive) in **name** or **description** (OR). Omitted or empty = no search filter. For future use (e.g. collections list search UI).
 
+**Visibility:** Results respect [Catalog visibility](#catalog-visibility-is_listed) (`is_listed`). For example, when filtering with `owner`, another user’s unlisted collections do not appear.
+
 **Response:** `200 OK`
 ```json
 {
@@ -320,7 +341,7 @@ Returns detailed information about a specific collection.
 ```
 
 **Errors:**
-- `404`: Collection not found
+- `404`: Collection not found, or the collection exists but is **unlisted** and the caller is not the owner ([Catalog visibility](#catalog-visibility-is_listed)).
 
 **Authentication:** Not required (public endpoint)
 
@@ -447,6 +468,8 @@ Returns a paginated list of records. The `collection` query parameter is **optio
 - `page`: Page number (default: 1)
 - `page_size`: Items per page (default: 20, max: 100)
 
+**Visibility:** Only records in collections visible to the caller are returned ([Catalog visibility](#catalog-visibility-is_listed)). Unlisted collections owned by other users do not contribute rows.
+
 **Response:** `200 OK`
 
 Paginated shape: `count`, `next`, `previous`, `results`. Each item in `results` follows **Record resource shape (locked)** above.
@@ -481,7 +504,7 @@ Paginated shape: `count`, `next`, `previous`, `results`. Each item in `results` 
 ```
 
 **Errors:**
-- `404`: When `collection` is provided and no collection with that ID exists
+- `404`: When `collection` is provided and the collection does not exist **or** is not visible to the caller (e.g. another user’s unlisted collection).
 
 **Authentication:** Not required (public endpoint)
 
@@ -572,7 +595,7 @@ Same fields as list items, including read-only `collection_name` and `collection
 ```
 
 **Errors:**
-- `404`: Record not found
+- `404`: Record not found, or the record’s collection is not visible to the caller ([Catalog visibility](#catalog-visibility-is_listed)).
 
 **Authentication:** Not required (public endpoint)
 
@@ -640,6 +663,67 @@ Permanently deletes a record and its stored **representative_image** file (if an
 **Authentication:** Required (owner only)
 
 **User Stories:** US-012
+
+---
+
+#### Export record (JSON download)
+
+**GET** `/api/records/{id}/export/`
+
+Returns a JSON document suitable for **Import record** (below) on this or another Ekho instance.
+
+**Response:** `200 OK` — `application/json` with `Content-Disposition: attachment; filename="ekho-record-{id}.json"`.
+
+**Payload shape (version 1):**
+
+| Key | Description |
+|-----|-------------|
+| `ekho_export_version` | Integer; currently `1`. |
+| `source_ekho_instance_id` | UUID string for this deployment ([System identity](#system-identity-export-provenance)). |
+| `collection` | Object: `stable_id`, `name`, `description`, `origin_ekho_instance_id` (nullable UUID string), `is_closed`, `is_listed`. |
+| `record` | Object: `data` (validated domain payload). If a representative image exists, `representative_image`: `{ "filename", "content_type", "base64" }`. |
+
+**Authorization:** Same visibility as record retrieve — listed collections are world-readable; **unlisted** collections allow export only to the **owner** (others receive `404`).
+
+**Errors:**
+- `404`: Record not found or not visible.
+- `500`: Invalid stored record data (should not occur for normal rows).
+
+---
+
+#### Import record (JSON)
+
+**POST** `/api/records/import/`
+
+**Authentication:** Required. The active user must own `current_collection` when that parameter is required (see modes).
+
+**Request body (JSON):**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `ekho_export_version` | Yes | Must be `1`. |
+| `source_ekho_instance_id` | Ignored for validation | Echoed from exports; informational. |
+| `collection` | Yes | Must include `stable_id` (UUID) and other fields as in an export. |
+| `record` | Yes | Must include `data` (domain object). Optional `representative_image` as in export. |
+| `mode` | Yes | `acquisition`, `deposition`, or `original_only`. |
+| `current_collection_id` | For `acquisition` and `deposition` | Integer PK of the collection page context; must exist, be owned by the user, and **not** be closed. |
+
+**Modes:**
+
+- **`acquisition`:** Creates **one** record in `current_collection_id` only (does not create a parallel row in the “original” collection).
+- **`deposition`:** Resolves or creates the “original” collection by `collection.stable_id` (new originals are **unlisted**), then creates a record there **and** a duplicate in `current_collection_id`.
+- **`original_only`:** Creates the record only in the resolved original collection (no row in `current_collection_id`).
+
+Imported `data` is validated; embedded actor references that do not resolve for the importing user are **stripped** so import can succeed without those catalog rows.
+
+On each created record, the server sets `imported_first` and `imported_last` (not exposed on default record API responses).
+
+**Response:** `201 Created` — `{ "record_ids": [<int>, ...], "mode": "<mode>" }`.
+
+**Errors:**
+- `400`: Invalid payload, unsupported `ekho_export_version`, invalid image block, closed collection in export metadata when creating a new original, etc.
+- `401`: Not authenticated.
+- `403`: Not allowed to import into the target collection, closed collection, conflicting `stable_id` owned by another user, or similar.
 
 ---
 

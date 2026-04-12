@@ -5,15 +5,15 @@
 import type { Rights } from '../types/record/rights'
 import { referenceFieldFi } from './referenceField'
 import { actorRowHasContent } from './acquisitionPayload'
-import { temporalHasPersistableContent } from './temporalPayload'
+import { dateDetailHasPersistableContent } from './temporalPayload'
 
 export function rightsHasPersistableContent(r: Rights): boolean {
   if (referenceFieldFi(r.type)) return true
   if (r.note?.trim()) return true
   if (r.reference_number?.trim()) return true
   if (r.holder?.some(actorRowHasContent)) return true
-  if (r.begin_date && temporalHasPersistableContent(r.begin_date)) return true
-  if (r.end_date && temporalHasPersistableContent(r.end_date)) return true
+  if (r.begin_date && dateDetailHasPersistableContent(r.begin_date)) return true
+  if (r.end_date && dateDetailHasPersistableContent(r.end_date)) return true
   return false
 }
 
@@ -24,8 +24,8 @@ export function compactRightsEntryForSave(r: Rights): Rights | undefined {
     x.holder = x.holder.filter(actorRowHasContent)
     if (x.holder.length === 0) delete x.holder
   }
-  if (x.begin_date && !temporalHasPersistableContent(x.begin_date)) delete x.begin_date
-  if (x.end_date && !temporalHasPersistableContent(x.end_date)) delete x.end_date
+  if (x.begin_date && !dateDetailHasPersistableContent(x.begin_date)) delete x.begin_date
+  if (x.end_date && !dateDetailHasPersistableContent(x.end_date)) delete x.end_date
   if (x.note !== undefined && !String(x.note).trim()) delete x.note
   if (x.reference_number !== undefined && !String(x.reference_number).trim()) delete x.reference_number
   if (!referenceFieldFi(x.type)) delete x.type

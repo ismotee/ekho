@@ -11,6 +11,12 @@ export const ACTOR_ADDRESS_TYPE_FI = [
   'Työpaikan osoite',
 ] as const
 
+/** Auto-filled address type for organization actors when any address line is filled (hidden UI). */
+export const ACTOR_ORGANIZATION_ADDRESS_TYPE_AUTO_FI: (typeof ACTOR_ADDRESS_TYPE_FI)[number] = 'Käyntiosoite'
+
+/** Auto-filled address type for person actors when any address line is filled (hidden UI). */
+export const ACTOR_PERSON_ADDRESS_TYPE_AUTO_FI: (typeof ACTOR_ADDRESS_TYPE_FI)[number] = 'Kotiosoite'
+
 /** Reference<OrganizationIdentifierType> */
 export const ACTOR_ORG_IDENTIFIER_TYPE_FI = ['ISNI', 'Y-tunnus'] as const
 
@@ -20,8 +26,8 @@ export const ACTOR_PERSON_GENDER_FI = ['mies', 'nainen', 'muu', 'ei tietoa'] as 
 /** Reference<PersonNationality> (spec lists suomi) */
 export const ACTOR_PERSON_NATIONALITY_FI = ['suomi'] as const
 
-/** Reference<OtherNameType> — organization other names (docs/data/actor-models.md) */
-export const ACTOR_ORGANIZATION_OTHER_NAME_TYPE_FI = [
+/** Reference<OrganizationNameType> — organization name rows (docs/data/actor-models.md) */
+export const ACTOR_ORGANIZATION_NAME_TYPE_FI = [
   'entinen nimi',
   'koko nimi',
   'muu nimi',
@@ -31,6 +37,7 @@ export const ACTOR_ORGANIZATION_OTHER_NAME_TYPE_FI = [
   'uusi nimi',
   'vieraskielinen nimi',
   'virallinen nimi',
+  'yksikön nimi',
 ] as const
 
 /** Reference<PersonNameType> (docs/data/actor-models.md) */

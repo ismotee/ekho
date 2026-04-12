@@ -9,6 +9,7 @@
 
 import { makeAutoObservable, runInAction } from 'mobx'
 import { api, ApiError } from '../services/api'
+import type { ActorField } from '../types/record/actor'
 
 export interface CollectionOwner {
   id: number
@@ -19,6 +20,8 @@ export interface Collection {
   id: number
   name: string
   description?: string
+  responsible_department?: string
+  owning_organization?: ActorField | null
   owner: CollectionOwner
   is_closed: boolean
   created_at: string
@@ -120,7 +123,12 @@ export class CollectionStore {
     }
   }
 
-  async createCollection(data: { name: string; description?: string }): Promise<Collection> {
+  async createCollection(data: {
+    name: string
+    description?: string
+    responsible_department?: string
+    owning_organization?: ActorField | null
+  }): Promise<Collection> {
     this.loading = true
     this.error = null
 
@@ -148,7 +156,15 @@ export class CollectionStore {
     }
   }
 
-  async updateCollection(id: number, data: Partial<{ name: string; description: string }>): Promise<Collection> {
+  async updateCollection(
+    id: number,
+    data: Partial<{
+      name: string
+      description: string
+      responsible_department: string
+      owning_organization: ActorField | null
+    }>
+  ): Promise<Collection> {
     this.loading = true
     this.error = null
 

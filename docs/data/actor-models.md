@@ -1,4 +1,4 @@
-Reference<OtherNameType> in finnish
+Reference<OrganizationNameType> in finnish
 ```
     entinen nimi,
     koko nimi,
@@ -8,7 +8,8 @@ Reference<OtherNameType> in finnish
     rinnakkaisnimi,
     uusi nimi,
     vieraskielinen nimi,
-    virallinen nimi
+    virallinen nimi,
+    yksikön nimi
 ```
 
 Reference<DateAssociation> in finnish
@@ -92,7 +93,7 @@ välittäjä,
 äänisuunnittelija
 ```
 
-Reference<OtherNameType> options in finnish
+Reference<OrganizationNameType> options in finnish
 ```
 entinen nimi,
 koko nimi,
@@ -102,7 +103,8 @@ puumerkki,
 rinnakkaisnimi,
 uusi nimi,
 vieraskielinen nimi,
-virallinen nimi
+virallinen nimi,
+yksikön nimi
 ```
 
 Reference<SpatialAssociation> options in finnish
@@ -216,10 +218,14 @@ Label
     und <string>: # undefined language
 ```
 
-OtherName
+NameDetail
 ```
     name: Label
-    type: Reference<OtherNameType>
+    name_type: Reference<OrganizationNameType>
+    addition_to_name: CharField
+    earliest: DateDetail
+    latest: DateDetail
+    in_use: BooleanField # when true, included in catalog list / actor select display label
 ```
 
 DateDetail
@@ -266,6 +272,8 @@ Spatial
     association: Reference<SpatialAssociation>
     name: Label
     name_type: SpatialNameType
+    acquisition_place_role: Reference<AcquisitionPlaceRole>  # hankinnan paikkatiedot
+    content_place_role: Reference<AcquisitionPlaceRole>  # sisällön paikat (same vocabulary)
     note: CharField
     environmental_details: CharField
     status: Reference<SpatialStatus>
@@ -302,9 +310,9 @@ BiographicalNote
 
 OrganizationHistory
 ```
-    foundation_date: Temporal
+    foundation_date: DateDetail
     foundation_place: Spatial
-    dissolution_date: Temporal
+    dissolution_date: DateDetail
     biographical_note: BiographicalNote
 ```
 
@@ -325,19 +333,20 @@ OrganizationIdentifier
 PersonName
 ```
     name: CharField
-    date: Temporal
+    date: DateDetail
     name_type: Reference<PersonNameType>
+    in_use: BooleanField # when true, included in catalog list / actor select display label (per first/last/other group)
 ```
 
 Person
 ```
     first_name: List<PersonName>
-    last_name: PersonName
+    last_name: List<PersonName>
     other_name: List<PersonName>
     additions_to_name: CharField
-    birth_date: Temporal
+    birth_date: DateDetail
     place_of_birth: Spatial
-    death_date: Temporal
+    death_date: DateDetail
     gender: Reference<PersonGender>
     nationality: Reference<PersonNationality>
     address: Address
@@ -350,11 +359,7 @@ Person
 
 Organization
 ``` 
-    main_body: Label
-    sub_body Label
-    other_name: List<OtherName>
-    addition_to_name: CharField
-    name_date: Temporal
+    name: List<NameDetail>
     history: OrganizationHistory
     function: Reference<OrganizationFunction>
     address: Address

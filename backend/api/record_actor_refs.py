@@ -33,6 +33,27 @@ def _add_id(ids: Set[int], value: Any) -> None:
         ids.add(rid)
 
 
+def _acquisition_actor_list_item_actor_value(value: Any) -> Any:
+    """Bare ActorField row or wrapped ``{ actor, acquisition_actor_role }``."""
+    if not isinstance(value, dict):
+        return None
+    if "actor" in value or "acquisition_actor_role" in value:
+        return value.get("actor")
+    return value
+
+
+def _acquisition_wrapped_row_has_meaningful_content(row: dict) -> bool:
+    """After removing ``actor`` ref, whether the row should still be kept."""
+    if _ref_has_content(row.get("acquisition_actor_role")):
+        return True
+    sub = row.get("actor")
+    if sub is None:
+        return False
+    if _actor_ref_id(sub) is not None:
+        return True
+    return isinstance(sub, dict) and ("person" in sub or "organization" in sub)
+
+
 def _walk_spatial(spatial: Any, visit_actor: Callable[[Any], None]) -> None:
     if not isinstance(spatial, dict):
         return
@@ -57,7 +78,7 @@ def collect_actor_ids(data: Any) -> Set[int]:
     acq = data.get("aquisition_details")
     if isinstance(acq, dict):
         for a in acq.get("actor") or []:
-            _add_id(ids, a)
+            _add_id(ids, _acquisition_actor_list_item_actor_value(a))
         for place in acq.get("place") or []:
             _walk_spatial(place, lambda v: _add_id(ids, v))
 
@@ -77,7 +98,12 @@ def collect_actor_ids(data: Any) -> Set[int]:
         for opi in hist.get("object_production_information") or []:
             if isinstance(opi, dict):
                 _walk_roled_list(opi.get("actor"), ids)
-                _walk_spatial(opi.get("place"), lambda v: _add_id(ids, v))
+                pl = opi.get("place")
+                if isinstance(pl, list):
+                    for p in pl:
+                        _walk_spatial(p, lambda v: _add_id(ids, v))
+                else:
+                    _walk_spatial(pl, lambda v: _add_id(ids, v))
         for uh in hist.get("usage_history") or []:
             pass
         for obh in hist.get("object_history") or []:
@@ -104,11 +130,23 @@ def collect_actor_ids(data: Any) -> Set[int]:
                         _add_id(ids, tr.get("translator"))
         content = desc.get("content")
         if isinstance(content, dict):
+            actors_list = content.get("actors")
+            if isinstance(actors_list, list):
+                for item in actors_list:
+                    _add_id(ids, item)
             _add_id(ids, content.get("person"))
+            places_list = content.get("places")
+            if isinstance(places_list, list):
+                for pl in places_list:
+                    _walk_spatial(pl, lambda v: _add_id(ids, v))
             _walk_spatial(content.get("place"), lambda v: _add_id(ids, v))
 
     loc = data.get("object_location")
-    if isinstance(loc, dict):
+    if isinstance(loc, list):
+        for item in loc:
+            if isinstance(item, dict):
+                _walk_spatial(item.get("location"), lambda v: _add_id(ids, v))
+    elif isinstance(loc, dict):
         _walk_spatial(loc.get("location"), lambda v: _add_id(ids, v))
 
     return ids
@@ -186,8 +224,28 @@ def strip_actor_id(data: dict, actor_id: int) -> dict:
     if isinstance(acq, dict):
         actors = acq.get("actor")
         if isinstance(actors, list):
-            na = [a for a in actors if _actor_ref_id(a) != actor_id]
-            if len(na) != len(actors):
+            na: list = []
+            changed = False
+            for a in actors:
+                if not isinstance(a, dict):
+                    na.append(a)
+                    continue
+                if "actor" in a or "acquisition_actor_role" in a:
+                    sub = a.get("actor")
+                    if _actor_ref_id(sub) == actor_id:
+                        new_a = copy.deepcopy(a)
+                        new_a.pop("actor", None)
+                        changed = True
+                        if _acquisition_wrapped_row_has_meaningful_content(new_a):
+                            na.append(new_a)
+                        continue
+                    na.append(a)
+                elif _actor_ref_id(a) == actor_id:
+                    changed = True
+                    continue
+                else:
+                    na.append(a)
+            if len(na) != len(actors) or changed:
                 if na:
                     acq["actor"] = na
                 else:
@@ -228,7 +286,9 @@ def strip_actor_id(data: dict, actor_id: int) -> dict:
                     else:
                         opi.pop("actor", None)
                 pl = opi.get("place")
-                if isinstance(pl, dict):
+                if isinstance(pl, list):
+                    opi["place"] = [_clean_spatial(p, actor_id) for p in pl]
+                elif isinstance(pl, dict):
                     opi["place"] = _clean_spatial(pl, actor_id)
         for obh in hist.get("object_history") or []:
             if isinstance(obh, dict):
@@ -268,14 +328,38 @@ def strip_actor_id(data: dict, actor_id: int) -> dict:
                     tr.pop("translator", None)
         content = desc.get("content")
         if isinstance(content, dict):
+            actors_list = content.get("actors")
+            if isinstance(actors_list, list):
+                na: list = []
+                changed = False
+                for item in actors_list:
+                    if _actor_ref_id(item) == actor_id:
+                        changed = True
+                        continue
+                    na.append(item)
+                if changed:
+                    if na:
+                        content["actors"] = na
+                    else:
+                        content.pop("actors", None)
             if _actor_ref_id(content.get("person")) == actor_id:
                 content.pop("person", None)
+            places_list = content.get("places")
+            if isinstance(places_list, list):
+                content["places"] = [_clean_spatial(p, actor_id) for p in places_list]
             pl = content.get("place")
             if isinstance(pl, dict):
                 content["place"] = _clean_spatial(pl, actor_id)
 
     loc = out.get("object_location")
-    if isinstance(loc, dict):
+    if isinstance(loc, list):
+        for item in loc:
+            if not isinstance(item, dict):
+                continue
+            lpl = item.get("location")
+            if isinstance(lpl, dict):
+                item["location"] = _clean_spatial(lpl, actor_id)
+    elif isinstance(loc, dict):
         lpl = loc.get("location")
         if isinstance(lpl, dict):
             loc["location"] = _clean_spatial(lpl, actor_id)
@@ -285,6 +369,36 @@ def strip_actor_id(data: dict, actor_id: int) -> dict:
 
 def record_references_actor(record_data: dict, actor_id: int) -> bool:
     return actor_id in collect_actor_ids(record_data)
+
+
+def sanitize_actor_refs_for_import(data: dict, user: Any) -> dict:
+    """
+    Return a deep copy of `data` with actor refs removed when the actor is missing
+    or not visible to `user` (global or owned by user). Used by record import so
+    foreign-catalog ids never block ingestion.
+    """
+    if not isinstance(data, dict):
+        return data
+    out = copy.deepcopy(data)
+    ids = collect_actor_ids(out)
+    if not ids:
+        return out
+    from .models import Actor
+
+    invalid: Set[int] = set()
+    for aid in ids:
+        try:
+            act = Actor.objects.get(pk=aid)
+        except Actor.DoesNotExist:
+            invalid.add(aid)
+            continue
+        if act.owner_id is None:
+            continue
+        if act.owner_id != user.id:
+            invalid.add(aid)
+    for aid in sorted(invalid, reverse=True):
+        out = strip_actor_id(out, aid)
+    return out
 
 
 def validate_actor_refs_for_user(data: dict, user: Any) -> None:

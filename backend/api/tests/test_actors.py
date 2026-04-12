@@ -52,7 +52,7 @@ def staff_client(staff_user):
 def global_actor():
     return Actor.objects.create(
         owner=None,
-        data={"person": {}, "organization": {"main_body": {"fi": "Global Museum"}}},
+        data={"person": {}, "organization": {"name": [{"name": {"fi": "Global Museum"}}]}},
     )
 
 
@@ -61,7 +61,7 @@ def user_actor(user):
     return Actor.objects.create(
         owner=user,
         data={
-            "person": {"first_name": [{"name": "Jane"}], "last_name": {"name": "Doe"}},
+            "person": {"first_name": [{"name": "Jane"}], "last_name": [{"name": "Doe"}]},
             "organization": {},
         },
     )
@@ -110,7 +110,7 @@ def test_create_actor_rejects_person_and_organization_both_identify(auth_client)
         {
             "data": {
                 "person": {"first_name": [{"name": "Pat"}]},
-                "organization": {"main_body": {"fi": "Acme Oy"}},
+                "organization": {"name": [{"name": {"fi": "Acme Oy"}}]},
             },
         },
         format="json",
@@ -125,26 +125,26 @@ def test_create_organization_with_contact_person(auth_client):
             "data": {
                 "person": {},
                 "organization": {
-                    "main_body": {"fi": "Museum"},
-                    "contact_person": {"first_name": [{"name": "Kim"}], "last_name": {"name": "Contact"}},
+                    "name": [{"name": {"fi": "Museum"}}],
+                    "contact_person": {"first_name": [{"name": "Kim"}], "last_name": [{"name": "Contact"}]},
                 },
             },
         },
         format="json",
     )
     assert r.status_code == status.HTTP_201_CREATED
-    assert r.data["data"]["organization"]["contact_person"]["last_name"]["name"] == "Contact"
+    assert r.data["data"]["organization"]["contact_person"]["last_name"][0]["name"] == "Contact"
 
 
 def test_create_actor(auth_client):
     r = auth_client.post(
         reverse("actors-list"),
-        {"data": {"person": {}, "organization": {"main_body": {"fi": "My Org"}}}},
+        {"data": {"person": {}, "organization": {"name": [{"name": {"fi": "My Org"}}]}}},
         format="json",
     )
     assert r.status_code == status.HTTP_201_CREATED
     assert r.data["owner"]["username"] == "auser"
-    assert r.data["data"]["organization"]["main_body"]["fi"] == "My Org"
+    assert r.data["data"]["organization"]["name"][0]["name"]["fi"] == "My Org"
 
 
 def test_cannot_see_other_user_actor_detail(other_client, user_actor):
@@ -227,10 +227,33 @@ def test_record_accepts_global_actor(auth_client, collection, global_actor):
     assert r.status_code == status.HTTP_201_CREATED
 
 
+def test_collection_rejects_person_as_owning_organization(auth_client, collection, user_actor):
+    r = auth_client.patch(
+        reverse("collections-detail", kwargs={"pk": collection.id}),
+        {"owning_organization": {"id": user_actor.id}},
+        format="json",
+    )
+    assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+
+def test_collection_accepts_organization_as_owning_organization(auth_client, collection):
+    org = Actor.objects.create(
+        owner=None,
+        data={"person": {}, "organization": {"name": [{"name": {"fi": "State Museum"}}]}},
+    )
+    r = auth_client.patch(
+        reverse("collections-detail", kwargs={"pk": collection.id}),
+        {"owning_organization": {"id": org.id}},
+        format="json",
+    )
+    assert r.status_code == status.HTTP_200_OK
+    assert r.data["owning_organization"]["id"] == org.id
+
+
 def test_global_actor_not_editable_by_user(auth_client, global_actor):
     r = auth_client.patch(
         reverse("actors-detail", kwargs={"pk": global_actor.pk}),
-        {"data": {"organization": {"main_body": {"fi": "Hacked"}}}},
+        {"data": {"organization": {"name": [{"name": {"fi": "Hacked"}}]}}},
         format="json",
     )
     assert r.status_code == status.HTTP_403_FORBIDDEN
@@ -239,9 +262,9 @@ def test_global_actor_not_editable_by_user(auth_client, global_actor):
 def test_global_actor_editable_by_staff(staff_client, global_actor):
     r = staff_client.patch(
         reverse("actors-detail", kwargs={"pk": global_actor.pk}),
-        {"data": {"organization": {"main_body": {"fi": "Updated"}}}},
+        {"data": {"organization": {"name": [{"name": {"fi": "Updated"}}]}}},
         format="json",
     )
     assert r.status_code == status.HTTP_200_OK
     global_actor.refresh_from_db()
-    assert global_actor.data["organization"]["main_body"]["fi"] == "Updated"
+    assert global_actor.data["organization"]["name"][0]["name"]["fi"] == "Updated"

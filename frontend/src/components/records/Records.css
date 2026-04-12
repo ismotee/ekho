@@ -406,6 +406,12 @@
   margin-top: 1.5rem;
 }
 
+.record-export-error {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--color-danger);
+}
+
 .btn-danger {
   background-color: var(--color-danger);
   color: white;
@@ -426,6 +432,11 @@
 
 .record-form-wizard {
   max-width: 960px;
+}
+
+/* Canvas behind grouped fieldsets so --color-surface reads as a brighter “card” */
+.record-form.record-form-wizard {
+  background: var(--color-bg);
 }
 
 .record-form-wizard-title {
@@ -518,9 +529,15 @@
 }
 
 .record-form-image-block {
+  margin-top: 1.5rem;
+  padding-top: 0;
+  border-top: 1px solid var(--color-border-muted);
+}
+
+/** ImageUpload defaults to margin 1.5rem vertical; the block already provides top spacing — avoid doubling. */
+.record-form-image-block .image-upload {
+  margin-top: 0;
   margin-bottom: 1.5rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--color-border-muted);
 }
 
 .record-form-section-hint,
@@ -528,6 +545,7 @@
   margin: 0 0 1rem 0;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
+  white-space: pre-line;
 }
 
 .record-form-section-error {
@@ -545,11 +563,32 @@
   min-width: 0;
 }
 
+/** Objektin sijainti: space between identifier and location type. */
+.record-form-section-fields .form-group.record-form-object-location-type {
+  margin-top: 1.25rem;
+}
+
+/** Objektin sijainti: space between location type and Sijaintipaikka (spatial block). */
+.record-form-object-location-spatial {
+  margin-top: 1.25rem;
+}
+
+/** Objektityyppi → kuvatiedosto: same vertical rhythm as repeatable fieldset → next field (fieldset uses 1.5rem margin-bottom). */
+.record-form-section-fields .form-group.record-form-field-before-image {
+  margin-bottom: 0;
+}
+
+.record-form-required-mark {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
 .record-form-repeatable-fieldset {
-  margin: 1.25rem 0 0 0;
+  margin: 1.25rem 0 1.5rem 0;
   padding: 1rem;
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
+  background-color: var(--color-surface);
 }
 
 .record-form-repeatable-fieldset legend {
@@ -557,6 +596,28 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.record-form-date-detail-flat {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/** Access: extra gap between käyttörajoituksen kirjaamisaika (flat date) and lisätietoja textarea. */
+.record-form-access-date-block {
+  margin-bottom: 1.25rem;
+}
+
+/** TemporalFields: vertical rhythm between date block, role/period selects, and note. */
+.record-form-nested-fieldset.record-form-temporal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.record-form-section-fields .record-form-temporal-fields > .form-group {
+  margin-bottom: 0;
 }
 
 .record-form-nested-fieldset {
@@ -571,6 +632,23 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-text-subtle);
+}
+
+.record-form-date-detail-extra {
+  margin-top: 0.25rem;
+}
+
+.record-form-date-detail-extra-toggle--has-value {
+  font-weight: 600;
+}
+
+.record-form-date-detail-extra-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0 0 0.75rem;
+  border-left: 2px solid var(--color-border-muted);
 }
 
 .record-form-repeatable-row {

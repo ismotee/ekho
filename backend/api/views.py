@@ -4,6 +4,14 @@ Django REST Framework views for Ekho API
 Reference: docs/api-specification.md
 """
 
+import base64
+import mimetypes
+import os
+import uuid
+
+from django.core.files.base import ContentFile
+from django.http import JsonResponse
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
@@ -19,9 +27,12 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .models import Actor, Collection, Record
+from .record_validators import validate_record_data_payload
+from .system_identity import get_or_create_system_instance_id
 from .record_actor_refs import (
     collect_actor_ids,
     list_record_usage_for_actor,
+    sanitize_actor_refs_for_import,
     strip_actor_id,
 )
 from .serializers import ActorSerializer, UserSerializer, CollectionSerializer, RecordSerializer
@@ -30,6 +41,190 @@ from .permissions import (
     IsCollectionOwnerOrReadOnly,
     IsRecordOwnerOrReadOnly,
 )
+
+
+def _collection_visibility_q(user):
+    """Collections visible in list/retrieve: listed for everyone; unlisted only for owner."""
+    if getattr(user, "is_authenticated", False):
+        return Q(is_listed=True) | Q(owner=user)
+    return Q(is_listed=True)
+
+
+def _record_visibility_q(user):
+    """Records visible in list/retrieve: same rules via parent collection."""
+    if getattr(user, "is_authenticated", False):
+        return Q(collection__is_listed=True) | Q(collection__owner=user)
+    return Q(collection__is_listed=True)
+
+
+def _optional_import_uuid(value, field_label: str):
+    if value in (None, ""):
+        return None
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError(f"{field_label} must be a valid UUID or null.") from None
+
+
+def _require_import_uuid(value, field_label: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError(f"{field_label} must be a valid UUID.") from None
+
+
+def _validated_import_payload(request_data: dict):
+    ver = request_data.get("ekho_export_version")
+    if ver != 1:
+        raise ValueError("Unsupported or missing ekho_export_version (expected 1).")
+    col = request_data.get("collection")
+    if not isinstance(col, dict):
+        raise ValueError("collection must be an object.")
+    if col.get("stable_id") in (None, ""):
+        raise ValueError("collection.stable_id is required.")
+    _require_import_uuid(col.get("stable_id"), "collection.stable_id")
+    rec = request_data.get("record")
+    if not isinstance(rec, dict):
+        raise ValueError("record must be an object.")
+    raw_data = rec.get("data")
+    if raw_data is None:
+        raise ValueError("record.data is required.")
+    if not isinstance(raw_data, dict):
+        raise ValueError("record.data must be a JSON object.")
+    return col, rec, raw_data
+
+
+def _decode_import_image(rec_block: dict) -> tuple[bytes, str] | None:
+    p = rec_block.get("representative_image")
+    if not p:
+        return None
+    if not isinstance(p, dict):
+        raise ValueError("record.representative_image must be an object.")
+    b64 = p.get("base64")
+    if not isinstance(b64, str) or not b64.strip():
+        raise ValueError(
+            "record.representative_image.base64 is required when an image is present."
+        )
+    try:
+        raw = base64.b64decode(b64)
+    except Exception:
+        raise ValueError("record.representative_image.base64 is not valid base64.") from None
+    max_size = 10 * 1024 * 1024
+    if len(raw) > max_size:
+        raise ValueError("Image file size cannot exceed 10MB")
+    filename = p.get("filename") or "import.jpg"
+    if not isinstance(filename, str):
+        filename = "import.jpg"
+    filename = os.path.basename(filename.strip()) or "import.jpg"
+    content_type = p.get("content_type")
+    if content_type is None:
+        content_type = mimetypes.guess_type(filename)[0]
+    allowed_types = ["image/jpeg", "image/png", "image/gif"]
+    if content_type not in allowed_types:
+        raise ValueError("Image must be JPEG, PNG, or GIF")
+    return raw, filename
+
+
+def _current_collection_for_import(user, collection_id):
+    if collection_id is None:
+        raise ValueError("current_collection_id is required for this import mode.")
+    try:
+        cid = int(collection_id)
+    except (TypeError, ValueError):
+        raise ValueError("current_collection_id must be an integer.")
+    try:
+        col = Collection.objects.get(pk=cid)
+    except Collection.DoesNotExist:
+        raise ValueError("Collection not found.")
+    if col.owner_id != user.id:
+        raise PermissionDenied("Only the collection owner can import into this collection.")
+    if col.is_closed:
+        raise PermissionDenied("Cannot import into a closed collection.")
+    return col
+
+
+def _get_or_create_original_collection(user, col_meta: dict) -> Collection:
+    sid = _require_import_uuid(col_meta.get("stable_id"), "collection.stable_id")
+
+    existing = Collection.objects.filter(stable_id=sid).first()
+    if existing:
+        if existing.owner_id != user.id:
+            raise PermissionDenied(
+                "A collection with this stable_id already exists under another owner."
+            )
+        if existing.is_closed:
+            raise PermissionDenied("Cannot add records to a closed collection.")
+        return existing
+
+    name = col_meta.get("name") or "Imported collection"
+    if not isinstance(name, str):
+        name = str(name)
+    desc = col_meta.get("description") or ""
+    if not isinstance(desc, str):
+        desc = str(desc)
+
+    origin_uid = _optional_import_uuid(
+        col_meta.get("origin_ekho_instance_id"),
+        "collection.origin_ekho_instance_id",
+    )
+
+    if bool(col_meta.get("is_closed", False)):
+        raise ValueError("Cannot import: exported collection is closed.")
+
+    rd = col_meta.get("responsible_department") or ""
+    if not isinstance(rd, str):
+        rd = str(rd)
+
+    owning_actor = None
+    oo_meta = col_meta.get("owning_organization")
+    if isinstance(oo_meta, dict) and oo_meta.get("id") is not None:
+        from .actor_catalog_validate import actor_catalog_kind
+
+        try:
+            cand = Actor.objects.get(pk=int(oo_meta["id"]))
+        except (Actor.DoesNotExist, ValueError, TypeError):
+            cand = None
+        if cand is not None and actor_catalog_kind(cand.data) == "organization":
+            owning_actor = cand
+
+    return Collection.objects.create(
+        name=name[:200],
+        description=desc[:1000],
+        responsible_department=rd[:500],
+        owning_organization=owning_actor,
+        owner=user,
+        is_closed=False,
+        stable_id=sid,
+        origin_ekho_instance_id=origin_uid,
+        is_listed=False,
+    )
+
+
+def _save_imported_record(collection, data_dict: dict, image_tuple: tuple[bytes, str] | None):
+    now = timezone.now()
+    rec = Record.objects.create(
+        collection=collection,
+        data=data_dict,
+        imported_first=now,
+        imported_last=now,
+    )
+    if image_tuple is not None:
+        raw, fname = image_tuple
+        cf = ContentFile(bytes(raw), name=fname)
+        unique = f"{uuid.uuid4().hex}_{os.path.basename(fname)}"
+        rec.representative_image.save(unique, cf, save=True)
+    return rec
+
+
+def _permission_denied_response(exc: PermissionDenied):
+    detail = exc.detail
+    if isinstance(detail, list) and detail:
+        msg = str(detail[0])
+    elif isinstance(detail, dict):
+        msg = str(detail)
+    else:
+        msg = str(detail)
+    return Response({"error": msg}, status=status.HTTP_403_FORBIDDEN)
 
 
 @api_view(['GET'])
@@ -192,7 +387,7 @@ class CollectionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter collections based on query parameters"""
         from django.db.models import Count
-        queryset = Collection.objects.select_related('owner').annotate(
+        queryset = Collection.objects.select_related('owner', 'owning_organization').annotate(
             record_count=Count('records')
         ).order_by('-created_at')
         
@@ -213,7 +408,8 @@ class CollectionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(
                 Q(name__icontains=search) | Q(description__icontains=search)
             )
-        
+
+        queryset = queryset.filter(_collection_visibility_q(self.request.user))
         return queryset
     
     def create(self, request, *args, **kwargs):
@@ -367,7 +563,7 @@ class RecordViewSet(viewsets.ModelViewSet):
         owner_username = self.request.query_params.get('owner', '').strip()
         search = (self.request.query_params.get('search') or '').strip()
 
-        queryset = Record.objects.all()
+        queryset = Record.objects.filter(_record_visibility_q(self.request.user))
 
         if collection_id:
             queryset = queryset.filter(collection_id=collection_id)
@@ -392,9 +588,10 @@ class RecordViewSet(viewsets.ModelViewSet):
         """List records - collection parameter is optional (omit to list all records)."""
         collection_id = request.query_params.get('collection')
         if collection_id:
-            try:
-                Collection.objects.get(id=collection_id)
-            except Collection.DoesNotExist:
+            visible = Collection.objects.filter(pk=collection_id).filter(
+                _collection_visibility_q(request.user)
+            )
+            if not visible.exists():
                 return Response({
                     'error': 'Collection not found'
                 }, status=status.HTTP_404_NOT_FOUND)
@@ -498,3 +695,141 @@ class RecordViewSet(viewsets.ModelViewSet):
         if instance.representative_image:
             instance.representative_image.delete(save=False)
         instance.delete()
+
+    @action(detail=True, methods=["get"], url_path="export")
+    def export(self, request, pk=None):
+        """
+        Download a versioned JSON export of this record (domain data, collection
+        metadata for cross-system import, optional embedded representative image).
+        GET /api/records/{id}/export/
+        """
+        record = self.get_object()
+        collection = record.collection
+
+        try:
+            raw_data = record.data if isinstance(record.data, dict) else {}
+            data = validate_record_data_payload(raw_data)
+        except ValueError as e:
+            return Response(
+                {"error": "Invalid stored record data", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        origin = collection.origin_ekho_instance_id
+        owner = collection.owner
+        payload = {
+            "ekho_export_version": 1,
+            "source_ekho_instance_id": str(get_or_create_system_instance_id()),
+            "collection": {
+                "stable_id": str(collection.stable_id),
+                "name": collection.name,
+                "description": collection.description,
+                "responsible_department": collection.responsible_department or "",
+                "owning_organization": (
+                    {"id": collection.owning_organization_id}
+                    if collection.owning_organization_id
+                    else None
+                ),
+                "origin_ekho_instance_id": str(origin) if origin is not None else None,
+                "is_closed": collection.is_closed,
+                "is_listed": collection.is_listed,
+                "original_creator": {
+                    "username": owner.username,
+                },
+            },
+            "record": {
+                "data": data,
+            },
+        }
+
+        if record.representative_image:
+            img = record.representative_image
+            img.open("rb")
+            try:
+                blob = img.read()
+            finally:
+                img.close()
+            name = img.name or ""
+            filename = os.path.basename(name) if name else ""
+            content_type = (
+                mimetypes.guess_type(filename)[0] or "application/octet-stream"
+            )
+            payload["record"]["representative_image"] = {
+                "filename": filename,
+                "content_type": content_type,
+                "base64": base64.b64encode(blob).decode("ascii"),
+            }
+
+        response = JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
+        filename = f'ekho-record-{record.pk}.json'
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=["post"], url_path="import", url_name="import")
+    def import_record(self, request):
+        """
+        Import a record from an export JSON payload (see GET .../export/).
+        POST /api/records/import/
+        """
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        mode = request.data.get("mode")
+        if mode not in ("acquisition", "deposition", "original_only"):
+            return Response(
+                {
+                    "error": "mode must be one of: acquisition, deposition, original_only.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            col_meta, rec_block, raw_data = _validated_import_payload(request.data)
+            data_sanitized = sanitize_actor_refs_for_import(raw_data, request.user)
+            data_validated = validate_record_data_payload(data_sanitized)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            image_tuple = _decode_import_image(rec_block)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        current_id = request.data.get("current_collection_id")
+
+        try:
+            if mode == "acquisition":
+                current = _current_collection_for_import(request.user, current_id)
+                with transaction.atomic():
+                    rec = _save_imported_record(current, data_validated, image_tuple)
+                return Response(
+                    {"record_ids": [rec.pk], "mode": mode},
+                    status=status.HTTP_201_CREATED,
+                )
+
+            if mode == "original_only":
+                with transaction.atomic():
+                    original = _get_or_create_original_collection(request.user, col_meta)
+                    rec = _save_imported_record(original, data_validated, image_tuple)
+                return Response(
+                    {"record_ids": [rec.pk], "mode": mode},
+                    status=status.HTTP_201_CREATED,
+                )
+
+            # deposition
+            current = _current_collection_for_import(request.user, current_id)
+            with transaction.atomic():
+                original = _get_or_create_original_collection(request.user, col_meta)
+                r1 = _save_imported_record(original, data_validated, image_tuple)
+                r2 = _save_imported_record(current, data_validated, image_tuple)
+            return Response(
+                {"record_ids": [r1.pk, r2.pk], "mode": mode},
+                status=status.HTTP_201_CREATED,
+            )
+        except PermissionDenied as e:
+            return _permission_denied_response(e)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

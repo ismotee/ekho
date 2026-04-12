@@ -88,6 +88,18 @@ describe('getRecordCardSummary', () => {
         representative_image: null,
       }).yearLine
     ).toBe('1921')
+
+    expect(
+      getRecordCardSummary({
+        data: {
+          aquisition_details: {
+            acquisition_time: { text: '2001' },
+            date: [{ note: '1920' }],
+          },
+        },
+        representative_image: null,
+      }).yearLine
+    ).toBe('2001')
   })
 
   it('exposes thumbnail and trimmed collection name', () => {

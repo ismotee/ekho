@@ -2,16 +2,16 @@
  * docs/data/access-models.md
  */
 
-import type { ReferenceField, Temporal } from './common'
+import type { DateDetail, ReferenceField } from './common'
 
 export interface ObjectDisplayStatus {
   type?: ReferenceField
-  date?: Temporal
+  date?: DateDetail
 }
 
 export interface Access {
   category?: ReferenceField
-  date?: Temporal
+  date?: DateDetail
   note?: string
   museological_value?: ReferenceField
   credit_line?: string

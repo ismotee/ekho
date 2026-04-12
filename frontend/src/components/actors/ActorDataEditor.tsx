@@ -3,15 +3,19 @@
  */
 
 import { useEffect, useState } from 'react'
-import type { Actor, Address, OrganizationHistory, OtherName, Person, PersonName } from '../../types/record/actor'
-import type { Label } from '../../types/record/common'
-import { DateDetailInputs, TemporalFields } from '../records/TemporalFields'
-import { dateDetailHasPersistableContent } from '../../lib/temporalPayload'
+import type { ReactNode } from 'react'
+import type { Actor, Address, NameDetail, OrganizationHistory, Person, PersonName } from '../../types/record/actor'
+import { DateDetailInputs } from '../records/TemporalFields'
+import { MultilingualLabelInputs } from '../records/MultilingualLabelInputs'
+import { SpatialFields } from '../records/SpatialFields'
+import { dateDetailHasPersistableContent, dateDetailSummaryLine } from '../../lib/temporalPayload'
 import type { BiographicalNote } from '../../types/record/actor'
 import {
   ACTOR_ADDRESS_TYPE_FI,
+  ACTOR_ORGANIZATION_ADDRESS_TYPE_AUTO_FI,
+  ACTOR_PERSON_ADDRESS_TYPE_AUTO_FI,
   ACTOR_ORG_IDENTIFIER_TYPE_FI,
-  ACTOR_ORGANIZATION_OTHER_NAME_TYPE_FI,
+  ACTOR_ORGANIZATION_NAME_TYPE_FI,
   ACTOR_PERSON_GENDER_FI,
   ACTOR_PERSON_NAME_TYPE_FI,
   ACTOR_PERSON_NATIONALITY_FI,
@@ -20,159 +24,64 @@ import {
   inferActorCatalogKind,
   organizationHasIdentity,
   organizationHistoryHasContent,
-  organizationOtherNameRowHasContent,
+  organizationNameDetailRowHasContent,
   personHasIdentity,
   personNameRowHasIdentity,
 } from '../../lib/actorCatalogPayload'
+import { ORGANIZATION_HISTORY_SOURCE_TYPE_FI } from '../../data/referenceVocabularies'
+import { referenceFieldFi, referenceFieldToPayload } from '../../lib/referenceField'
 import { ReferenceSelect } from '../records/ReferenceSelect'
 import { CollapsibleRepeatableRow } from '../records/CollapsibleRepeatableRow'
 import { useRepeatableCollapsedRows } from '../records/useRepeatableCollapsedRows'
-import { referenceFieldFi, referenceFieldToPayload } from '../../lib/referenceField'
 import { useTranslation } from 'react-i18next'
 import '../records/Records.css'
 import './Actors.css'
 
-function LabelInputs({
+/** Collapsible subsection inside organization history (foundation dates, place, historiikki). */
+function OrgHistoryCollapsibleBlock({
   idPrefix,
-  label,
-  value,
-  onChange,
-  disabled,
-  includeUndefinedLanguage = true,
+  sectionKey,
+  title,
+  expanded,
+  onToggle,
+  children,
 }: {
   idPrefix: string
-  label: string
-  value?: Label
-  onChange: (next: Label | undefined) => void
-  disabled?: boolean
-  /** When false, only Finnish + English (organization section). */
-  includeUndefinedLanguage?: boolean
+  sectionKey: string
+  title: string
+  expanded: boolean
+  onToggle: () => void
+  children: ReactNode
 }) {
-  const { t } = useTranslation()
-  const v = value ?? {}
-  const set = (patch: Partial<Label>) => {
-    let n: Label = { ...v, ...patch }
-    if (!includeUndefinedLanguage) {
-      const { und: _drop, ...rest } = n
-      n = rest
-    }
-    const empty =
-      !n.fi?.trim() &&
-      !n.en?.trim() &&
-      (includeUndefinedLanguage ? !n.und?.trim() : true)
-    onChange(empty ? undefined : n)
-  }
+  const toggleId = `${idPrefix}-sub-${sectionKey}-toggle`
+  const panelId = `${idPrefix}-sub-${sectionKey}-panel`
   return (
-    <div className="actor-form-label-group">
-      <span className="actor-form-sublegend">{label}</span>
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-fi`}>{t('actors.form.fields.finnish')}</label>
-        <input
-          id={`${idPrefix}-fi`}
-          type="text"
-          value={v.fi ?? ''}
-          onChange={(e) => set({ fi: e.target.value || undefined })}
-          disabled={disabled}
-        />
+    <div className="actor-form-org-sub-collapsible">
+      <div className="actor-form-org-sub-collapsible-head">
+        <button
+          id={toggleId}
+          type="button"
+          className="actor-form-org-sub-collapsible-toggle"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-controls={panelId}
+        >
+          <span className="actor-form-org-sub-collapsible-chevron" aria-hidden>
+            {expanded ? '▼' : '▶'}
+          </span>
+          <span>{title}</span>
+        </button>
       </div>
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-en`}>{t('actors.form.fields.english')}</label>
-        <input
-          id={`${idPrefix}-en`}
-          type="text"
-          value={v.en ?? ''}
-          onChange={(e) => set({ en: e.target.value || undefined })}
-          disabled={disabled}
-        />
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={toggleId}
+        hidden={!expanded}
+        className="actor-form-org-sub-collapsible-panel"
+      >
+        {children}
       </div>
-      {includeUndefinedLanguage ? (
-        <div className="form-group">
-          <label htmlFor={`${idPrefix}-und`}>{t('actors.form.fields.undefinedLanguage')}</label>
-          <input
-            id={`${idPrefix}-und`}
-            type="text"
-            value={v.und ?? ''}
-            onChange={(e) => set({ und: e.target.value || undefined })}
-            disabled={disabled}
-          />
-        </div>
-      ) : null}
     </div>
-  )
-}
-
-function SpatialMiniInputs({
-  idPrefix,
-  legend,
-  value,
-  onChange,
-  disabled,
-  includeUndefinedLanguage = true,
-}: {
-  idPrefix: string
-  legend: string
-  value?: import('../../types/record/actor').Spatial
-  onChange: (next: import('../../types/record/actor').Spatial | undefined) => void
-  disabled?: boolean
-  includeUndefinedLanguage?: boolean
-}) {
-  const { t } = useTranslation()
-  const s = value ?? {}
-  const patch = (partial: Partial<import('../../types/record/actor').Spatial>) => {
-    const n = { ...s, ...partial }
-    const name = n.name ?? {}
-    const empty =
-      !name.fi?.trim() &&
-      !name.en?.trim() &&
-      !name.und?.trim() &&
-      !n.note?.trim() &&
-      !n.association &&
-      !n.environmental_details?.trim() &&
-      !n.position?.trim()
-    onChange(empty ? undefined : n)
-  }
-  return (
-    <fieldset className="actor-form-nested-fieldset">
-      <legend>{legend}</legend>
-      <LabelInputs
-        idPrefix={`${idPrefix}-name`}
-        label={t('actors.form.fields.nameLabel')}
-        value={s.name}
-        onChange={(l) => patch({ name: l })}
-        disabled={disabled}
-        includeUndefinedLanguage={includeUndefinedLanguage}
-      />
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-note`}>{t('recordForm.labels.noteActorPlace')}</label>
-        <textarea
-          id={`${idPrefix}-note`}
-          value={s.note ?? ''}
-          onChange={(e) => patch({ note: e.target.value || undefined })}
-          rows={2}
-          disabled={disabled}
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-assoc`}>{t('actors.form.fields.associationRefText')}</label>
-        <input
-          id={`${idPrefix}-assoc`}
-          type="text"
-          value={typeof s.association === 'string' ? s.association : ''}
-          onChange={(e) => patch({ association: e.target.value || undefined })}
-          disabled={disabled}
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-pos`}>{t('recordForm.labels.position')}</label>
-        <input
-          id={`${idPrefix}-pos`}
-          type="text"
-          value={s.position ?? ''}
-          onChange={(e) => patch({ position: e.target.value || undefined })}
-          disabled={disabled}
-        />
-      </div>
-    </fieldset>
   )
 }
 
@@ -181,43 +90,78 @@ function AddressInputs({
   value,
   onChange,
   disabled,
+  textFieldLabel,
+  hideTypeField,
+  autoTypeFiWhenFilled,
+  fieldsetLegend,
+  omitAddressTextLabel,
+  omitFieldsetLegend,
 }: {
   idPrefix: string
   value?: Address
   onChange: (next: Address | undefined) => void
   disabled?: boolean
+  /** Label for the free-text address field; defaults to “Text”. */
+  textFieldLabel?: string
+  /** Hide address type selector (e.g. organization: type is derived). */
+  hideTypeField?: boolean
+  /** When set with `hideTypeField`, written to `type` whenever text/email/phone has content. */
+  autoTypeFiWhenFilled?: string
+  /** Fieldset legend; defaults to “Address”. */
+  fieldsetLegend?: string
+  /** When true, no visible label above the main address textarea (use fieldset legend + aria-label). */
+  omitAddressTextLabel?: boolean
+  /** When true, no inner legend (parent provides section title, e.g. collapsible). */
+  omitFieldsetLegend?: boolean
 }) {
   const { t } = useTranslation()
   const a = value ?? {}
   const patch = (p: Partial<Address>) => {
-    const n = { ...a, ...p }
-    const empty =
-      !n.text?.trim() &&
-      !n.email?.trim() &&
-      !n.phone_number?.trim() &&
-      !(typeof n.type === 'string' && n.type.trim())
+    let n = { ...a, ...p }
+    if (hideTypeField && autoTypeFiWhenFilled) {
+      const hasContact = !!(n.text?.trim() || n.email?.trim() || n.phone_number?.trim())
+      n.type = hasContact ? autoTypeFiWhenFilled : undefined
+    }
+    const empty = hideTypeField && autoTypeFiWhenFilled
+      ? !n.text?.trim() && !n.email?.trim() && !n.phone_number?.trim()
+      : !n.text?.trim() &&
+        !n.email?.trim() &&
+        !n.phone_number?.trim() &&
+        !(typeof n.type === 'string' && n.type.trim())
     onChange(empty ? undefined : n)
   }
+  const resolvedLegend = fieldsetLegend ?? t('actors.form.fields.address')
+  const mainTextAria =
+    omitAddressTextLabel ? textFieldLabel ?? resolvedLegend : undefined
+
   return (
-    <fieldset className="actor-form-nested-fieldset">
-      <legend>{t('actors.form.fields.address')}</legend>
-      <ReferenceSelect
-        id={`${idPrefix}-type`}
-        label={t('recordForm.labels.type')}
-        allowlist={ACTOR_ADDRESS_TYPE_FI}
-        valueFi={typeof a.type === 'string' ? a.type : referenceFieldFi(a.type as never)}
-        onChangeFi={(fi) => patch({ type: fi.trim() ? fi : undefined })}
-        disabled={disabled}
-        emptyLabel="—"
-      />
+    <fieldset
+      className="actor-form-nested-fieldset"
+      aria-label={omitFieldsetLegend ? resolvedLegend : undefined}
+    >
+      {!omitFieldsetLegend ? <legend>{resolvedLegend}</legend> : null}
+      {!hideTypeField ? (
+        <ReferenceSelect
+          id={`${idPrefix}-type`}
+          label={t('recordForm.labels.type')}
+          allowlist={ACTOR_ADDRESS_TYPE_FI}
+          valueFi={typeof a.type === 'string' ? a.type : referenceFieldFi(a.type as never)}
+          onChangeFi={(fi) => patch({ type: fi.trim() ? fi : undefined })}
+          disabled={disabled}
+          emptyLabel="—"
+        />
+      ) : null}
       <div className="form-group">
-        <label htmlFor={`${idPrefix}-text`}>{t('actors.form.fields.text')}</label>
+        {!omitAddressTextLabel ? (
+          <label htmlFor={`${idPrefix}-text`}>{textFieldLabel ?? t('actors.form.fields.text')}</label>
+        ) : null}
         <textarea
           id={`${idPrefix}-text`}
           value={a.text ?? ''}
           onChange={(e) => patch({ text: e.target.value || undefined })}
           rows={2}
           disabled={disabled}
+          aria-label={mainTextAria}
         />
       </div>
       <div className="form-group">
@@ -249,11 +193,14 @@ function BiographicalNoteInputs({
   value,
   onChange,
   disabled,
+  variant = 'person',
 }: {
   idPrefix: string
   value?: BiographicalNote
   onChange: (next: BiographicalNote | undefined) => void
   disabled?: boolean
+  /** Narrative label differs; source block matches organization (citation, type list, date, note). */
+  variant?: 'person' | 'organization'
 }) {
   const { t } = useTranslation()
   const b = value ?? {}
@@ -263,43 +210,68 @@ function BiographicalNoteInputs({
     const n = { ...nextBio }
     const s = n.source
     if (s) {
-      const st = typeof s.source_type === 'string' ? s.source_type.trim() : ''
+      const cit = (s.citation ?? '').trim()
+      const st =
+        typeof s.source_type === 'string'
+          ? s.source_type.trim()
+          : referenceFieldFi(s.source_type as never)
       const sn = s.note?.trim()
       const sd = dateDetailHasPersistableContent(s.source_date)
-      if (!st && !sn && !sd) n.source = undefined
+      if (!cit && !st && !sn && !sd) n.source = undefined
     }
     if (!n.note?.trim() && !n.source) onChange(undefined)
     else onChange(n)
   }
 
-  return (
-    <fieldset className="actor-form-nested-fieldset">
-      <legend>{t('actors.form.fields.biographicalNote')}</legend>
+  const narrativeLabel =
+    variant === 'organization'
+      ? t('actors.form.fields.organizationHistoryNarrative')
+      : t('actors.form.fields.biographicalNote')
+
+  const noteBlock = (
+    <div className="form-group">
+      <label htmlFor={`${idPrefix}-note`}>{narrativeLabel}</label>
+      <textarea
+        id={`${idPrefix}-note`}
+        value={b.note ?? ''}
+        onChange={(e) => commit({ ...b, note: e.target.value || undefined })}
+        rows={4}
+        disabled={disabled}
+      />
+    </div>
+  )
+
+  const sourceFieldsBio = (
+    <>
       <div className="form-group">
-        <label htmlFor={`${idPrefix}-note`}>{t('recordForm.labels.noteActorBiographical')}</label>
-        <textarea
-          id={`${idPrefix}-note`}
-          value={b.note ?? ''}
-          onChange={(e) => commit({ ...b, note: e.target.value || undefined })}
-          rows={3}
-          disabled={disabled}
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-src-type`}>{t('actors.form.fields.sourceType')}</label>
+        <label htmlFor={`${idPrefix}-src-citation`}>{t('actors.form.fields.sourceCitation')}</label>
         <input
-          id={`${idPrefix}-src-type`}
+          id={`${idPrefix}-src-citation`}
           type="text"
-          value={typeof src.source_type === 'string' ? src.source_type : ''}
+          value={src.citation ?? ''}
           onChange={(e) =>
             commit({
               ...b,
-              source: { ...src, source_type: e.target.value.trim() || undefined },
+              source: { ...src, citation: e.target.value.trim() || undefined },
             })
           }
           disabled={disabled}
         />
       </div>
+      <ReferenceSelect
+        id={`${idPrefix}-src-type`}
+        label={t('actors.form.fields.sourceType')}
+        allowlist={ORGANIZATION_HISTORY_SOURCE_TYPE_FI}
+        valueFi={referenceFieldFi(src.source_type)}
+        onChangeFi={(fi) =>
+          commit({
+            ...b,
+            source: { ...src, source_type: fi.trim() ? referenceFieldToPayload(fi) : undefined },
+          })
+        }
+        disabled={disabled}
+        emptyLabel="—"
+      />
       <DateDetailInputs
         idPrefix={`${idPrefix}-src-date`}
         legend={t('actors.form.fields.sourceDate')}
@@ -327,8 +299,31 @@ function BiographicalNoteInputs({
           disabled={disabled}
         />
       </div>
-    </fieldset>
+    </>
   )
+
+  return (
+    <div className="actor-form-org-history-bio-group actor-form-nested-fieldset">
+      {noteBlock}
+      <div className="actor-form-org-source-subgroup" aria-labelledby={`${idPrefix}-src-sublegend`}>
+        <span id={`${idPrefix}-src-sublegend`} className="actor-form-sublegend">
+          {t('actors.form.fields.organizationHistorySourceLegend')}
+        </span>
+        {sourceFieldsBio}
+      </div>
+    </div>
+  )
+}
+
+function personNameRowSummary(row: PersonName, emptyLabel: string): string {
+  const n = row.name?.trim()
+  if (n) return n.length > 72 ? `${n.slice(0, 69)}…` : n
+  const tt =
+    typeof row.name_type === 'string' ? row.name_type : referenceFieldFi(row.name_type as never)
+  if (tt) return tt
+  const d = dateDetailSummaryLine(row.date)
+  if (d) return d
+  return emptyLabel
 }
 
 function PersonNameListEditor({
@@ -345,12 +340,25 @@ function PersonNameListEditor({
   disabled?: boolean
 }) {
   const { t } = useTranslation()
+  const nameRowsCol = useRepeatableCollapsedRows(rows, personNameRowHasIdentity)
+
   return (
-    <fieldset className="actor-form-nested-fieldset">
+    <fieldset className="record-form-repeatable-fieldset">
       <legend>{legend}</legend>
+      <p className="record-form-repeatable-hint">{t('actors.form.personNameRowsHint')}</p>
       {rows.map((row, i) => (
-        <div key={i} className="actor-form-repeatable-inline">
-          <div className="form-group">
+        <CollapsibleRepeatableRow
+          key={i}
+          id={`${idPrefix}-row-${i}`}
+          collapsed={nameRowsCol.isCollapsed(i)}
+          onToggleCollapse={() => nameRowsCol.toggle(i)}
+          onRemove={() => onChangeRows(rows.filter((_, j) => j !== i))}
+          disabled={disabled}
+          saveItemNoun={t('actors.form.saveNameDetailNoun')}
+          summary={personNameRowSummary(row, t('actors.form.emptyNameDetail'))}
+          removeLabel={t('actors.form.removeNameDetail')}
+        >
+          <div className="form-group actor-form-person-name-field">
             <label htmlFor={`${idPrefix}-n-${i}`}>{t('recordForm.labels.name')}</label>
             <input
               id={`${idPrefix}-n-${i}`}
@@ -363,6 +371,24 @@ function PersonNameListEditor({
               disabled={disabled}
             />
           </div>
+          <div className="form-group actor-form-in-use-checkbox">
+            <label htmlFor={`${idPrefix}-inuse-${i}`} className="actor-form-in-use-label">
+              <input
+                id={`${idPrefix}-inuse-${i}`}
+                type="checkbox"
+                checked={row.in_use !== false}
+                onChange={(e) =>
+                  onChangeRows(
+                    rows.map((x, j) =>
+                      j === i ? { ...x, in_use: e.target.checked ? true : false } : x,
+                    ),
+                  )
+                }
+                disabled={disabled}
+              />
+              <span>{t('actors.form.fields.inUseInActorSelects')}</span>
+            </label>
+          </div>
           <ReferenceSelect
             id={`${idPrefix}-t-${i}`}
             label={t('actors.form.fields.nameType')}
@@ -374,30 +400,23 @@ function PersonNameListEditor({
             disabled={disabled}
             emptyLabel="—"
           />
-          <TemporalFields
+          <DateDetailInputs
             idPrefix={`${idPrefix}-d-${i}`}
             legend={t('actors.form.fields.nameDate')}
             value={row.date}
             onChange={(d) => onChangeRows(rows.map((x, j) => (j === i ? { ...x, date: d } : x)))}
             disabled={disabled}
+            temporalMetadataFields
           />
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => onChangeRows(rows.filter((_, j) => j !== i))}
-            disabled={disabled}
-          >
-            {t('recordForm.labels.remove')}
-          </button>
-        </div>
+        </CollapsibleRepeatableRow>
       ))}
       <button
         type="button"
         className="btn btn-secondary btn-sm"
-        onClick={() => onChangeRows([...rows, {}])}
+        onClick={() => onChangeRows([...rows, { in_use: true }])}
         disabled={disabled}
       >
-        {t('actors.form.addRow')}
+        {t('actors.form.addNameDetail')}
       </button>
     </fieldset>
   )
@@ -408,14 +427,23 @@ function PersonCatalogFields({
   person: personProp,
   onPatch,
   disabled,
+  ownerPinnedActorId,
 }: {
   idPrefix: string
   person?: Person
   onPatch: (patch: Partial<Person>) => void
   disabled?: boolean
+  /** When editing this person as a catalog actor, pin them in spatial “owner” select (same idea as org foundation place). */
+  ownerPinnedActorId?: number
 }) {
   const { t } = useTranslation()
   const person = personProp ?? {}
+  const [birthDateOpen, setBirthDateOpen] = useState(false)
+  const [deathDateOpen, setDeathDateOpen] = useState(false)
+  const [placeOfBirthOpen, setPlaceOfBirthOpen] = useState(false)
+  const [contactDetailsOpen, setContactDetailsOpen] = useState(false)
+  const [professionalDetailsOpen, setProfessionalDetailsOpen] = useState(false)
+  const [personBioOpen, setPersonBioOpen] = useState(false)
   return (
     <>
       <PersonNameListEditor
@@ -425,52 +453,13 @@ function PersonCatalogFields({
         onChangeRows={(rows) => onPatch({ first_name: rows.length ? rows : undefined })}
         disabled={disabled}
       />
-      <fieldset className="actor-form-nested-fieldset">
-        <legend>{t('actors.form.fields.lastName')}</legend>
-        <div className="form-group">
-          <label htmlFor={`${idPrefix}-pln-name`}>{t('recordForm.labels.name')}</label>
-          <input
-            id={`${idPrefix}-pln-name`}
-            type="text"
-            value={person.last_name?.name ?? ''}
-            onChange={(e) => {
-              const v = e.target.value.trim()
-              const cur = person.last_name ?? {}
-              const next: PersonName = { ...cur, name: v || undefined }
-              onPatch({ last_name: personNameRowHasIdentity(next) ? next : undefined })
-            }}
-            disabled={disabled}
-          />
-        </div>
-        <ReferenceSelect
-          id={`${idPrefix}-pln-nt`}
-          label={t('actors.form.fields.nameType')}
-          allowlist={ACTOR_PERSON_NAME_TYPE_FI}
-          valueFi={
-            typeof person.last_name?.name_type === 'string'
-              ? person.last_name.name_type
-              : referenceFieldFi(person.last_name?.name_type as never)
-          }
-          onChangeFi={(fi) => {
-            const cur = person.last_name ?? {}
-            const next: PersonName = { ...cur, name_type: fi.trim() ? fi : undefined }
-            onPatch({ last_name: personNameRowHasIdentity(next) ? next : undefined })
-          }}
-          disabled={disabled}
-          emptyLabel="—"
-        />
-        <TemporalFields
-          idPrefix={`${idPrefix}-pln-d`}
-          legend={t('actors.form.fields.lastNameDate')}
-          value={person.last_name?.date}
-          onChange={(temp) => {
-            const cur = person.last_name ?? {}
-            const next: PersonName = { ...cur, date: temp }
-            onPatch({ last_name: personNameRowHasIdentity(next) ? next : undefined })
-          }}
-          disabled={disabled}
-        />
-      </fieldset>
+      <PersonNameListEditor
+        idPrefix={`${idPrefix}-pln`}
+        legend={t('actors.form.fields.lastName')}
+        rows={person.last_name ?? []}
+        onChangeRows={(rows) => onPatch({ last_name: rows.length ? rows : undefined })}
+        disabled={disabled}
+      />
       <PersonNameListEditor
         idPrefix={`${idPrefix}-pon`}
         legend={t('actors.form.fields.otherNames')}
@@ -488,27 +477,6 @@ function PersonCatalogFields({
           disabled={disabled}
         />
       </div>
-      <TemporalFields
-        idPrefix={`${idPrefix}-p-birth`}
-        legend={t('actors.form.fields.birthDate')}
-        value={person.birth_date}
-        onChange={(temp) => onPatch({ birth_date: temp })}
-        disabled={disabled}
-      />
-      <TemporalFields
-        idPrefix={`${idPrefix}-p-death`}
-        legend={t('actors.form.fields.deathDate')}
-        value={person.death_date}
-        onChange={(temp) => onPatch({ death_date: temp })}
-        disabled={disabled}
-      />
-      <SpatialMiniInputs
-        idPrefix={`${idPrefix}-p-pob`}
-        legend={t('actors.form.fields.placeOfBirth')}
-        value={person.place_of_birth}
-        onChange={(s) => onPatch({ place_of_birth: s })}
-        disabled={disabled}
-      />
       <ReferenceSelect
         id={`${idPrefix}-p-gender`}
         label={t('actors.form.fields.gender')}
@@ -529,48 +497,6 @@ function PersonCatalogFields({
         disabled={disabled}
         emptyLabel="—"
       />
-      <AddressInputs
-        idPrefix={`${idPrefix}-p-addr`}
-        value={person.address}
-        onChange={(a) => onPatch({ address: a })}
-        disabled={disabled}
-      />
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-p-web`}>{t('actors.form.fields.website')}</label>
-        <input
-          id={`${idPrefix}-p-web`}
-          type="url"
-          value={person.website ?? ''}
-          onChange={(e) => onPatch({ website: e.target.value || undefined })}
-          disabled={disabled}
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-p-school`}>{t('actors.form.fields.schoolOrStyleRefText')}</label>
-        <input
-          id={`${idPrefix}-p-school`}
-          type="text"
-          value={
-            typeof person.school_or_style === 'string'
-              ? person.school_or_style
-              : referenceFieldFi(person.school_or_style as never)
-          }
-          onChange={(e) => onPatch({ school_or_style: e.target.value.trim() || undefined })}
-          disabled={disabled}
-        />
-      </div>
-      <div className="form-group">
-        <label htmlFor={`${idPrefix}-p-occ`}>{t('actors.form.fields.occupationRefText')}</label>
-        <input
-          id={`${idPrefix}-p-occ`}
-          type="text"
-          value={
-            typeof person.occupation === 'string' ? person.occupation : referenceFieldFi(person.occupation as never)
-          }
-          onChange={(e) => onPatch({ occupation: e.target.value.trim() || undefined })}
-          disabled={disabled}
-        />
-      </div>
       <div className="form-group">
         <label htmlFor={`${idPrefix}-p-ref-t`}>{t('actors.form.fields.referenceNumberText')}</label>
         <input
@@ -607,26 +533,162 @@ function PersonCatalogFields({
           disabled={disabled}
         />
       </div>
-      <BiographicalNoteInputs
-        idPrefix={`${idPrefix}-p-bio`}
-        value={person.biographical_note}
-        onChange={(b) => onPatch({ biographical_note: b })}
-        disabled={disabled}
-      />
+      <OrgHistoryCollapsibleBlock
+        idPrefix={idPrefix}
+        sectionKey="pbirth"
+        title={t('actors.form.fields.birthDate')}
+        expanded={birthDateOpen}
+        onToggle={() => setBirthDateOpen((o) => !o)}
+      >
+        <DateDetailInputs
+          idPrefix={`${idPrefix}-p-birth`}
+          value={person.birth_date}
+          onChange={(d) => onPatch({ birth_date: d })}
+          disabled={disabled}
+          temporalMetadataFields
+        />
+      </OrgHistoryCollapsibleBlock>
+      <OrgHistoryCollapsibleBlock
+        idPrefix={idPrefix}
+        sectionKey="pdeath"
+        title={t('actors.form.fields.deathDate')}
+        expanded={deathDateOpen}
+        onToggle={() => setDeathDateOpen((o) => !o)}
+      >
+        <DateDetailInputs
+          idPrefix={`${idPrefix}-p-death`}
+          value={person.death_date}
+          onChange={(d) => onPatch({ death_date: d })}
+          disabled={disabled}
+          temporalMetadataFields
+        />
+      </OrgHistoryCollapsibleBlock>
+      <OrgHistoryCollapsibleBlock
+        idPrefix={idPrefix}
+        sectionKey="pob"
+        title={t('actors.form.fields.placeOfBirth')}
+        expanded={placeOfBirthOpen}
+        onToggle={() => setPlaceOfBirthOpen((o) => !o)}
+      >
+        <fieldset
+          className="actor-form-nested-fieldset"
+          aria-label={t('actors.form.fields.placeOfBirth')}
+        >
+          <SpatialFields
+            idPrefix={`${idPrefix}-p-pob`}
+            value={person.place_of_birth}
+            onChange={(s) => onPatch({ place_of_birth: s })}
+            disabled={disabled}
+            includeUndefinedLanguage={false}
+            omitNameGroupLegend
+            placeNameFinnishLabel={t('actors.form.fields.placeOfBirthNameFi')}
+            placeNameEnglishLabel={t('actors.form.fields.placeOfBirthNameEn')}
+            ownerPinnedActorId={ownerPinnedActorId}
+          />
+        </fieldset>
+      </OrgHistoryCollapsibleBlock>
+      <OrgHistoryCollapsibleBlock
+        idPrefix={idPrefix}
+        sectionKey="contact"
+        title={t('actors.form.fields.contactDetails')}
+        expanded={contactDetailsOpen}
+        onToggle={() => setContactDetailsOpen((o) => !o)}
+      >
+        <AddressInputs
+          idPrefix={`${idPrefix}-p-addr`}
+          fieldsetLegend={t('actors.form.fields.contactDetails')}
+          textFieldLabel={t('actors.form.fields.homeAddress')}
+          hideTypeField
+          autoTypeFiWhenFilled={ACTOR_PERSON_ADDRESS_TYPE_AUTO_FI}
+          value={person.address}
+          onChange={(a) => onPatch({ address: a })}
+          disabled={disabled}
+          omitFieldsetLegend
+        />
+      </OrgHistoryCollapsibleBlock>
+      <OrgHistoryCollapsibleBlock
+        idPrefix={idPrefix}
+        sectionKey="prof"
+        title={t('actors.form.fields.professionalAdditionalDetails')}
+        expanded={professionalDetailsOpen}
+        onToggle={() => setProfessionalDetailsOpen((o) => !o)}
+      >
+        <fieldset
+          className="actor-form-nested-fieldset"
+          aria-label={t('actors.form.fields.professionalAdditionalDetails')}
+        >
+          <div className="form-group">
+            <label htmlFor={`${idPrefix}-p-web`}>{t('actors.form.fields.website')}</label>
+            <input
+              id={`${idPrefix}-p-web`}
+              type="url"
+              value={person.website ?? ''}
+              onChange={(e) => onPatch({ website: e.target.value || undefined })}
+              disabled={disabled}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor={`${idPrefix}-p-school`}>{t('actors.form.fields.schoolOrStyleRefText')}</label>
+            <input
+              id={`${idPrefix}-p-school`}
+              type="text"
+              value={
+                typeof person.school_or_style === 'string'
+                  ? person.school_or_style
+                  : referenceFieldFi(person.school_or_style as never)
+              }
+              onChange={(e) => onPatch({ school_or_style: e.target.value.trim() || undefined })}
+              disabled={disabled}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor={`${idPrefix}-p-occ`}>{t('actors.form.fields.occupationRefText')}</label>
+            <input
+              id={`${idPrefix}-p-occ`}
+              type="text"
+              value={
+                typeof person.occupation === 'string' ? person.occupation : referenceFieldFi(person.occupation as never)
+              }
+              onChange={(e) => onPatch({ occupation: e.target.value.trim() || undefined })}
+              disabled={disabled}
+            />
+          </div>
+        </fieldset>
+      </OrgHistoryCollapsibleBlock>
+      <OrgHistoryCollapsibleBlock
+        idPrefix={idPrefix}
+        sectionKey="pbio"
+        title={t('actors.form.fields.biographicalNote')}
+        expanded={personBioOpen}
+        onToggle={() => setPersonBioOpen((o) => !o)}
+      >
+        <BiographicalNoteInputs
+          idPrefix={`${idPrefix}-p-bio`}
+          value={person.biographical_note}
+          onChange={(b) => onPatch({ biographical_note: b })}
+          disabled={disabled}
+          variant="person"
+        />
+      </OrgHistoryCollapsibleBlock>
     </>
   )
 }
 
-function organizationOtherNameSummary(row: OtherName, emptyLabel: string): string {
+function organizationNameDetailSummary(row: NameDetail, emptyLabel: string): string {
   const n = row.name ?? {}
   const text = n.fi?.trim() || n.en?.trim() || n.und?.trim()
   if (text) return text.length > 72 ? `${text.slice(0, 69)}…` : text
-  const t = referenceFieldFi(row.type)
+  const t = referenceFieldFi(row.name_type)
   if (t) return t
+  if (row.addition_to_name?.trim()) return row.addition_to_name.trim()
+  const e = dateDetailSummaryLine(row.earliest)
+  if (e) return e
+  const l = dateDetailSummaryLine(row.latest)
+  if (l) return l
   return emptyLabel
 }
 
-function OtherNameListEditor({
+function NameDetailListEditor({
   idPrefix,
   rows,
   onChangeRows,
@@ -634,58 +696,119 @@ function OtherNameListEditor({
   includeUndefinedLanguage = true,
 }: {
   idPrefix: string
-  rows: OtherName[]
-  onChangeRows: (r: OtherName[]) => void
+  rows: NameDetail[]
+  onChangeRows: (r: NameDetail[]) => void
   disabled?: boolean
   includeUndefinedLanguage?: boolean
 }) {
   const { t } = useTranslation()
-  const otherNamesCol = useRepeatableCollapsedRows(rows, organizationOtherNameRowHasContent)
+  const nameRowsCol = useRepeatableCollapsedRows(rows, organizationNameDetailRowHasContent)
 
   return (
     <fieldset className="record-form-repeatable-fieldset">
-      <legend>{t('actors.form.fields.otherNames')}</legend>
-      <p className="record-form-repeatable-hint">{t('actors.form.otherNamesHint')}</p>
+      <legend>{t('actors.form.fields.organizationNames')}</legend>
+      <p className="record-form-repeatable-hint">{t('actors.form.organizationNamesHint')}</p>
       {rows.map((row, i) => (
         <CollapsibleRepeatableRow
           key={i}
           id={`${idPrefix}-row-${i}`}
-          collapsed={otherNamesCol.isCollapsed(i)}
-          onToggleCollapse={() => otherNamesCol.toggle(i)}
+          collapsed={nameRowsCol.isCollapsed(i)}
+          onToggleCollapse={() => nameRowsCol.toggle(i)}
           onRemove={() => onChangeRows(rows.filter((_, j) => j !== i))}
           disabled={disabled}
-          saveItemNoun={t('actors.form.saveCollapsibleEntryNoun')}
-          summary={organizationOtherNameSummary(row, t('actors.form.emptyOtherName'))}
-          removeLabel={t('actors.form.removeOtherName')}
+          saveItemNoun={t('actors.form.saveNameDetailNoun')}
+          summary={organizationNameDetailSummary(row, t('actors.form.emptyNameDetail'))}
+          removeLabel={t('actors.form.removeNameDetail')}
         >
-          <LabelInputs
+          <ReferenceSelect
+            id={`${idPrefix}-tp-${i}`}
+            label={t('recordForm.labels.nameType')}
+            allowlist={ACTOR_ORGANIZATION_NAME_TYPE_FI}
+            valueFi={referenceFieldFi(row.name_type)}
+            onChangeFi={(fi) =>
+              onChangeRows(
+                rows.map((x, j) =>
+                  j === i ? { ...x, name_type: referenceFieldToPayload(fi) } : x,
+                ),
+              )
+            }
+            disabled={disabled}
+            emptyLabel="—"
+          />
+          <div className="form-group actor-form-in-use-checkbox">
+            <label htmlFor={`${idPrefix}-inuse-${i}`} className="actor-form-in-use-label">
+              <input
+                id={`${idPrefix}-inuse-${i}`}
+                type="checkbox"
+                checked={row.in_use !== false}
+                onChange={(e) =>
+                  onChangeRows(
+                    rows.map((x, j) =>
+                      j === i ? { ...x, in_use: e.target.checked ? true : false } : x,
+                    ),
+                  )
+                }
+                disabled={disabled}
+              />
+              <span>{t('actors.form.fields.inUseInActorSelects')}</span>
+            </label>
+          </div>
+          <MultilingualLabelInputs
             idPrefix={`${idPrefix}-nm-${i}`}
-            label={t('recordForm.labels.name')}
+            finnishLabel={t('actors.form.fields.nameInFinnish')}
+            englishLabel={t('actors.form.fields.nameInEnglish')}
             value={row.name}
             onChange={(l) => onChangeRows(rows.map((x, j) => (j === i ? { ...x, name: l } : x)))}
             disabled={disabled}
             includeUndefinedLanguage={includeUndefinedLanguage}
           />
-          <ReferenceSelect
-            id={`${idPrefix}-tp-${i}`}
-            label={t('recordForm.labels.type')}
-            allowlist={ACTOR_ORGANIZATION_OTHER_NAME_TYPE_FI}
-            valueFi={referenceFieldFi(row.type)}
-            onChangeFi={(fi) =>
-              onChangeRows(rows.map((x, j) => (j === i ? { ...x, type: referenceFieldToPayload(fi) } : x)))
+          <div className="form-group">
+            <label htmlFor={`${idPrefix}-addn-${i}`}>{t('actors.form.fields.additionToName')}</label>
+            <p className="record-form-repeatable-hint" id={`${idPrefix}-addn-hint-${i}`}>
+              {t('actors.form.organizationAdditionToNameHint')}
+            </p>
+            <input
+              id={`${idPrefix}-addn-${i}`}
+              aria-describedby={`${idPrefix}-addn-hint-${i}`}
+              type="text"
+              value={row.addition_to_name ?? ''}
+              onChange={(e) =>
+                onChangeRows(
+                  rows.map((x, j) =>
+                    j === i ? { ...x, addition_to_name: e.target.value || undefined } : x,
+                  ),
+                )
+              }
+              disabled={disabled}
+            />
+          </div>
+          <DateDetailInputs
+            idPrefix={`${idPrefix}-ear-${i}`}
+            legend={t('recordForm.temporal.earliest')}
+            value={row.earliest}
+            onChange={(next) =>
+              onChangeRows(rows.map((x, j) => (j === i ? { ...x, earliest: next } : x)))
             }
             disabled={disabled}
-            emptyLabel="—"
+          />
+          <DateDetailInputs
+            idPrefix={`${idPrefix}-lat-${i}`}
+            legend={t('recordForm.temporal.latest')}
+            value={row.latest}
+            onChange={(next) =>
+              onChangeRows(rows.map((x, j) => (j === i ? { ...x, latest: next } : x)))
+            }
+            disabled={disabled}
           />
         </CollapsibleRepeatableRow>
       ))}
       <button
         type="button"
         className="btn btn-secondary btn-sm"
-        onClick={() => onChangeRows([...rows, {}])}
+        onClick={() => onChangeRows([...rows, { in_use: true }])}
         disabled={disabled}
       >
-        {t('actors.form.addOtherName')}
+        {t('actors.form.addNameDetail')}
       </button>
     </fieldset>
   )
@@ -702,6 +825,8 @@ export interface ActorDataEditorProps {
   onActorKindChange?: (kind: ActorCatalogKind) => void
   /** Increment when loaded actor replaces form state (e.g. edit fetch) to sync optional sections. */
   dataVersion?: number
+  /** Catalog actor id when editing — enables “this organization” on foundation place owner. */
+  catalogActorId?: number
 }
 
 export function ActorDataEditor({
@@ -712,6 +837,7 @@ export function ActorDataEditor({
   actorKind = null,
   onActorKindChange,
   dataVersion = 0,
+  catalogActorId,
 }: ActorDataEditorProps) {
   const { t } = useTranslation()
   const org = value.organization ?? {}
@@ -726,6 +852,12 @@ export function ActorDataEditor({
     !disabled && personHasIdentity(value.person) && organizationHasIdentity(value.organization)
 
   const [includeContact, setIncludeContact] = useState(false)
+  const [orgHistoryExpanded, setOrgHistoryExpanded] = useState(false)
+  const [orgHistFoundationDateOpen, setOrgHistFoundationDateOpen] = useState(false)
+  const [orgHistDissolutionDateOpen, setOrgHistDissolutionDateOpen] = useState(false)
+  const [orgHistFoundationPlaceOpen, setOrgHistFoundationPlaceOpen] = useState(false)
+  const [orgHistBioOpen, setOrgHistBioOpen] = useState(false)
+  const [orgContactDetailsOpen, setOrgContactDetailsOpen] = useState(false)
   useEffect(() => {
     setIncludeContact(personHasIdentity(value.organization?.contact_person))
   }, [dataVersion])
@@ -789,6 +921,7 @@ export function ActorDataEditor({
             person={person}
             onPatch={(patch) => setPerson(patch)}
             disabled={disabled}
+            ownerPinnedActorId={catalogActorId != null ? catalogActorId : undefined}
           />
         </fieldset>
       )}
@@ -796,46 +929,32 @@ export function ActorDataEditor({
       {effectiveKind === 'organization' && (
         <fieldset className="actor-form-main-fieldset">
           <legend>{t('actors.form.organization')}</legend>
-          <LabelInputs
-            idPrefix={`${idPrefix}-o-main`}
-            label={t('actors.form.fields.mainBody')}
-            value={org.main_body}
-            onChange={(l) => setOrg({ main_body: l })}
+          <NameDetailListEditor
+            idPrefix={`${idPrefix}-o-nm`}
+            rows={org.name ?? []}
+            onChangeRows={(rows) => setOrg({ name: rows.length ? rows : undefined })}
             disabled={disabled}
             includeUndefinedLanguage={false}
           />
-          <LabelInputs
-            idPrefix={`${idPrefix}-o-sub`}
-            label={t('actors.form.fields.subBody')}
-            value={org.sub_body}
-            onChange={(l) => setOrg({ sub_body: l })}
-            disabled={disabled}
-            includeUndefinedLanguage={false}
-          />
-          <OtherNameListEditor
-            idPrefix={`${idPrefix}-o-on`}
-            rows={org.other_name ?? []}
-            onChangeRows={(rows) => setOrg({ other_name: rows.length ? rows : undefined })}
-            disabled={disabled}
-            includeUndefinedLanguage={false}
-          />
-          <div className="form-group">
-            <label htmlFor={`${idPrefix}-o-addn`}>{t('actors.form.fields.additionToName')}</label>
-            <input
-              id={`${idPrefix}-o-addn`}
-              type="text"
-              value={org.addition_to_name ?? ''}
-              onChange={(e) => setOrg({ addition_to_name: e.target.value || undefined })}
+          <OrgHistoryCollapsibleBlock
+            idPrefix={`${idPrefix}-org`}
+            sectionKey="contact"
+            title={t('actors.form.fields.contactDetails')}
+            expanded={orgContactDetailsOpen}
+            onToggle={() => setOrgContactDetailsOpen((o) => !o)}
+          >
+            <AddressInputs
+              idPrefix={`${idPrefix}-o-addr`}
+              fieldsetLegend={t('actors.form.fields.contactDetails')}
+              textFieldLabel={t('actors.form.fields.visitAddress')}
+              hideTypeField
+              autoTypeFiWhenFilled={ACTOR_ORGANIZATION_ADDRESS_TYPE_AUTO_FI}
+              value={org.address}
+              onChange={(a) => setOrg({ address: a })}
               disabled={disabled}
+              omitFieldsetLegend
             />
-          </div>
-          <TemporalFields
-            idPrefix={`${idPrefix}-o-nd`}
-            legend={t('actors.form.fields.nameDate')}
-            value={org.name_date}
-            onChange={(temp) => setOrg({ name_date: temp })}
-            disabled={disabled}
-          />
+          </OrgHistoryCollapsibleBlock>
           <div className="form-group">
             <label htmlFor={`${idPrefix}-o-fn`}>{t('actors.form.fields.functionRefText')}</label>
             <input
@@ -846,12 +965,6 @@ export function ActorDataEditor({
               disabled={disabled}
             />
           </div>
-          <AddressInputs
-            idPrefix={`${idPrefix}-o-addr`}
-            value={org.address}
-            onChange={(a) => setOrg({ address: a })}
-            disabled={disabled}
-          />
           <div className="form-group">
             <label htmlFor={`${idPrefix}-o-web`}>{t('actors.form.fields.website')}</label>
             <input
@@ -862,80 +975,143 @@ export function ActorDataEditor({
               disabled={disabled}
             />
           </div>
-          <div className="form-group">
-            <label htmlFor={`${idPrefix}-o-ref-t`}>{t('actors.form.fields.referenceIdentifierText')}</label>
-            <input
-              id={`${idPrefix}-o-ref-t`}
-              type="text"
-              value={
-                org.reference_number && typeof org.reference_number === 'object' && 'text' in org.reference_number
-                  ? (org.reference_number as { text?: string }).text ?? ''
+          <fieldset className="actor-form-nested-fieldset">
+            <legend id={`${idPrefix}-o-idn-leg`} className="actor-form-sublegend">
+              {t('actors.form.fields.organizationIdentification')}
+            </legend>
+            <div className="form-group">
+              <input
+                id={`${idPrefix}-o-ref-t`}
+                type="text"
+                aria-labelledby={`${idPrefix}-o-idn-leg`}
+                value={
+                  org.reference_number && typeof org.reference_number === 'object' && 'text' in org.reference_number
+                    ? (org.reference_number as { text?: string }).text ?? ''
+                    : ''
+                }
+                onChange={(e) => {
+                  const text = e.target.value.trim()
+                  const cur = org.reference_number
+                  const typ =
+                    cur && typeof cur === 'object' && 'type' in cur
+                      ? (cur as { type?: string }).type
+                      : undefined
+                  if (!text && !typ) setOrg({ reference_number: undefined })
+                  else setOrg({ reference_number: { text: text || undefined, type: typ } })
+                }}
+                disabled={disabled}
+              />
+            </div>
+            <ReferenceSelect
+              id={`${idPrefix}-o-ref-ty`}
+              label={t('actors.form.fields.organizationIdentificationType')}
+              allowlist={ACTOR_ORG_IDENTIFIER_TYPE_FI}
+              valueFi={
+                org.reference_number && typeof org.reference_number === 'object' && 'type' in org.reference_number
+                  ? String((org.reference_number as { type?: string }).type ?? '')
                   : ''
               }
-              onChange={(e) => {
-                const text = e.target.value.trim()
-                const cur = org.reference_number
-                const typ =
-                  cur && typeof cur === 'object' && 'type' in cur
-                    ? (cur as { type?: string }).type
+              onChangeFi={(fi) => {
+                const text =
+                  org.reference_number && typeof org.reference_number === 'object' && 'text' in org.reference_number
+                    ? (org.reference_number as { text?: string }).text
                     : undefined
-                if (!text && !typ) setOrg({ reference_number: undefined })
-                else setOrg({ reference_number: { text: text || undefined, type: typ } })
+                if (!fi.trim() && !text?.trim()) setOrg({ reference_number: undefined })
+                else setOrg({ reference_number: { text, type: fi.trim() || undefined } })
               }}
               disabled={disabled}
+              emptyLabel="—"
             />
-          </div>
-          <ReferenceSelect
-            id={`${idPrefix}-o-ref-ty`}
-            label={t('actors.form.fields.identifierType')}
-            allowlist={ACTOR_ORG_IDENTIFIER_TYPE_FI}
-            valueFi={
-              org.reference_number && typeof org.reference_number === 'object' && 'type' in org.reference_number
-                ? String((org.reference_number as { type?: string }).type ?? '')
-                : ''
-            }
-            onChangeFi={(fi) => {
-              const text =
-                org.reference_number && typeof org.reference_number === 'object' && 'text' in org.reference_number
-                  ? (org.reference_number as { text?: string }).text
-                  : undefined
-              if (!fi.trim() && !text?.trim()) setOrg({ reference_number: undefined })
-              else setOrg({ reference_number: { text, type: fi.trim() || undefined } })
-            }}
-            disabled={disabled}
-            emptyLabel="—"
-          />
+          </fieldset>
 
-          <fieldset className="actor-form-nested-fieldset">
-            <legend>{t('actors.form.fields.organizationHistory')}</legend>
-            <TemporalFields
-              idPrefix={`${idPrefix}-o-h-fd`}
-              legend={t('actors.form.fields.foundationDate')}
-              value={history.foundation_date}
-              onChange={(temp) => patchHistory({ foundation_date: temp })}
-              disabled={disabled}
-            />
-            <TemporalFields
-              idPrefix={`${idPrefix}-o-h-dd`}
-              legend={t('actors.form.fields.dissolutionDate')}
-              value={history.dissolution_date}
-              onChange={(temp) => patchHistory({ dissolution_date: temp })}
-              disabled={disabled}
-            />
-            <SpatialMiniInputs
-              idPrefix={`${idPrefix}-o-h-fp`}
-              legend={t('actors.form.fields.foundationPlace')}
-              value={history.foundation_place}
-              onChange={(s) => patchHistory({ foundation_place: s })}
-              disabled={disabled}
-              includeUndefinedLanguage={false}
-            />
-            <BiographicalNoteInputs
-              idPrefix={`${idPrefix}-o-h-bio`}
-              value={history.biographical_note}
-              onChange={(b) => patchHistory({ biographical_note: b })}
-              disabled={disabled}
-            />
+          <fieldset className="actor-form-nested-fieldset actor-form-org-history-section">
+            <legend className="actor-form-org-history-legend">
+              <button
+                id={`${idPrefix}-org-hist-toggle`}
+                type="button"
+                className="actor-form-org-history-toggle"
+                onClick={() => setOrgHistoryExpanded((o) => !o)}
+                aria-expanded={orgHistoryExpanded}
+                aria-controls={`${idPrefix}-org-hist-panel`}
+              >
+                <span className="actor-form-org-history-chevron" aria-hidden>
+                  {orgHistoryExpanded ? '▼' : '▶'}
+                </span>
+                <span>{t('actors.form.fields.organizationHistory')}</span>
+              </button>
+            </legend>
+            <div
+              id={`${idPrefix}-org-hist-panel`}
+              role="region"
+              aria-labelledby={`${idPrefix}-org-hist-toggle`}
+              hidden={!orgHistoryExpanded}
+              className="actor-form-org-history-panel"
+            >
+              <OrgHistoryCollapsibleBlock
+                idPrefix={`${idPrefix}-o-h`}
+                sectionKey="fd"
+                title={t('actors.form.fields.foundationDate')}
+                expanded={orgHistFoundationDateOpen}
+                onToggle={() => setOrgHistFoundationDateOpen((o) => !o)}
+              >
+                <DateDetailInputs
+                  idPrefix={`${idPrefix}-o-h-fd`}
+                  value={history.foundation_date}
+                  onChange={(d) => patchHistory({ foundation_date: d })}
+                  disabled={disabled}
+                />
+              </OrgHistoryCollapsibleBlock>
+              <OrgHistoryCollapsibleBlock
+                idPrefix={`${idPrefix}-o-h`}
+                sectionKey="dd"
+                title={t('actors.form.fields.dissolutionDate')}
+                expanded={orgHistDissolutionDateOpen}
+                onToggle={() => setOrgHistDissolutionDateOpen((o) => !o)}
+              >
+                <DateDetailInputs
+                  idPrefix={`${idPrefix}-o-h-dd`}
+                  value={history.dissolution_date}
+                  onChange={(d) => patchHistory({ dissolution_date: d })}
+                  disabled={disabled}
+                />
+              </OrgHistoryCollapsibleBlock>
+              <OrgHistoryCollapsibleBlock
+                idPrefix={`${idPrefix}-o-h`}
+                sectionKey="fp"
+                title={t('actors.form.fields.foundationPlace')}
+                expanded={orgHistFoundationPlaceOpen}
+                onToggle={() => setOrgHistFoundationPlaceOpen((o) => !o)}
+              >
+                <SpatialFields
+                  idPrefix={`${idPrefix}-o-h-fp`}
+                  value={history.foundation_place}
+                  onChange={(s) => patchHistory({ foundation_place: s })}
+                  disabled={disabled}
+                  includeUndefinedLanguage={false}
+                  omitNameGroupLegend
+                  placeNameFinnishLabel={t('actors.form.fields.foundationPlaceNameFi')}
+                  placeNameEnglishLabel={t('actors.form.fields.foundationPlaceNameEn')}
+                  ownerPinnedActorId={
+                    effectiveKind === 'organization' && catalogActorId != null ? catalogActorId : undefined
+                  }
+                />
+              </OrgHistoryCollapsibleBlock>
+              <OrgHistoryCollapsibleBlock
+                idPrefix={`${idPrefix}-o-h`}
+                sectionKey="bio"
+                title={t('actors.form.fields.organizationHistoryBioGroupLegend')}
+                expanded={orgHistBioOpen}
+                onToggle={() => setOrgHistBioOpen((o) => !o)}
+              >
+                <BiographicalNoteInputs
+                  idPrefix={`${idPrefix}-o-h-bio`}
+                  variant="organization"
+                  value={history.biographical_note}
+                  onChange={(b) => patchHistory({ biographical_note: b })}
+                  disabled={disabled}
+                />
+              </OrgHistoryCollapsibleBlock>
+            </div>
           </fieldset>
 
           {!disabled && (

@@ -13,6 +13,8 @@ import { useTranslation } from 'react-i18next'
 import { useRecordStore } from '../../stores/recordStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useCollectionStore } from '../../stores/collectionStore'
+import { useActorStore } from '../../stores/actorStore'
+import { api, ApiError } from '../../services/api'
 import type { RecordDataDomainKey } from '../../types/record'
 import {
   getRecordPrimaryLabel,
@@ -64,8 +66,11 @@ export const RecordDetail = observer(() => {
   const recordStore = useRecordStore()
   const authStore = useAuthStore()
   const collectionStore = useCollectionStore()
+  const actorStore = useActorStore()
   const record = recordStore.currentRecord
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<Record<RecordDataDomainKey, boolean>>(() =>
     openSectionsForRecord({}),
   )
@@ -83,7 +88,7 @@ export const RecordDetail = observer(() => {
 
   useLayoutEffect(() => {
     if (!record?.id) return
-    setOpenSections(openSectionsForRecord(record.data ?? {}))
+    setOpenSections(openSectionsForRecord((record.data ?? {}) as Record<string, unknown>))
   }, [record?.id])
 
   useEffect(() => {
@@ -91,6 +96,31 @@ export const RecordDetail = observer(() => {
       collectionStore.fetchCollection(record.collection)
     }
   }, [record?.collection])
+
+  useEffect(() => {
+    actorStore.fetchActors({ page_size: 200 }).catch(() => {})
+  }, [actorStore])
+
+  const handleExport = async () => {
+    if (!record) return
+    setExporting(true)
+    setExportError(null)
+    try {
+      const { blob, filename } = await api.exportRecord(record.id)
+      const name = filename?.replace(/^["']|["']$/g, '') || `ekho-record-${record.id}.json`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      const e = err as ApiError
+      setExportError(e.error || e.detail || t('recordForm.detail.exportError'))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const handleDelete = async () => {
     if (!record || !id) return
@@ -166,10 +196,23 @@ export const RecordDetail = observer(() => {
               <button type="button" onClick={() => navigate(`/records/${record.id}/edit`)} className="btn btn-primary">
                 {t('common.edit')}
               </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                className="btn btn-secondary"
+                disabled={exporting}
+              >
+                {exporting ? t('recordForm.detail.exporting') : t('recordForm.detail.export')}
+              </button>
               <button type="button" onClick={() => setShowDeleteDialog(true)} className="btn btn-danger">
                 {t('recordForm.detail.delete')}
               </button>
             </div>
+          )}
+          {exportError && (
+            <p className="record-export-error" role="alert">
+              {exportError}
+            </p>
           )}
         </div>
       </div>

@@ -15,6 +15,7 @@ import { useRecordStore } from '../../stores/recordStore'
 import { useCollectionStore } from '../../stores/collectionStore'
 import type { Record as ArtRecord } from '../../stores/recordStore'
 import type { RecordDataDomainKey, RecordPayload } from '../../types/record'
+import type { IdentificationDetails } from '../../types/record/identification'
 import {
   emptyRecordPayload,
   getRecordPrimaryLabel,
@@ -34,9 +35,11 @@ import {
   type RecordFormSectionErrors,
 } from './RecordFormSections'
 import { compactRecordPayloadForSave } from '../../lib/compactRecordPayloadForSave'
+import { referenceFieldFi, referenceFieldToPayload } from '../../lib/referenceField'
 import { normalizeRecordPayloadForForm } from '../../lib/recordPayloadNormalize'
 import { firstTitleValueTrimmed, identificationTitlesAsList } from '../../lib/identificationTitles'
 import { temporalNote } from '../../lib/temporalPayload'
+import type { Temporal } from '../../types/record/common'
 import './Records.css'
 
 interface RecordFormProps {
@@ -54,6 +57,32 @@ function clonePayload(data: RecordPayload | undefined): RecordPayload {
   }
 }
 
+/** Objektityyppi + lukumäärä defaults for new records. */
+function createModeDefaultPayload(): RecordPayload {
+  return {
+    identification_details: {
+      object_type: referenceFieldToPayload('taideteos'),
+      number_of_objects: 1,
+    },
+  }
+}
+
+/** When editing, ensure objektityyppi defaults if the stored payload omitted it. */
+function mergeIdentificationEditDefaults(data: RecordPayload): RecordPayload {
+  const id: IdentificationDetails = { ...(data.identification_details ?? {}) }
+  let changed = false
+  if (!referenceFieldFi(id.object_type)) {
+    id.object_type = referenceFieldToPayload('taideteos')
+    changed = true
+  }
+  if (id.number_of_objects == null || !Number.isFinite(Number(id.number_of_objects))) {
+    id.number_of_objects = 1
+    changed = true
+  }
+  if (!changed) return data
+  return { ...data, identification_details: id }
+}
+
 function domainSectionHasContent(key: RecordDataDomainKey, data: RecordPayload): boolean {
   const v = data[key]
   if (v === null || v === undefined) return false
@@ -65,6 +94,7 @@ function domainSectionHasContent(key: RecordDataDomainKey, data: RecordPayload):
 function validateDraft(
   data: RecordPayload,
   t: TFunction,
+  formCollectionId: number | undefined,
 ): {
   ok: boolean
   sectionErrors: RecordFormSectionErrors
@@ -72,6 +102,10 @@ function validateDraft(
 } {
   const fieldErrors: Record<string, string> = {}
   const sectionErrors: RecordFormSectionErrors = {}
+
+  if (formCollectionId == null || !Number.isFinite(Number(formCollectionId))) {
+    fieldErrors.collection = t('recordForm.validation.collectionRequired')
+  }
 
   const title = firstTitleValueTrimmed(data.identification_details?.title)
   const objectNumber = data.identification_details?.object_number?.trim() ?? ''
@@ -90,19 +124,28 @@ function validateDraft(
     fieldErrors.object_number = t('recordForm.validation.objectNumberMaxLength')
   }
 
-  const dates = data.aquisition_details?.date ?? []
-  dates.forEach((tempRow, i) => {
-    const strings = [temporalNote(tempRow), tempRow.earliest?.single?.trim(), tempRow.latest?.single?.trim()].filter(
-      (s): s is string => !!s?.trim(),
-    )
+  const checkYearInStrings = (strings: (string | undefined)[], fieldKey: string) => {
     for (const text of strings) {
-      if (/^\d{4}$/.test(text)) {
-        const y = Number(text)
+      const s = text?.trim()
+      if (!s) continue
+      if (/^\d{4}$/.test(s)) {
+        const y = Number(s)
         if (y < 1000 || y > 2100) {
-          fieldErrors[`aquisition_date_${i}`] = t('recordForm.validation.yearRange')
+          fieldErrors[fieldKey] = t('recordForm.validation.yearRange')
         }
       }
     }
+  }
+
+  const acqTime = data.aquisition_details?.acquisition_time
+  if (acqTime) {
+    checkYearInStrings([acqTime.single, acqTime.text], 'aquisition_acquisition_time')
+  }
+
+  const dates = data.aquisition_details?.date ?? []
+  dates.forEach((tempRow, i) => {
+    const r = tempRow as Temporal
+    checkYearInStrings([r.earliest?.single, r.latest?.single, temporalNote(r)], `aquisition_date_${i}`)
   })
 
   const ok = Object.keys(sectionErrors).length === 0 && Object.keys(fieldErrors).length === 0
@@ -115,7 +158,13 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
   const { collectionId: urlCollectionId, id: recordId } = useParams<{ collectionId?: string; id?: string }>()
   const recordStore = useRecordStore()
   const collectionStore = useCollectionStore()
-  const collectionId = propsCollectionId || (urlCollectionId ? Number(urlCollectionId) : undefined)
+  const collectionId: number | undefined =
+    propsCollectionId ??
+    (urlCollectionId != null &&
+    String(urlCollectionId).trim() !== '' &&
+    Number.isFinite(Number(urlCollectionId))
+      ? Math.floor(Number(urlCollectionId))
+      : undefined)
 
   const isEditMode = !!recordId || !!propsRecord
 
@@ -135,12 +184,16 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
   )
   const reviewStepIndex = domainSteps.length
 
-  const [draft, setDraft] = useState<RecordPayload>(() => emptyRecordPayload())
+  const [draft, setDraft] = useState<RecordPayload>(() =>
+    isEditMode ? emptyRecordPayload() : createModeDefaultPayload(),
+  )
   const [activeStep, setActiveStep] = useState(0)
   const [image, setImage] = useState<File | null>(null)
   const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>(undefined)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [sectionErrors, setSectionErrors] = useState<RecordFormSectionErrors>({})
+  /** API record `collection` FK — not part of `data.identification_details`. */
+  const [formCollectionId, setFormCollectionId] = useState<number | undefined>(undefined)
 
   useEffect(() => {
     if (recordId) {
@@ -151,36 +204,43 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
   }, [recordId])
 
   useEffect(() => {
-    if (isEditMode) {
-      const currentRecord = propsRecord || recordStore.currentRecord
-      if (currentRecord) {
-        setDraft(clonePayload(currentRecord.data))
-        setExistingImageUrl(currentRecord.representative_image || undefined)
-        if (!collectionId && currentRecord.collection) {
-          collectionStore.fetchCollection(currentRecord.collection)
-        }
+    if (!isEditMode) return
+    const currentRecord = propsRecord || recordStore.currentRecord
+    if (currentRecord) {
+      setDraft(mergeIdentificationEditDefaults(clonePayload(currentRecord.data)))
+      setFormCollectionId(currentRecord.collection)
+      setExistingImageUrl(currentRecord.representative_image || undefined)
+      if (!collectionId && currentRecord.collection) {
+        collectionStore.fetchCollection(currentRecord.collection)
       }
-    } else {
-      setDraft(emptyRecordPayload())
-      setImage(null)
-      setExistingImageUrl(undefined)
-      setErrors({})
-      setSectionErrors({})
-      setActiveStep(0)
     }
-  }, [isEditMode, propsRecord, recordStore.currentRecord?.id, recordStore.currentRecord?.updated_at])
+  }, [isEditMode, propsRecord, recordStore.currentRecord?.id, recordStore.currentRecord?.updated_at, collectionId])
+
+  /** Reset create form when entering create mode or changing URL collection — not on every currentRecord update (that wiped draft after collection default was applied). */
+  useEffect(() => {
+    if (isEditMode) return
+    setDraft(createModeDefaultPayload())
+    setFormCollectionId(collectionId)
+    setImage(null)
+    setExistingImageUrl(undefined)
+    setErrors({})
+    setSectionErrors({})
+    setActiveStep(0)
+  }, [isEditMode, collectionId])
 
   useEffect(() => {
-    if (collectionId) {
+    if (formCollectionId) {
+      collectionStore.fetchCollection(formCollectionId)
+    } else if (collectionId) {
       collectionStore.fetchCollection(collectionId)
     } else if (recordStore.currentRecord?.collection) {
       collectionStore.fetchCollection(recordStore.currentRecord.collection)
     }
-  }, [collectionId, recordStore.currentRecord?.collection])
+  }, [formCollectionId, collectionId, recordStore.currentRecord?.collection, collectionStore])
 
-  const actualCollectionId = collectionId || recordStore.currentRecord?.collection
-  const collection = collectionStore.currentCollection ||
-    (actualCollectionId && collectionStore.collections.find((c) => c.id === actualCollectionId)) ||
+  const collection =
+    collectionStore.currentCollection ||
+    (formCollectionId != null && collectionStore.collections.find((c) => c.id === formCollectionId)) ||
     null
   const isDisabled = collection?.is_closed || false
 
@@ -200,21 +260,20 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
   const submitRecord = async (): Promise<void> => {
     if (isDisabled) return
 
-    if (!isEditMode && !actualCollectionId) {
-      setErrors({ general: t('recordForm.validation.collectionIdRequired') })
-      return
-    }
-
-    const validation = validateDraft(draft, t)
+    const validation = validateDraft(draft, t, formCollectionId)
     setSectionErrors(validation.sectionErrors)
     setErrors(validation.fieldErrors)
 
     if (!validation.ok) {
-      if (validation.sectionErrors.identification) {
+      if (validation.fieldErrors.collection || validation.sectionErrors.identification) {
         setActiveStep(0)
       } else if (Object.keys(validation.fieldErrors).some((k) => /^title_\d+$/.test(k))) {
         setActiveStep(0)
-      } else if (Object.keys(validation.fieldErrors).some((k) => k.startsWith('aquisition_date_'))) {
+      } else if (
+        Object.keys(validation.fieldErrors).some(
+          (k) => k.startsWith('aquisition_date_') || k === 'aquisition_acquisition_time',
+        )
+      ) {
         setActiveStep(1)
       }
       return
@@ -229,11 +288,14 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
       if (onSave) {
         await onSave(savePayload)
       } else if (isEditMode && recordId) {
-        await recordStore.updateRecord(Number(recordId), savePayload)
+        await recordStore.updateRecord(Number(recordId), {
+          ...savePayload,
+          ...(formCollectionId != null ? { collection: formCollectionId } : {}),
+        })
         navigate(`/records/${recordId}`)
-      } else if (actualCollectionId) {
-        await recordStore.createRecord(actualCollectionId, savePayload)
-        navigate(`/collections/${actualCollectionId}`)
+      } else if (formCollectionId != null) {
+        await recordStore.createRecord(formCollectionId, savePayload)
+        navigate(`/collections/${formCollectionId}`)
       } else {
         throw new Error('Collection ID is required to create a record')
       }
@@ -257,6 +319,12 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
   }
 
   const goNext = () => {
+    if (activeStep === 0) {
+      const validation = validateDraft(draft, t, formCollectionId)
+      setSectionErrors(validation.sectionErrors)
+      setErrors(validation.fieldErrors)
+      if (!validation.ok) return
+    }
     clearValidation()
     setActiveStep((s) => Math.min(s + 1, reviewStepIndex))
   }
@@ -273,6 +341,7 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
 
   const identificationSectionErrors: RecordFormSectionErrors = {
     identification: sectionErrors.identification || errors.identification,
+    collection: sectionErrors.collection || errors.collection,
   }
 
   const formTitle = isEditMode ? t('recordForm.wizard.titleEdit') : t('recordForm.wizard.titleCreate')
@@ -283,7 +352,11 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
 
       {(errors.general ||
         Object.keys(errors).some(
-          (k) => k !== 'identification' && k !== 'object_number' && !/^title_\d+$/.test(k)
+          (k) =>
+            k !== 'identification' &&
+            k !== 'object_number' &&
+            k !== 'collection' &&
+            !/^title_\d+$/.test(k),
         )) && (
         <div className="form-error-summary" role="alert" aria-live="polite">
           {errors.general && <p className="field-error">{errors.general}</p>}
@@ -291,7 +364,11 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
             {Object.entries(errors)
               .filter(
                 ([k]) =>
-                  k !== 'general' && k !== 'identification' && k !== 'object_number' && !/^title_\d+$/.test(k)
+                  k !== 'general' &&
+                  k !== 'identification' &&
+                  k !== 'object_number' &&
+                  k !== 'collection' &&
+                  !/^title_\d+$/.test(k),
               )
               .map(([k, msg]) => (
                 <li key={k}>
@@ -351,6 +428,29 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
               <h3 className="record-form-panel-heading">{domainSteps[activeStep].heading}</h3>
               {activeStep === 0 && (
                 <>
+                  <IdentificationFields
+                    data={draft}
+                    onChange={setDraft}
+                    disabled={isDisabled}
+                    errors={identificationSectionErrors}
+                    recordCollectionId={formCollectionId}
+                    onRecordCollectionChange={(id) => {
+                      setFormCollectionId(id)
+                      setErrors((prev) => {
+                        if (!prev.collection) return prev
+                        const { collection: _c, ...rest } = prev
+                        return rest
+                      })
+                    }}
+                  />
+                  {Object.keys(errors)
+                    .filter((k) => /^title_\d+$/.test(k))
+                    .map((k) => (
+                      <p key={k} className="field-error" role="alert">
+                        {errors[k]}
+                      </p>
+                    ))}
+                  {errors.object_number && <span className="field-error">{errors.object_number}</span>}
                   <div className="record-form-image-block">
                     <ImageUpload
                       label={t('recordForm.wizard.representativeImageLabel')}
@@ -361,26 +461,12 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
                       existingImageUrl={existingImageUrl}
                     />
                   </div>
-                  <IdentificationFields
-                    data={draft}
-                    onChange={setDraft}
-                    disabled={isDisabled}
-                    errors={identificationSectionErrors}
-                  />
-                  {Object.keys(errors)
-                    .filter((k) => /^title_\d+$/.test(k))
-                    .map((k) => (
-                      <p key={k} className="field-error" role="alert">
-                        {errors[k]}
-                      </p>
-                    ))}
-                  {errors.object_number && <span className="field-error">{errors.object_number}</span>}
                 </>
               )}
               {activeStep === 1 && <AcquisitionFields data={draft} onChange={setDraft} disabled={isDisabled} />}
               {activeStep === 1 &&
                 Object.keys(errors)
-                  .filter((k) => k.startsWith('aquisition_date_'))
+                  .filter((k) => k.startsWith('aquisition_date_') || k === 'aquisition_acquisition_time')
                   .map((k) => (
                     <p key={k} className="field-error" role="alert">
                       {errors[k]}

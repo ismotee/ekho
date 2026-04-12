@@ -32,6 +32,8 @@ export interface CreateRecordOptions {
 export interface UpdateRecordOptions {
   data?: RecordPayload
   representative_image?: File
+  /** REST `collection` FK — not part of `data`. */
+  collection?: number
 }
 
 export class RecordStore {
@@ -210,7 +212,7 @@ export class RecordStore {
     this.loading = true
     this.error = null
 
-    const { data, representative_image: file } = options
+    const { data, representative_image: file, collection } = options
     const hasFile = file instanceof File
 
     try {
@@ -221,11 +223,19 @@ export class RecordStore {
           formData.append('data', serializeDataForMultipart(data))
         }
         formData.append('representative_image', file)
+        if (collection !== undefined) {
+          formData.append('collection', String(collection))
+        }
         response = await api.patch<Record>(`/records/${id}/`, formData, true)
-      } else if (data !== undefined) {
-        response = await api.patch<Record>(`/records/${id}/`, { data })
       } else {
-        response = await api.patch<Record>(`/records/${id}/`, {})
+        const body: { data?: RecordPayload; collection?: number } = {}
+        if (data !== undefined) body.data = data
+        if (collection !== undefined) body.collection = collection
+        if (Object.keys(body).length === 0) {
+          response = await api.patch<Record>(`/records/${id}/`, {})
+        } else {
+          response = await api.patch<Record>(`/records/${id}/`, body)
+        }
       }
 
       if (!response.data) {

@@ -35,7 +35,12 @@ vedos reproduktiosta
 väärennös
 ```
 
-Reference<ObjectComponentName> options empty for now
+ObjectComponent (repeatable under PhysicalDescription)
+```
+description: TextField
+object_name: ObjectName   # same Reference vocabularies as identification object_name (value / type / language)
+object_number: CharField
+```
 
 Reference<PhotoFormat> options, in finnish
 ```
@@ -52,18 +57,49 @@ vaaka
 muu
 ```
 
-Reference<Audio> options, in finnish
+Reference<Audio>
 ```
 mykkä
-ääni
+mono
+stereo 2.0
+Dolby Digital 5.1
+Dolby Surround 7.1
 ```
 
-Reference<Form> options empty for now
+Reference<Color> — YSA värit (Y100352), narrower concepts from Finto https://finto.fi/ysa/fi/page/Y100352
+```
+harmaa
+indigo
+keltainen
+liturgiset värit
+musta
+oranssi
+punainen
+ruskea
+sininen
+tunnusvärit
+valkoinen
+vihreä
+violetti
+```
+
+Reference<FormOfInstallation> (kiinnitys- tai säilytysmenetelmä)
+```
+märkänä säilytettynä
+kuivana säilytettynä
+pingotettuna
+passe-partout
+kehystetty
+kuvakulmilla kiinnitetty
+liimattu
+lasitettuna
+pohjustettuna
+```
 
 PhysicalDescription
 ```
     object_status: Reference<ObjectStatus>
-    object_component_name: Reference<ObjectComponentName>
+    object_component: List<ObjectComponent>
     text: TextField
     photo_format: Reference<PhotoFormat>
     orientation: Reference<Orientation>
@@ -74,7 +110,7 @@ PhysicalDescription
     copy_number: Number # Integer
 ```
 
-Reference<MaterialType> options empty for now
+Reference<MaterialType> — Finnish labels from Finto MAO/TAO *materiaalit* (http://www.yso.fi/onto/mao/p1731): grouped in the UI by each direct narrower concept; selectable values are **leaf** concepts only. Regenerate `frontend/src/data/maoMaterialGroups.ts` via `node scripts/fetch_mao_material_groups.mjs`.
 
 Reference<MaterialComponentType> empty for now
 
@@ -266,20 +302,26 @@ Reference<GeneralConcept> options empty for now
 
 Reference<Classification> options empty for now
 
+ContentDateEntry
+```
+# Same fields as DateDetail (single, certanity, qualifier, …) plus:
+content_time_role: Reference<?>   # optional; sisällön ajan rooli
+```
+
 Content
 ```
 description: TextField
-person: Actor
-date: Temporal
-place: Spatial
+actors: List<Actor>
+dates: List<ContentDateEntry>
+places: List<Spatial>
 activity: Reference<ContentActivity>
 event: List<ContentEvent>
-position: Reference<ContentPosition>
+position: CharField   # vapaa teksti; kohta tai paikka objektissa
 script: Reference<ContentScript>
 language: Reference<Language>
 note: TextField
-style: List<Reference<ContentStyle>>
-general_concept: Reference<GeneralConcept>
+style: List<Reference<MAOTAOStyle>>   # MAO/TAO tyylit, juuri http://www.yso.fi/onto/mao/p178 (Finto)
+general_concept: List<Reference<KOKO>>   # KOKO (http://www.yso.fi/onto/koko/), Finto search
 classification: Reference<Classification>
 ```
 
@@ -298,7 +340,7 @@ content: Content
 ### PhysicalDescription
 
 - `object_status`: Luetteloitavan objektin asema tai status suhteessa muihin samanlaisiin.
-- `object_component_name`: Objektin kiinteä osa tai komponentti, jota kuvaillaan.
+- `object_component[]`: Objektin osia tai komponentteja; kullakin rivillä `description`, `object_name` (sama rakenne ja sanastot kuin tunnistetietojen objektin nimellä) ja `object_number` (osan tunniste).
 - `text` (Fyysinen kuvaus): Objektin ulkoasun tai ulkonäön sanallinen kuvaus. Kuvaus kirjoitetaan kokonaisin lausein kieliopin mukaisesti.
 - `photo_format`: Termi, joka kuvaa objektin ulkoista olemusta.
 - `orientation`: Objektin kuva-alan suuntaa kuvaava määre.
@@ -345,9 +387,9 @@ content: Content
 ### Content
 
 - `description`: Sanallinen, yleisluontoinen kuvaus objektista tai objektissa kuvaillusta asiasta.
-- `person`: Objektissa kuvattu tai objektin kuvailema henkilö, organisaatio tai henkilöryhmä.
-- `date`: Objektissa kuvattu tai objektin kuvailema aika.
-- `place`: Objektissa kuvattu tai objektin kuvailema paikka.
+- `actors[]`: Objektissa kuvatut tai objektin kuvailemat henkilöt, organisaatiot tai henkilöryhmät (toistettava lista).
+- `dates[]`: Objektissa kuvatut tai objektin kuvailemat ajankohdat (toistettava lista; kullakin rivillä kalenteripäivä ja laajennetut aikatiedot kuten `DateDetail`, sekä valinnainen `content_time_role` eli sisällön ajan rooli).
+- `places[]`: Objektissa kuvatut tai objektin kuvailemat paikat (toistettava lista; sama `Spatial`-rakenne kuin muissa kentissä).
 - `activity`: Objektissa kuvattu tai objektin kuvailema toiminta.
 - `event[].name`: Objektissa kuvattu tai objektin kuvailema tapahtuma.
 - `event[].type`: Termi, joka kuvaa sisältöön liittyvän tapahtuman luonnetta.
@@ -355,8 +397,8 @@ content: Content
 - `script`: Kirjoitusjärjestelmä, jota käyttäen objektin tekstuaalinen sisältö on kirjoitettu.
 - `language`: Kieli, jolla objektin tekstuaalinen sisältö on kirjoitettu.
 - `note`: Lisätietoja objektin sisällöstä. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu.
-- `style`: Tyylit ja koulukunnat, jotka liittyvät objektiin.
-- `general_concept`: Objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita ominaisuuksia kuvaavat asiasanat.
+- `style[]`: Tyylit ja koulukunnat MAO/TAO-sanastosta (Finto; juuri http://www.yso.fi/onto/mao/p178).
+- `general_concept[]`: Asiasanat KOKO-sanastosta (Finto); useita termejä.
 - `classification`: Luokitusjärjestelmien luokat, joilla kuvaillaan objektin tyyppiä, merkitystä, kontekstia, ulkoasua tai muita ominaisuuksia.
 
 ### Content hints with Finnish field labels
@@ -365,7 +407,7 @@ content: Content
 - `Sijainti` (`content.position`): Kohta tai paikka objektissa, jossa kuvailtu tieto sijaitsee.
 - `Kirjoitusjärjestelmä` (`content.script`): Kirjoitusjärjestelmä, jota käyttäen objektin tekstuaalinen sisältö on kirjoitettu.
 - `Kieli` (`content.language`): Kieli, jolla objektin tekstuaalinen sisältö on kirjoitettu.
-- `Asiasanat` (`content.general_concept`): Objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita objektin ominaisuuksia kuvaavia sanoja.
+- `Asiasanat` (`content.general_concept[]`): KOKO-käsitteitä (Finto); objektin sisältöä, kontekstia, merkitystä, ulkoasua tai muita ominaisuuksia kuvaavat termit.
 - `Luokitus` (`content.classification`): Luokitusjärjestelmät sisältävät luokkia, joiden avulla voidaan kuvailla objektin tyyppiä, merkitystä, kontekstia, ulkoasua ja muita ominaisuuksia.
 - `Sisällön tapahtumat` (`content.event[]`):
   - `Sisällön tapahtuma` (`content.event[].name`): Objektissa kuvattu tai objektin kuvailema tapahtuma.

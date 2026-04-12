@@ -181,6 +181,7 @@ export const ActorForm = observer(() => {
           actorKind={actorKind}
           onActorKindChange={readOnlyGlobal ? undefined : handleActorKindChange}
           dataVersion={dataVersion}
+          catalogActorId={isEdit && Number.isFinite(numId) ? numId : undefined}
         />
         {!readOnlyGlobal && (
           <div className="actor-form-actions">

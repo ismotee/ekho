@@ -10,9 +10,40 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from .models import Actor, Collection, Record
-from .actor_catalog_validate import validate_actor_catalog_data
+from .actor_catalog_validate import actor_catalog_kind, validate_actor_catalog_data
 from .record_actor_refs import validate_actor_refs_for_user
 from .record_validators import validate_record_data_payload
+
+
+class OrganizationActorRefField(serializers.RelatedField):
+    """Read/write `{id}` or `null` for a catalog actor that must be an organization."""
+
+    queryset = Actor.objects.all()
+
+    def to_representation(self, value):
+        if value is None:
+            return None
+        return {"id": value.pk}
+
+    def to_internal_value(self, data):
+        if data in (None, "", {}):
+            return None
+        if isinstance(data, int):
+            pk = data
+        elif isinstance(data, dict) and data.get("id") is not None:
+            pk = data["id"]
+        else:
+            raise serializers.ValidationError(
+                "Expected null, integer id, or object with id."
+            )
+        try:
+            pk = int(pk)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError("Invalid actor id.") from None
+        try:
+            return self.get_queryset().get(pk=pk)
+        except Actor.DoesNotExist:
+            raise serializers.ValidationError(f"Actor {pk} does not exist.") from None
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -28,15 +59,36 @@ class CollectionSerializer(serializers.ModelSerializer):
     """Serializer for Collection model"""
     owner = UserSerializer(read_only=True)
     record_count = serializers.SerializerMethodField()
-    
+    owning_organization = OrganizationActorRefField(
+        allow_null=True,
+        required=False,
+    )
+
     class Meta:
         model = Collection
         fields = [
-            'id', 'name', 'description', 'owner', 
+            'id', 'name', 'description', 'responsible_department',
+            'owning_organization', 'owner',
             'is_closed', 'created_at', 'updated_at', 'record_count'
         ]
         read_only_fields = ['id', 'owner', 'created_at', 'updated_at', 'record_count']
-    
+
+    def validate_owning_organization(self, value):
+        if value is None:
+            return None
+        if actor_catalog_kind(value.data) != "organization":
+            raise serializers.ValidationError(
+                "owning_organization must reference an organization actor."
+            )
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        if user and getattr(user, "is_authenticated", False):
+            if value.owner_id is not None and value.owner_id != user.id:
+                raise serializers.ValidationError(
+                    "That actor is not available (not global or yours)."
+                )
+        return value
+
     def get_record_count(self, obj):
         """Get the count of records in this collection"""
         if hasattr(obj, 'record_count'):
@@ -144,6 +196,23 @@ class RecordSerializer(serializers.ModelSerializer):
             request = self.context.get("request")
             user = getattr(request, "user", None) if request else None
             validate_actor_refs_for_user(payload, user)
+        new_collection = attrs.get("collection")
+        if new_collection is not None and self.instance is not None:
+            request = self.context.get("request")
+            user = getattr(request, "user", None) if request else None
+            if user and getattr(user, "is_authenticated", False):
+                if new_collection.owner_id != user.id:
+                    raise serializers.ValidationError(
+                        {
+                            "collection": "You can only move a record to a collection you own.",
+                        }
+                    )
+                if new_collection.is_closed:
+                    raise serializers.ValidationError(
+                        {
+                            "collection": "Cannot move a record into a closed collection.",
+                        }
+                    )
         return attrs
 
     def validate_representative_image(self, value):

@@ -429,15 +429,20 @@ taide
 teollinen
 ```
 
+Technique
+```
+name: Reference<Technique>
+type: Reference<TechniqueType>
+```
+
 ObjectProductInformation
 ```
 actor: List<RoledActor>
-date: Temporal
-place: Spatial
+date: List<DateDetail>
+place: List<Spatial>
+techniques: List<Technique>
 reason: CharField
 note: TextField
-technique: Reference<Technique>
-technique_type: List<Reference<TechniqueType>>
 ```
 
 Reference<Usage> — **shape**: **Reference** in [common-models.md](common-models.md). **Allowed values** (Finnish labels; closed set):
@@ -985,7 +990,6 @@ name_type: Reference<AssociatedEventNameType>
 actor: List<RoledActor>
 date: List<Temporal>
 place: List<Spatial>
-note: TextField
 ```
 
 ObjectHistory

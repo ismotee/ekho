@@ -2,12 +2,23 @@
  * docs/data/description-models.md
  */
 
-import type { ReferenceField, Temporal, ImageRef } from './common'
+import type { DateDetail, ImageRef, ReferenceField } from './common'
 import type { ActorField, Spatial } from './actor'
+import type { ObjectName } from './identification'
+
+/** Part of the object described in kuvailu (docs/data/description-models.md — ObjectComponent). */
+export interface ObjectComponent {
+  /** Objektin osan kuvaus */
+  description?: string
+  /** Same structure and vocabularies as identification `object_name` (value / type / language). */
+  object_name?: ObjectName
+  /** Objektin osan identifiointitunnus */
+  object_number?: string
+}
 
 export interface PhysicalDescription {
   object_status?: ReferenceField
-  object_component_name?: ReferenceField
+  object_component?: ObjectComponent[]
   text?: string
   photo_format?: ReferenceField
   orientation?: ReferenceField
@@ -33,7 +44,7 @@ export interface Material {
 export interface Interpretation {
   text?: string
   interpretator?: ActorField
-  date?: Temporal
+  date?: DateDetail
   photo?: ImageRef
 }
 
@@ -55,7 +66,7 @@ export interface Inscription {
   method?: ReferenceField
   direction?: ReferenceField
   inscriber?: ActorField
-  date?: Temporal
+  date?: DateDetail
   interpretation?: Interpretation[]
 }
 
@@ -66,24 +77,38 @@ export interface Measurement {
   value_qualifier?: string
 }
 
+/** One row under Sisällön tapahtumat (content.event[]). */
 export interface ContentEvent {
-  name?: ReferenceField
-  type?: ReferenceField
+  /** Vapaa teksti: sisällön tapahtuman nimi. */
+  name?: string
+  /** YSO tapahtumat (p1051) — tapahtuman tyyppi; URI `in_scheme`. */
+  name_type?: ReferenceField
+}
+
+/** One row under Sisällön ajat: calendar / certainty / qualifier plus optional role. */
+export interface ContentDateEntry extends DateDetail {
+  content_time_role?: ReferenceField
 }
 
 export interface Content {
   description?: string
-  person?: ActorField
-  date?: Temporal
-  place?: Spatial
-  activity?: ReferenceField
+  /** People, organizations, or groups depicted or described by the content (catalog refs or embedded actors). */
+  actors?: ActorField[]
+  /** Times depicted or described by the content. */
+  dates?: ContentDateEntry[]
+  /** Places depicted or described by the content (same `Spatial` shape as other record places). */
+  places?: Spatial[]
+  /** YSO (or legacy) content activity terms; URL linkage via `in_scheme` when using YSO picker. */
+  activity?: ReferenceField[]
   event?: ContentEvent[]
-  position?: ReferenceField
+  /** Kohta tai paikka objektissa (vapaa teksti). */
+  position?: string
   script?: ReferenceField
   language?: ReferenceField
   note?: string
   style?: ReferenceField[]
-  general_concept?: ReferenceField
+  /** KOKO (Finto) keywords; multiselect, URIs in `in_scheme`. */
+  general_concept?: ReferenceField[]
   classification?: ReferenceField[]
 }
 

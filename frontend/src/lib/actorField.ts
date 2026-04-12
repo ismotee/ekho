@@ -19,10 +19,16 @@ export function actorRefId(v: ActorField | undefined): number | undefined {
 
 function legacyInlineActorHasContent(a: Actor): boolean {
   if (a.person?.first_name?.some((n) => n.name?.trim())) return true
-  if (a.person?.last_name?.name?.trim()) return true
-  if (a.organization?.main_body?.fi?.trim() || a.organization?.main_body?.en?.trim() || a.organization?.main_body?.und?.trim())
-    return true
-  if (a.organization?.sub_body?.fi?.trim() || a.organization?.sub_body?.en?.trim() || a.organization?.sub_body?.und?.trim())
+  if (a.person?.last_name?.some((n) => n.name?.trim())) return true
+  if (
+    a.organization?.name?.some(
+      (r) =>
+        r.name?.fi?.trim() ||
+        r.name?.en?.trim() ||
+        r.name?.und?.trim() ||
+        r.addition_to_name?.trim(),
+    )
+  )
     return true
   return false
 }

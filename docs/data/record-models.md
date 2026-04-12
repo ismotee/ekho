@@ -6,7 +6,7 @@ Record
     history: History
     description: Description
     access: Access
-    object_location: ObjectLocation
+    object_location: List<ObjectLocation>
     confidentiality: InformationConfidentiality
 ```
 
@@ -18,7 +18,7 @@ Domain properties above are nested under the single key **`data`** on each recor
 
 ## Actor-shaped fields in `data`
 
-Where the domain model names an **Actor** (acquisition actors, rights holders, history owners and roled actors, description inscriber/translator/interpretator/content person, spatial `owner`, etc.), persisted record JSON uses a **catalog reference** only:
+Where the domain model names an **Actor** (acquisition actors, rights holders, history owners and roled actors, description inscriber/translator/interpretator/content actors, spatial `owner`, etc.), persisted record JSON uses a **catalog reference** only:
 
 ```json
 { "id": <integer> }

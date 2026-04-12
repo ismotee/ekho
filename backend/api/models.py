@@ -4,8 +4,24 @@ Django models for Ekho Art Collection Management Application
 Record payload: docs/data/record-models.md (stored in `data` JSONField).
 """
 
+import uuid
+
 from django.db import models
 from django.contrib.auth.models import User
+
+
+class SystemIdentity(models.Model):
+    """
+    Single row: unique id for this Ekho instance (cross-deployment provenance).
+    """
+
+    instance_id = models.UUIDField(unique=True, default=uuid.uuid4)
+
+    class Meta:
+        verbose_name_plural = "System identity"
+
+    def __str__(self):
+        return str(self.instance_id)
 
 
 class Collection(models.Model):
@@ -15,8 +31,19 @@ class Collection(models.Model):
     """
     name = models.CharField(max_length=200)
     description = models.TextField(max_length=1000, blank=True)
+    responsible_department = models.CharField(max_length=500, blank=True)
+    owning_organization = models.ForeignKey(
+        "Actor",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="owned_collections",
+    )
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     is_closed = models.BooleanField(default=False)
+    stable_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    origin_ekho_instance_id = models.UUIDField(null=True, blank=True)
+    is_listed = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -25,6 +52,7 @@ class Collection(models.Model):
         indexes = [
             models.Index(fields=['owner']),
             models.Index(fields=['is_closed']),
+            models.Index(fields=['is_listed']),
         ]
     
     def __str__(self):
@@ -46,6 +74,8 @@ class Record(models.Model):
     collection = models.ForeignKey(
         Collection, on_delete=models.CASCADE, related_name="records"
     )
+    imported_first = models.DateTimeField(null=True, blank=True)
+    imported_last = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

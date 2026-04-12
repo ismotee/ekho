@@ -6,8 +6,7 @@ asiakirja
 esine
 liikkuva kuva
 luonnonympäristö
-muu
-näyte
+muu näyte
 painettu tekstijulkaisu
 rakennettu ympäristö
 rakennus
@@ -69,11 +68,10 @@ Title
     note: TextField
 ```
 
+Catalogue membership is the REST resource field **`Record.collection`** (FK to `Collection`), not part of `identification_details`.
+
 IdentificationDetails
 ```
-    owning_organization: Organization
-    responsible_department: CharField
-    collection: CharField
     object_type: Reference<ObjectType>
     object_number: CharField
     object_name: List<ObjectName>

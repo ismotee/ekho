@@ -27,6 +27,14 @@ export interface ApiResponse<T = any> {
   results?: T[]
 }
 
+/** POST /api/records/import/ response body */
+export type RecordImportMode = 'acquisition' | 'deposition' | 'original_only'
+
+export interface RecordImportResponseBody {
+  record_ids: number[]
+  mode: RecordImportMode | string
+}
+
 class ApiClient {
   private baseURL: string
 
@@ -111,19 +119,48 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config)
-      
+
       // Handle 204 No Content
       if (response.status === 204) {
         return {} as ApiResponse<T>
       }
 
-      const data = await response.json()
+      const bodyText = await response.text()
+      const trimmed = bodyText.trim()
+
+      let data: unknown
+      if (!trimmed) {
+        if (!response.ok) {
+          throw {
+            error: `Request failed (${response.status})`,
+            detail: response.statusText || 'Empty response body',
+            response: { status: response.status },
+          } as ApiError
+        }
+        data = {}
+      } else {
+        try {
+          data = JSON.parse(trimmed) as unknown
+        } catch {
+          const looksHtml =
+            /^<!DOCTYPE/i.test(trimmed) || /^<html/i.test(trimmed.trimStart())
+          const hint = looksHtml
+            ? 'The server returned HTML instead of JSON. Is the Django API running? With npm run dev, requests to /api are proxied to http://localhost:8000. A production build needs VITE_API_BASE_URL set to the real API base URL.'
+            : 'The response was not valid JSON.'
+          throw {
+            error: !response.ok ? `Request failed (${response.status})` : 'Invalid response',
+            detail: `${hint} URL: ${url}`,
+            response: { status: response.status },
+          } as ApiError
+        }
+      }
 
       if (!response.ok) {
+        const errBody = data as Record<string, unknown>
         const error: ApiError = {
-          error: data.error || data.detail || 'An error occurred',
-          detail: data.detail,
-          field_errors: data.field_errors,
+          error: (errBody.error || errBody.detail || 'An error occurred') as string,
+          detail: errBody.detail as string | undefined,
+          field_errors: errBody.field_errors as Record<string, string[]> | undefined,
           response: {
             status: response.status,
             data,
@@ -133,17 +170,18 @@ class ApiClient {
       }
 
       // Handle paginated responses
-      if (data.count !== undefined && data.results !== undefined) {
+      const d = data as Record<string, unknown>
+      if (d.count !== undefined && d.results !== undefined) {
         return data as ApiResponse<T>
       }
 
       // Handle direct data responses
-      return { data } as ApiResponse<T>
+      return { data: data as T } as ApiResponse<T>
     } catch (error) {
       if (error && typeof error === 'object' && 'response' in error) {
         throw error
       }
-      
+
       // Network or other errors
       throw {
         error: 'Network error',
@@ -223,6 +261,60 @@ class ApiClient {
 
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' })
+  }
+
+  /**
+   * GET endpoint that returns a binary body (e.g. JSON download). On error, parses JSON message when present.
+   */
+  async getBlob(endpoint: string): Promise<{ blob: Blob; filename: string | undefined }> {
+    const url = `${this.baseURL}${endpoint}`
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    const cd = response.headers.get('Content-Disposition')
+    let filename: string | undefined
+    if (cd) {
+      const quoted = /filename="([^"]+)"/i.exec(cd)
+      const plain = /filename=([^;\s]+)/i.exec(cd)
+      const raw = quoted?.[1] ?? plain?.[1]
+      if (raw) {
+        filename = raw.replace(/^UTF-8''/, '').trim()
+      }
+    }
+
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`
+      try {
+        const errJson = await response.json()
+        message = (errJson.error || errJson.detail || message) as string
+      } catch {
+        // ignore
+      }
+      throw {
+        error: message,
+        detail: message,
+        response: { status: response.status },
+      } as ApiError
+    }
+
+    const blob = await response.blob()
+    return { blob, filename }
+  }
+
+  /** GET /api/records/{id}/export/ — JSON attachment */
+  async exportRecord(recordId: number): Promise<{ blob: Blob; filename: string | undefined }> {
+    return this.getBlob(`/records/${recordId}/export/`)
+  }
+
+  /**
+   * POST /api/records/import/ — body is export JSON plus `mode` and usually `current_collection_id`.
+   */
+  async importRecord(
+    body: Record<string, unknown>
+  ): Promise<ApiResponse<RecordImportResponseBody>> {
+    return this.post<RecordImportResponseBody>('/records/import/', body)
   }
 }
 

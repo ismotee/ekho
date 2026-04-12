@@ -4,11 +4,11 @@
  * History domain paths (see `types/record/history.ts`):
  * - owner_history[]: owner, date, place, exchange
  * - exchange: method, price, denomination, note
- * - object_production_information[]: actor, date, place, reason, note, technique, technique_type
+ * - object_production_information[]: actor, date[], place[], techniques[], reason, note
  * - usage_history[]: usage, note, usage_instructions
  * - object_history[]: activity, cultural_affinity, actor, date, place, event, note, comments, relevance
  * - activity: type, note
- * - event: name, name_type, actor, date, place, note
+ * - event: name, name_type, actor, date, place
  */
 
 import type { i18n as I18nType } from 'i18next'
@@ -34,14 +34,20 @@ function snakeToCamel(key: string): string {
 const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   title: 'recordForm.identification.titlesLegend',
   object_name: 'recordForm.identification.objectNamesLegend',
+  owning_organization: 'collections.owningOrganization',
+  collection: 'recordForm.labels.identificationCollection',
+  object_type: 'recordForm.labels.objectKind',
   date_entries: 'recordForm.acquisition.dateEntriesLegend',
+  acquisition_time: 'recordForm.acquisition.acquisitionTimeLegend',
   places: 'recordForm.acquisition.placesLegend',
   actors: 'recordForm.acquisition.actorsLegend',
   owner_history: 'recordForm.history.ownerHistoryLegend',
   ownership_date: 'recordForm.history.ownershipDateLegend',
   object_production_information: 'recordForm.history.productionLegend',
-  production_date: 'recordForm.history.productionDateLegend',
-  technique_types: 'recordForm.history.techniqueTypesLegend',
+  production_date: 'recordForm.history.productionDatesLegend',
+  techniques: 'recordForm.history.techniquesLegend',
+  /** Legacy API key before `techniques[]` */
+  technique_types: 'recordForm.history.techniquesLegend',
   usage_history: 'recordForm.history.usageHistoryLegend',
   object_history: 'recordForm.history.objectHistoryLegend',
   associated_activity: 'recordForm.history.associatedActivityLegend',
@@ -57,13 +63,11 @@ const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   price: 'recordForm.labels.exchangePrice',
   /** OwnershipExchange.denomination — form uses priceDenomination */
   denomination: 'recordForm.labels.priceDenomination',
-  /** Object production technique */
-  technique: 'recordForm.labels.technique',
   /** ObjectHistory.event — form uses associatedEventLegend */
   event: 'recordForm.history.associatedEventLegend',
-  /** DateDetail (Temporal); API typo from common-models */
+  /** DateDetail; API typo from common-models */
   certanity: 'recordForm.temporal.dateCertainty',
-  /** DateDetail.single — calendar date; same label as TemporalFields */
+  /** DateDetail.single — calendar date; same label as DateDetailInputs */
   single: 'recordForm.temporal.date',
   /** DateDetail.qualifier — date qualifier, not valueQualifier */
   qualifier: 'recordForm.temporal.dateQualifier',
@@ -74,11 +78,17 @@ const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   access_date: 'recordForm.access.accessDateLegend',
   status_date: 'recordForm.access.statusDateLegend',
   location_date: 'recordForm.location.locationDateLegend',
-  content_date: 'recordForm.description.contentDateLegend',
+  object_component: 'recordForm.description.objectComponentsLegend',
+  content_date: 'recordForm.description.contentDatesLegend',
+  content_dates: 'recordForm.description.contentDatesLegend',
+  content_time_role: 'recordForm.labels.contentTimeRole',
+  content_places: 'recordForm.description.contentPlacesLegend',
   interpretation_date: 'recordForm.description.interpretationDateLegend',
-  inscription_date: 'recordForm.description.inscriptionDateLegend',
+  inscription_date: 'recordForm.labels.inscriptionDate',
   pref_label: 'recordForm.labels.prefLabel',
   in_scheme: 'recordForm.labels.inScheme',
+  acquisition_place_role: 'recordForm.labels.acquisitionPlaceRole',
+  content_place_role: 'recordForm.labels.contentPlaceRole',
 }
 
 export function translateRecordFieldKey(key: string, i18n: I18nType, t: TFunction): string {

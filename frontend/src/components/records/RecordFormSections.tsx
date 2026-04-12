@@ -2,12 +2,18 @@
  * Domain section editors for RecordForm (draft RecordPayload slices).
  */
 
+import { useEffect } from 'react'
+import { observer } from 'mobx-react-lite'
 import {
+  acquisitionActorListItemHasContent,
   acquisitionDateRowHasContent,
-  actorRowHasContent,
+  persistAcquisitionActorRow,
   spatialRowHasContent,
+  unwrapAcquisitionActorSlot,
 } from '../../lib/acquisitionPayload'
 import {
+  normalizeObjectHistoryList,
+  normalizeObjectProductionInformationList,
   objectHistoryRowHasContent,
   objectProductInformationRowHasContent,
   ownershipRowHasContent,
@@ -19,9 +25,11 @@ import {
   ASSOCIATED_CULTURAL_AFFINITY_FI,
   ASSOCIATED_EVENT_NAME_FI,
   ASSOCIATED_EVENT_NAME_TYPE_FI,
+  ACQUISITION_ACTOR_ROLE_FI,
   AQCUISITION_METHOD_FI,
   DENOMINATION_FI,
   LANGUAGE_FI,
+  LANGUAGE_GROUPS,
   LOCATION_FITNESS_FI,
   LOCATION_TYPE_FI,
   MUSEOLOGICAL_VALUE_FI,
@@ -31,23 +39,24 @@ import {
   OBJECT_TYPE_FI,
   OWNERSHIP_EXCHANGE_METHOD_FI,
   RIGHTS_TYPE_FI,
-  TECHNIQUE_FI,
-  TECHNIQUE_TYPE_FI,
   TITLE_TYPE_FI,
   USAGE_FI,
 } from '../../data/referenceVocabularies'
 import { referenceFieldFi, referenceFieldToPayload, referenceSelectOptions } from '../../lib/referenceField'
 import type { RecordPayload } from '../../types/record'
+import type { ObjectLocation } from '../../types/record/object-location'
 import type { Rights } from '../../types/record/rights'
 import {
   identificationTitlesAsList,
+  mergeObjectNameWithImplicitLanguage,
   objectNameRowHasContent,
   titleRowHasContent,
 } from '../../lib/identificationTitles'
 import type { ObjectName, IdentificationDetails, Title } from '../../types/record/identification'
+import type { AcquisitionActorRow } from '../../types/record/aqcuisition'
 import type { Temporal } from '../../types/record/common'
-import { TemporalFields } from './TemporalFields'
-import type { ActorField, RoledActor, Spatial } from '../../types/record/actor'
+import { DateDetailInputs, TemporalFields } from './TemporalFields'
+import type { ActorField, Spatial } from '../../types/record/actor'
 import type {
   AssociatedEvent,
   ObjectHistory,
@@ -56,21 +65,45 @@ import type {
   UsageHistory,
 } from '../../types/record/history'
 import { rightsHasPersistableContent } from '../../lib/rightsPayload'
-import { temporalHasPersistableContent, temporalSummaryLine } from '../../lib/temporalPayload'
+import {
+  dateDetailHasPersistableContent,
+  dateDetailSummaryLine,
+  temporalSummaryLine,
+} from '../../lib/temporalPayload'
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { objectLocationHasPersistableContent } from '../../lib/objectLocationPayload'
-import { isActorSlotEmpty, recordActorSlotSummary } from './actorMiniForm'
+import {
+  isActorSlotEmpty,
+  recordAcquisitionActorRowSummary,
+  recordActorSlotSummary,
+} from './actorMiniForm'
 import { ActorRefSelect } from './ActorRefSelect'
+import { SpatialFields } from './SpatialFields'
 import { CollapsibleRepeatableRow } from './CollapsibleRepeatableRow'
+import { ObjectHistoryEventPlacesList } from './ObjectHistoryEventPlacesList'
+import { ObjectHistoryEventTimeList } from './ObjectHistoryEventTimeList'
+import { ObjectHistoryPlacesList } from './ObjectHistoryPlacesList'
+import { ObjectHistoryTimeList } from './ObjectHistoryTimeList'
+import { ObjectProductionPlacesList } from './ObjectProductionPlacesList'
+import { ObjectProductionTechniquesList } from './ObjectProductionTechniquesList'
+import { ObjectProductionTimeList } from './ObjectProductionTimeList'
+import { RightsHoldersList } from './RightsHoldersList'
+import { RoledActorRepeatableList } from './RoledActorRepeatableList'
 import { FieldInfoText } from './FieldInfoText'
+import { useAuthStore } from '../../stores/authStore'
+import { GroupedReferenceSelect } from './GroupedReferenceSelect'
 import { ReferenceSelect } from './ReferenceSelect'
 import { useRepeatableCollapsedRows } from './useRepeatableCollapsedRows'
+import { useActorStore } from '../../stores/actorStore'
+import { useCollectionStore } from '../../stores/collectionStore'
 
 export { DescriptionFields } from './DescriptionFields'
 
 export interface RecordFormSectionErrors {
   identification?: string
+  /** Kokoelma (record.collection) */
+  collection?: string
 }
 
 interface SectionProps {
@@ -80,6 +113,12 @@ interface SectionProps {
   errors: RecordFormSectionErrors
 }
 
+export interface IdentificationFieldsProps extends SectionProps {
+  /** Record FK `collection` — not stored under identification_details. */
+  recordCollectionId: number | undefined
+  onRecordCollectionChange: (id: number | undefined) => void
+}
+
 function patchIdentification(data: RecordPayload, fn: (id: IdentificationDetails) => void): RecordPayload {
   const id: IdentificationDetails = { ...(data.identification_details ?? {}) }
   fn(id)
@@ -87,6 +126,11 @@ function patchIdentification(data: RecordPayload, fn: (id: IdentificationDetails
   // Do not strip empty title / object_name rows here — that breaks "Add title" / "Add object name".
   // Empty placeholders are removed in compactRecordPayloadForSave before API submit.
 
+  if (id.number_of_objects != null) {
+    const n = Number(id.number_of_objects)
+    if (!Number.isFinite(n) || n < 1) delete id.number_of_objects
+    else id.number_of_objects = Math.floor(n)
+  }
   if (id.object_number !== undefined && !String(id.object_number).trim()) delete id.object_number
   if (!referenceFieldFi(id.object_type)) delete id.object_type
 
@@ -94,16 +138,37 @@ function patchIdentification(data: RecordPayload, fn: (id: IdentificationDetails
   return { ...data, identification_details: hasId ? id : undefined }
 }
 
-export function IdentificationFields({ data, onChange, disabled, errors }: SectionProps) {
+export function IdentificationFields({
+  data,
+  onChange,
+  disabled,
+  errors,
+  recordCollectionId,
+  onRecordCollectionChange,
+}: IdentificationFieldsProps) {
   const { t } = useTranslation()
+  const authStore = useAuthStore()
+  const collectionStore = useCollectionStore()
   const id = data.identification_details ?? {}
   const objectNumber = id.object_number ?? ''
   const objectTypeFi = referenceFieldFi(id.object_type)
+  const collectionSelectValue = recordCollectionId ?? ''
+  const numberOfObjects =
+    id.number_of_objects != null && Number.isFinite(Number(id.number_of_objects))
+      ? Math.floor(Number(id.number_of_objects))
+      : ''
   const titles = identificationTitlesAsList(id.title)
   const names = id.object_name ?? []
 
   const titlesCol = useRepeatableCollapsedRows(titles, titleRowHasContent)
   const namesCol = useRepeatableCollapsedRows(names, objectNameRowHasContent)
+
+  useEffect(() => {
+    if (!authStore.user?.username) return
+    collectionStore
+      .fetchCollections({ owner: authStore.user.username, page_size: 500, is_closed: false })
+      .catch(() => {})
+  }, [authStore.user?.username, collectionStore])
 
   const setTitles = (rows: Title[]) => {
     onChange(
@@ -139,7 +204,9 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
   }
 
   const updateObjectName = (index: number, patch: Partial<ObjectName>) => {
-    const next = names.map((row, i) => (i === index ? { ...row, ...patch } : row))
+    const next = names.map((row, i) =>
+      i === index ? mergeObjectNameWithImplicitLanguage(row, patch) : row,
+    )
     setNames(next)
   }
 
@@ -155,39 +222,49 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
         </p>
       )}
       <div className="form-group">
-        <label htmlFor="rf-object-number">{t('recordForm.labels.objectNumber')}</label>
-        <input
-          id="rf-object-number"
-          type="text"
-          value={objectNumber}
-          onChange={(e) =>
-            onChange(
-              patchIdentification(data, (d) => {
-                const v = e.target.value
-                d.object_number = v.trim() ? v : undefined
-              })
-            )
-          }
-          maxLength={200}
+        <label htmlFor="rf-identification-collection">
+          {t('recordForm.labels.identificationCollection')}
+          <span className="record-form-required-mark" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        </label>
+        <FieldInfoText infoKey="recordForm.info.identification.collection" />
+        <select
+          id="rf-identification-collection"
+          value={collectionSelectValue === '' ? '' : String(collectionSelectValue)}
+          onChange={(e) => {
+            const v = e.target.value
+            if (!v) {
+              onRecordCollectionChange(undefined)
+              return
+            }
+            onRecordCollectionChange(Number(v))
+          }}
           disabled={disabled}
-          aria-invalid={!!errors.identification}
-        />
+          aria-required="true"
+          aria-invalid={errors.collection ? 'true' : undefined}
+          aria-describedby={errors.collection ? 'rf-identification-collection-error' : undefined}
+        >
+          <option value="">—</option>
+          {collectionSelectValue !== '' &&
+            !collectionStore.collections.some((c) => c.id === collectionSelectValue) && (
+              <option value={String(collectionSelectValue)}>
+                {t('recordForm.identification.collectionOptionUnknown', { id: collectionSelectValue })}
+              </option>
+            )}
+          {collectionStore.collections.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        {errors.collection && (
+          <p id="rf-identification-collection-error" className="field-error" role="alert">
+            {errors.collection}
+          </p>
+        )}
       </div>
-      <ReferenceSelect
-        id="rf-object-type"
-        label={t('recordForm.labels.objectType')}
-        allowlist={OBJECT_TYPE_FI}
-        valueFi={objectTypeFi}
-        onChangeFi={(fi) =>
-          onChange(
-            patchIdentification(data, (d) => {
-              d.object_type = referenceFieldToPayload(fi)
-            })
-          )
-        }
-        disabled={disabled}
-        emptyLabel="—"
-      />
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.identification.titlesLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.identification.titlesHint')}</p>
@@ -244,10 +321,11 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
               disabled={disabled}
               emptyLabel="—"
             />
-            <ReferenceSelect
+            <GroupedReferenceSelect
               id={`rf-title-language-${index}`}
               label={t('recordForm.labels.titleLanguage')}
-              allowlist={LANGUAGE_FI}
+              groups={LANGUAGE_GROUPS}
+              flatAllowlist={LANGUAGE_FI}
               valueFi={referenceFieldFi(row.language)}
               onChangeFi={(fi) => updateTitle(index, { language: referenceFieldToPayload(fi) })}
               disabled={disabled}
@@ -260,9 +338,54 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
         </button>
       </fieldset>
 
+      <div className="form-group">
+        <label htmlFor="rf-number-of-objects">{t('recordForm.labels.numberOfObjects')}</label>
+        <FieldInfoText infoKey="recordForm.info.identification.numberOfObjects" />
+        <input
+          id="rf-number-of-objects"
+          type="number"
+          min={1}
+          step={1}
+          value={numberOfObjects === '' ? '' : numberOfObjects}
+          onChange={(e) => {
+            const raw = e.target.value
+            onChange(
+              patchIdentification(data, (d) => {
+                if (raw === '') {
+                  delete d.number_of_objects
+                  return
+                }
+                const n = Number(raw)
+                d.number_of_objects = Number.isFinite(n) && n >= 1 ? Math.floor(n) : undefined
+              })
+            )
+          }}
+          disabled={disabled}
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="rf-object-number">{t('recordForm.labels.objectNumber')}</label>
+        <FieldInfoText infoKey="recordForm.info.identification.objectNumber" />
+        <input
+          id="rf-object-number"
+          type="text"
+          value={objectNumber}
+          onChange={(e) =>
+            onChange(
+              patchIdentification(data, (d) => {
+                const v = e.target.value
+                d.object_number = v.trim() ? v : undefined
+              })
+            )
+          }
+          maxLength={200}
+          disabled={disabled}
+          aria-invalid={!!errors.identification}
+        />
+      </div>
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.identification.objectNamesLegend')}</legend>
-        <p className="record-form-repeatable-hint">{t('recordForm.identification.namesHint')}</p>
+        <FieldInfoText infoKey="recordForm.info.identification.objectName" />
         {names.map((row, index) => (
           <CollapsibleRepeatableRow
             key={index}
@@ -275,8 +398,7 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
             summary={
               referenceFieldFi(row.value)?.trim()
                 ? referenceFieldFi(row.value)
-                : [referenceFieldFi(row.type), referenceFieldFi(row.language)].filter(Boolean).join(' · ') ||
-                  t('recordForm.identification.emptyObjectName')
+                : referenceFieldFi(row.type) || t('recordForm.identification.emptyObjectName')
             }
           >
             <div className="form-group">
@@ -298,7 +420,7 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
               </select>
             </div>
             <div className="form-group">
-              <label htmlFor={`rf-on-type-${index}`}>{t('recordForm.labels.type')}</label>
+              <label htmlFor={`rf-on-type-${index}`}>{t('recordForm.labels.objectNameType')}</label>
               <select
                 id={`rf-on-type-${index}`}
                 value={referenceFieldFi(row.type)}
@@ -315,30 +437,30 @@ export function IdentificationFields({ data, onChange, disabled, errors }: Secti
                 ))}
               </select>
             </div>
-            <div className="form-group">
-              <label htmlFor={`rf-on-lang-${index}`}>{t('recordForm.labels.language')}</label>
-              <select
-                id={`rf-on-lang-${index}`}
-                value={referenceFieldFi(row.language)}
-                onChange={(e) =>
-                  updateObjectName(index, { language: referenceFieldToPayload(e.target.value) })
-                }
-                disabled={disabled}
-              >
-                <option value="">—</option>
-                {referenceSelectOptions(LANGUAGE_FI, referenceFieldFi(row.language)).map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
           </CollapsibleRepeatableRow>
         ))}
         <button type="button" className="btn btn-secondary btn-sm" onClick={addObjectName} disabled={disabled}>
           {t('recordForm.identification.addObjectName')}
         </button>
       </fieldset>
+
+      <ReferenceSelect
+        id="rf-object-type"
+        className="record-form-field-before-image"
+        label={t('recordForm.labels.objectKind')}
+        allowlist={OBJECT_TYPE_FI}
+        valueFi={objectTypeFi}
+        onChangeFi={(fi) =>
+          onChange(
+            patchIdentification(data, (d) => {
+              d.object_type = referenceFieldToPayload(fi)
+            })
+          )
+        }
+        disabled={disabled}
+        emptyLabel="—"
+        infoKey="recordForm.info.identification.objectKind"
+      />
     </div>
   )
 }
@@ -352,6 +474,7 @@ function patchAcquisition(data: RecordPayload, fn: (a: NonNullable<RecordPayload
     !a.reason?.trim() &&
     !a.note?.trim() &&
     !a.provisos?.trim() &&
+    !(a.acquisition_time && dateDetailHasPersistableContent(a.acquisition_time)) &&
     !(a.date && a.date.length) &&
     !referenceFieldFi(a.method) &&
     !a.transfer_of_title_number?.trim() &&
@@ -364,16 +487,25 @@ function patchAcquisition(data: RecordPayload, fn: (a: NonNullable<RecordPayload
   return { ...data, aquisition_details: empty ? undefined : a }
 }
 
-export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProps, 'errors'>) {
+export const AcquisitionFields = observer(function AcquisitionFields({
+  data,
+  onChange,
+  disabled,
+}: Omit<SectionProps, 'errors'>) {
   const { t } = useTranslation()
+  const actorStore = useActorStore()
+  useEffect(() => {
+    actorStore.fetchActors({ page_size: 200 }).catch(() => {})
+  }, [actorStore])
+  const resolveActorCatalog = (id: number) => actorStore.actorById(id)?.data
   const a = data.aquisition_details ?? {}
   const dates = a.date ?? []
   const places = a.place ?? []
-  const actors = a.actor ?? []
+  const actors: AcquisitionActorRow[] = (a.actor ?? []).map(unwrapAcquisitionActorSlot)
 
   const datesCol = useRepeatableCollapsedRows(dates, acquisitionDateRowHasContent)
   const placesCol = useRepeatableCollapsedRows(places, spatialRowHasContent)
-  const actorsCol = useRepeatableCollapsedRows(actors, actorRowHasContent)
+  const actorsCol = useRepeatableCollapsedRows(actors, acquisitionActorListItemHasContent)
 
   const setDates = (rows: Temporal[]) => {
     onChange(
@@ -391,10 +523,11 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
     )
   }
 
-  const setActors = (rows: ActorField[]) => {
+  const setActors = (rows: AcquisitionActorRow[]) => {
     onChange(
       patchAcquisition(data, (d) => {
-        d.actor = rows.length ? rows : undefined
+        const persisted = rows.map(persistAcquisitionActorRow)
+        d.actor = persisted.length ? persisted : undefined
       })
     )
   }
@@ -429,6 +562,23 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
         />
       </div>
 
+      <DateDetailInputs
+        idPrefix="rf-acq-acquisition-time"
+        legend={t('recordForm.acquisition.acquisitionTimeLegend')}
+        hint={t('recordForm.acquisition.acquisitionTimeHint')}
+        dateLabel={t('recordForm.acquisition.acquisitionDateLabel')}
+        infoPrefix="recordForm.info.acquisition.acquisitionTime"
+        value={a.acquisition_time}
+        onChange={(next) =>
+          onChange(
+            patchAcquisition(data, (d) => {
+              d.acquisition_time = next
+            })
+          )
+        }
+        disabled={disabled}
+      />
+
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.acquisition.dateEntriesLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.acquisition.datesHint')}</p>
@@ -440,13 +590,18 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
             onToggleCollapse={() => datesCol.toggle(index)}
             onRemove={() => setDates(dates.filter((_, i) => i !== index))}
             disabled={disabled}
-            saveItemNoun={t('recordForm.repeatable.saveItemLabels.acquisitionDate')}
+            saveItemNoun={t('recordForm.repeatable.saveItemLabels.acquisitionOtherTime')}
             summary={temporalSummaryLine(row) || t('recordForm.acquisition.emptyDateEntry')}
           >
             <TemporalFields
-              idPrefix={`rf-acq-date-${index}`}
+              idPrefix={`rf-acq-other-time-${index}`}
               legend={t('recordForm.acquisition.dateEntryLegend', { n: index + 1 })}
-              infoPrefix="recordForm.info.acquisition.date"
+              infoPrefix="recordForm.info.acquisition.otherTimes"
+              earliestLegend={t('recordForm.acquisition.otherTimesEarliestLegend')}
+              earliestAtTop
+              noteAtBottom
+              flattenEarliest
+              hideLatest
               value={row}
               onChange={(next) => {
                 const nextRows = dates.map((d, i) => (i === index ? (next ?? {}) : d))
@@ -516,43 +671,32 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
             saveItemNoun={t('recordForm.repeatable.saveItemLabels.acquisitionPlace')}
             summary={
               row.name?.fi?.trim() ||
+              row.name?.en?.trim() ||
               row.note?.trim() ||
+              referenceFieldFi(row.name_type) ||
+              referenceFieldFi(row.acquisition_place_role) ||
+              referenceFieldFi(row.status) ||
+              row.environmental_details?.trim() ||
+              row.position?.trim() ||
               t('recordForm.acquisition.emptyPlace')
             }
           >
-            <div className="form-group form-group--grow">
-              <label htmlFor={`rf-acq-place-name-${index}`}>{t('recordForm.labels.nameFinnish')}</label>
-              <FieldInfoText infoKey="recordForm.info.acquisition.placeName" />
-              <input
-                id={`rf-acq-place-name-${index}`}
-                type="text"
-                value={row.name?.fi ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value
-                  const next = places.map((p, i) =>
-                    i === index ? { ...p, name: v.trim() ? { fi: v } : undefined } : p,
-                  )
-                  setPlaces(next)
-                }}
-                disabled={disabled}
-              />
-            </div>
-          <div className="form-group form-group--grow">
-            <label htmlFor={`rf-acq-place-note-${index}`}>{t('recordForm.labels.noteAcquisitionPlace')}</label>
-              <textarea
-                id={`rf-acq-place-note-${index}`}
-                value={row.note ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value
-                  const next = places.map((p, i) =>
-                    i === index ? { ...p, note: v.trim() ? v : undefined } : p,
-                  )
-                  setPlaces(next)
-                }}
-                rows={2}
-                disabled={disabled}
-              />
-            </div>
+            <SpatialFields
+              idPrefix={`rf-acq-place-${index}`}
+              nameInputMode="multilingual"
+              omitNameGroupLegend
+              includeUndefinedLanguage={false}
+              showAcquisitionPlaceRole
+              noteAtBottom
+              placeNameFinnishLabel={t('recordForm.acquisition.placeNameFiLabel')}
+              placeNameEnglishLabel={t('recordForm.acquisition.placeNameEnLabel')}
+              value={row}
+              onChange={(next) => {
+                const nextPlaces = places.map((p, i) => (i === index ? (next ?? {}) : p))
+                setPlaces(nextPlaces)
+              }}
+              disabled={disabled}
+            />
           </CollapsibleRepeatableRow>
         ))}
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPlaces([...places, {}])} disabled={disabled}>
@@ -572,14 +716,43 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
             onRemove={() => setActors(actors.filter((_, i) => i !== index))}
             disabled={disabled}
             saveItemNoun={t('recordForm.repeatable.saveItemLabels.acquisitionActor')}
-            summary={recordActorSlotSummary(actor)}
+            summary={recordAcquisitionActorRowSummary(actor, resolveActorCatalog)}
           >
             <ActorRefSelect
               id={`rf-acq-actor-ref-${index}`}
               label={t('recordForm.labels.actor')}
-              value={actor}
-              onChange={(next) => setActors(actors.map((act, i) => (i === index ? (next ?? {}) : act)))}
+              value={actor.actor}
+              onChange={(next) =>
+                setActors(
+                  actors.map((act, i) =>
+                    i === index ? { ...act, actor: next ?? undefined } : act,
+                  ),
+                )
+              }
               disabled={disabled}
+            />
+            <ReferenceSelect
+              id={`rf-acq-actor-role-${index}`}
+              label={t('recordForm.labels.acquisitionActorRole')}
+              infoKey="recordForm.info.acquisition.acquisitionActorRole"
+              allowlist={ACQUISITION_ACTOR_ROLE_FI}
+              valueFi={referenceFieldFi(actor.acquisition_actor_role)}
+              onChangeFi={(fi) =>
+                setActors(
+                  actors.map((act, i) =>
+                    i === index
+                      ? {
+                          ...act,
+                          acquisition_actor_role: fi.trim()
+                            ? referenceFieldToPayload(fi)
+                            : undefined,
+                        }
+                      : act,
+                  ),
+                )
+              }
+              disabled={disabled}
+              emptyLabel="—"
             />
           </CollapsibleRepeatableRow>
         ))}
@@ -715,7 +888,7 @@ export function AcquisitionFields({ data, onChange, disabled }: Omit<SectionProp
       </div>
     </div>
   )
-}
+})
 
 function patchHistory(data: RecordPayload, fn: (h: NonNullable<RecordPayload['history']>) => void): RecordPayload {
   const h = { ...(data.history ?? {}) }
@@ -728,13 +901,22 @@ function patchHistory(data: RecordPayload, fn: (h: NonNullable<RecordPayload['hi
   return { ...data, history: empty ? undefined : h }
 }
 
-export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, 'errors'>) {
+export const HistoryFields = observer(function HistoryFields({
+  data,
+  onChange,
+  disabled,
+}: Omit<SectionProps, 'errors'>) {
   const { t } = useTranslation()
+  const actorStore = useActorStore()
+  useEffect(() => {
+    actorStore.fetchActors({ page_size: 200 }).catch(() => {})
+  }, [actorStore])
+  const resolveActorCatalog = (id: number) => actorStore.actorById(id)?.data
   const h = data.history ?? {}
   const owners = h.owner_history ?? []
-  const production = h.object_production_information ?? []
+  const production = normalizeObjectProductionInformationList(h.object_production_information ?? [])
   const usage = h.usage_history ?? []
-  const objectHist = h.object_history ?? []
+  const objectHist = normalizeObjectHistoryList(h.object_history ?? [])
 
   const ownerCol = useRepeatableCollapsedRows(owners, ownershipRowHasContent)
   const productionCol = useRepeatableCollapsedRows(production, objectProductInformationRowHasContent)
@@ -782,64 +964,6 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
     )
   }
 
-  const renderRoledActorRows = (
-    rows: RoledActor[],
-    setRows: (r: RoledActor[]) => void,
-    idPrefix: string,
-  ) => (
-    <>
-      {rows.map((row, index) => {
-        const act = row.actor
-        return (
-          <div key={index} className="record-form-repeatable-row record-form-repeatable-row--compact">
-            <ActorRefSelect
-              id={`${idPrefix}-ref-${index}`}
-              label={t('recordForm.labels.actor')}
-              value={act}
-              onChange={(next) =>
-                setRows(rows.map((r, i) => (i === index ? { ...r, actor: next ?? {} } : r)))
-              }
-              disabled={disabled}
-            />
-            <div className="form-group form-group--grow">
-              <label htmlFor={`${idPrefix}-assoc-${index}`}>{t('recordForm.labels.roleAssociation')}</label>
-              <input
-                id={`${idPrefix}-assoc-${index}`}
-                type="text"
-                value={referenceFieldFi(row.association)}
-                onChange={(e) => {
-                  const v = e.target.value
-                  setRows(
-                    rows.map((r, i) =>
-                      i === index ? { ...r, association: v.trim() ? v : undefined } : r,
-                    ),
-                  )
-                }}
-                disabled={disabled}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm record-form-repeatable-remove"
-              onClick={() => setRows(rows.filter((_, i) => i !== index))}
-              disabled={disabled}
-            >
-              {t('recordForm.labels.remove')}
-            </button>
-          </div>
-        )
-      })}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => setRows([...rows, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.history.addActor')}
-      </button>
-    </>
-  )
-
   return (
     <div className="record-form-section-fields">
       <fieldset className="record-form-repeatable-fieldset">
@@ -849,7 +973,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
           const owner = row.owner
           const place = row.place ?? {}
           const ex = row.exchange ?? {}
-          const ownerSummary = recordActorSlotSummary(owner)
+          const ownerSummary = recordActorSlotSummary(owner, resolveActorCatalog)
           return (
             <CollapsibleRepeatableRow
               key={index}
@@ -862,23 +986,32 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               summary={
                 !isActorSlotEmpty(owner)
                   ? ownerSummary
-                  : temporalSummaryLine(row.date)
-                    ? temporalSummaryLine(row.date)
-                    : place.name?.fi?.trim() || place.note?.trim() || t('recordForm.history.emptyOwnerEntry')
+                  : dateDetailSummaryLine(row.date)
+                    ? dateDetailSummaryLine(row.date)
+                    : place.name?.fi?.trim() ||
+                      place.name?.en?.trim() ||
+                      place.note?.trim() ||
+                      referenceFieldFi(place.name_type) ||
+                      referenceFieldFi(place.acquisition_place_role) ||
+                      referenceFieldFi(place.status) ||
+                      place.environmental_details?.trim() ||
+                      t('recordForm.history.emptyOwnerEntry')
               }
             >
               <ActorRefSelect
                 id={`rf-oh-owner-ref-${index}`}
                 label={t('recordForm.labels.ownerActor')}
+                infoKey="recordForm.info.history.ownerActor"
                 value={owner}
                 onChange={(next) =>
                   setOwners(owners.map((o, i) => (i === index ? { ...o, owner: next ?? {} } : o)))
                 }
                 disabled={disabled}
               />
-              <TemporalFields
+              <DateDetailInputs
                 idPrefix={`rf-oh-date-${index}`}
-                legend={t('recordForm.history.ownershipDateLegend')}
+                flatLayout
+                dateLabel={t('recordForm.history.ownershipDateLegend')}
                 infoPrefix="recordForm.info.history.ownershipDate"
                 value={row.date}
                 onChange={(next) =>
@@ -886,57 +1019,26 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 }
                 disabled={disabled}
               />
-              <div className="form-group form-group--grow">
-                <label htmlFor={`rf-oh-place-name-${index}`}>{t('recordForm.labels.placeNameFinnish')}</label>
-                <FieldInfoText infoKey="recordForm.info.history.ownershipPlace" />
-                <input
-                  id={`rf-oh-place-name-${index}`}
-                  type="text"
-                  value={place.name?.fi ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setOwners(
-                      owners.map((o, i) =>
-                        i === index
-                          ? {
-                              ...o,
-                              place: {
-                                ...o.place,
-                                name: v.trim() ? { fi: v } : undefined,
-                              },
-                            }
-                          : o,
-                      ),
-                    )
-                  }}
+              <fieldset className="record-form-nested-fieldset">
+                <legend>{t('recordForm.history.ownershipPlaceLegend')}</legend>
+                <SpatialFields
+                  idPrefix={`rf-oh-place-${index}`}
+                  nameInputMode="multilingual"
+                  omitNameGroupLegend
+                  includeUndefinedLanguage={false}
+                  showAcquisitionPlaceRole
+                  noteAtBottom
+                  placeNameFinnishLabel={t('recordForm.history.placeNameFiLabel')}
+                  placeNameEnglishLabel={t('recordForm.history.placeNameEnLabel')}
+                  placeRoleLabel={t('recordForm.labels.ownershipPlaceRole')}
+                  placeRoleInfoKey="recordForm.info.history.ownershipPlaceRole"
+                  value={place}
+                  onChange={(next) =>
+                    setOwners(owners.map((o, i) => (i === index ? { ...o, place: next } : o)))
+                  }
                   disabled={disabled}
                 />
-              </div>
-              <div className="form-group form-group--grow">
-                <label htmlFor={`rf-oh-place-note-${index}`}>{t('recordForm.labels.notePlaceOwnerHistory')}</label>
-                <textarea
-                  id={`rf-oh-place-note-${index}`}
-                  value={place.note ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setOwners(
-                      owners.map((o, i) =>
-                        i === index
-                          ? {
-                              ...o,
-                              place: {
-                                ...o.place,
-                                note: v.trim() ? v : undefined,
-                              },
-                            }
-                          : o,
-                      ),
-                    )
-                  }}
-                  rows={2}
-                  disabled={disabled}
-                />
-              </div>
+              </fieldset>
               <ReferenceSelect
                 id={`rf-oh-ex-method-${index}`}
                 label={t('recordForm.labels.exchangeMethod')}
@@ -1038,9 +1140,22 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
         <p className="record-form-repeatable-hint">{t('recordForm.history.productionHint')}</p>
         {production.map((row, pIndex) => {
           const actors = row.actor ?? []
-          const place = row.place ?? {}
-          const techTypes = row.technique_type ?? []
-          const firstActorSummary = actors[0] ? recordActorSlotSummary(actors[0].actor) : ''
+          const prodDates = row.date ?? []
+          const prodPlaces = row.place ?? []
+          const techniques = row.techniques ?? []
+          const firstActorSummary = actors[0]
+            ? recordActorSlotSummary(actors[0].actor, resolveActorCatalog)
+            : ''
+          const prodDateSummary =
+            prodDates.map((d) => dateDetailSummaryLine(d)).find((s) => s.trim()) ?? ''
+          const placeSummaryLine =
+            prodPlaces.map((p) => p.name?.fi?.trim()).find((s) => s) ||
+            prodPlaces.map((p) => p.note?.trim()).find((s) => s) ||
+            ''
+          const techniqueSummaryLine =
+            techniques.map((tr) => referenceFieldFi(tr.name)?.trim()).find((s) => s) ||
+            techniques.map((tr) => referenceFieldFi(tr.type)?.trim()).find((s) => s) ||
+            ''
           return (
             <CollapsibleRepeatableRow
               key={pIndex}
@@ -1053,83 +1168,68 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               summary={
                 actors[0] && !isActorSlotEmpty(actors[0].actor)
                   ? firstActorSummary
-                  : referenceFieldFi(row.technique).trim()
-                    ? referenceFieldFi(row.technique)
-                    : temporalSummaryLine(row.date)
-                      ? temporalSummaryLine(row.date)
-                      : place.name?.fi?.trim() || row.note?.trim() || t('recordForm.history.emptyProductionEntry')
+                  : techniqueSummaryLine
+                    ? techniqueSummaryLine
+                    : prodDateSummary
+                      ? prodDateSummary
+                      : placeSummaryLine
+                        ? placeSummaryLine
+                        : row.note?.trim() ||
+                          referenceFieldFi(prodPlaces[0]?.name_type) ||
+                          t('recordForm.history.emptyProductionEntry')
               }
               removeLabel={t('recordForm.history.removeProductionEntry')}
             >
               <fieldset className="record-form-nested-fieldset">
-                <legend>{t('recordForm.history.actorsWithRoleLegend')}</legend>
-                {renderRoledActorRows(actors, (next) => {
-                  setProduction(production.map((r, i) => (i === pIndex ? { ...r, actor: next.length ? next : undefined } : r)))
-                }, `rf-opi-act-${pIndex}`)}
+                <legend>{t('recordForm.history.productionActorsWithRoleLegend')}</legend>
+                <FieldInfoText infoKey="recordForm.info.history.productionRelatedActor" />
+                <RoledActorRepeatableList
+                  rows={actors}
+                  onChange={(next) => {
+                    setProduction(
+                      production.map((r, i) =>
+                        i === pIndex ? { ...r, actor: next.length ? next : undefined } : r,
+                      ),
+                    )
+                  }}
+                  idPrefix={`rf-opi-act-${pIndex}`}
+                  disabled={disabled}
+                  resolveActorCatalog={resolveActorCatalog}
+                  roleLabel={t('recordForm.history.productionActorRoleLabel')}
+                />
               </fieldset>
-              <TemporalFields
-                idPrefix={`rf-opi-date-${pIndex}`}
-                legend={t('recordForm.history.productionDateLegend')}
-                infoPrefix="recordForm.info.history.productionDate"
-                value={row.date}
+              <ObjectProductionTimeList
+                dates={prodDates}
                 onChange={(next) =>
-                  setProduction(production.map((r, i) => (i === pIndex ? { ...r, date: next } : r)))
+                  setProduction(
+                    production.map((r, i) => (i === pIndex ? { ...r, date: next } : r)),
+                  )
                 }
+                idPrefix={`rf-opi-dates-${pIndex}`}
+                disabled={disabled}
+              />
+              <ObjectProductionPlacesList
+                places={prodPlaces}
+                onChange={(next) =>
+                  setProduction(
+                    production.map((r, i) => (i === pIndex ? { ...r, place: next } : r)),
+                  )
+                }
+                idPrefix={`rf-opi-place-${pIndex}`}
+                disabled={disabled}
+              />
+              <ObjectProductionTechniquesList
+                techniques={techniques}
+                onChange={(next) =>
+                  setProduction(
+                    production.map((r, i) => (i === pIndex ? { ...r, techniques: next } : r)),
+                  )
+                }
+                idPrefix={`rf-opi-tech-${pIndex}`}
                 disabled={disabled}
               />
               <div className="form-group form-group--grow">
-                <label htmlFor={`rf-opi-place-name-${pIndex}`}>{t('recordForm.labels.placeNameFinnish')}</label>
-                <FieldInfoText infoKey="recordForm.info.history.productionPlace" />
-                <input
-                  id={`rf-opi-place-name-${pIndex}`}
-                  type="text"
-                  value={place.name?.fi ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setProduction(
-                      production.map((r, i) =>
-                        i === pIndex
-                          ? {
-                              ...r,
-                              place: {
-                                ...r.place,
-                                name: v.trim() ? { fi: v } : undefined,
-                              },
-                            }
-                          : r,
-                      ),
-                    )
-                  }}
-                  disabled={disabled}
-                />
-              </div>
-              <div className="form-group form-group--grow">
-                <label htmlFor={`rf-opi-place-note-${pIndex}`}>{t('recordForm.labels.notePlaceProduction')}</label>
-                <textarea
-                  id={`rf-opi-place-note-${pIndex}`}
-                  value={place.note ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setProduction(
-                      production.map((r, i) =>
-                        i === pIndex
-                          ? {
-                              ...r,
-                              place: {
-                                ...r.place,
-                                note: v.trim() ? v : undefined,
-                              },
-                            }
-                          : r,
-                      ),
-                    )
-                  }}
-                  rows={2}
-                  disabled={disabled}
-                />
-              </div>
-              <div className="form-group form-group--grow">
-                <label htmlFor={`rf-opi-reason-${pIndex}`}>{t('recordForm.labels.reason')}</label>
+                <label htmlFor={`rf-opi-reason-${pIndex}`}>{t('recordForm.labels.productionReason')}</label>
                 <FieldInfoText infoKey="recordForm.info.history.productionReason" />
                 <input
                   id={`rf-opi-reason-${pIndex}`}
@@ -1164,76 +1264,6 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                   disabled={disabled}
                 />
               </div>
-              <ReferenceSelect
-                id={`rf-opi-tech-${pIndex}`}
-                label={t('recordForm.labels.technique')}
-                infoKey="recordForm.info.history.technique"
-                allowlist={TECHNIQUE_FI}
-                valueFi={referenceFieldFi(row.technique)}
-                onChangeFi={(fi) =>
-                  setProduction(
-                    production.map((r, i) =>
-                      i === pIndex ? { ...r, technique: referenceFieldToPayload(fi) } : r,
-                    ),
-                  )
-                }
-                disabled={disabled}
-                emptyLabel="—"
-              />
-              <fieldset className="record-form-nested-fieldset">
-                <legend>{t('recordForm.history.techniqueTypesLegend')}</legend>
-                {techTypes.map((tt, ttIndex) => (
-                  <div key={ttIndex} className="record-form-repeatable-row record-form-repeatable-row--compact">
-                    <ReferenceSelect
-                      id={`rf-opi-tt-${pIndex}-${ttIndex}`}
-                      label={t('recordForm.labels.type')}
-                      allowlist={TECHNIQUE_TYPE_FI}
-                      valueFi={referenceFieldFi(tt)}
-                      onChangeFi={(fi) => {
-                        const next = techTypes.map((typeItem, j) =>
-                          j === ttIndex ? referenceFieldToPayload(fi) ?? '' : typeItem,
-                        )
-                        setProduction(
-                          production.map((r, i) =>
-                            i === pIndex ? { ...r, technique_type: next.length ? next : undefined } : r,
-                          ),
-                        )
-                      }}
-                      disabled={disabled}
-                      emptyLabel="—"
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm record-form-repeatable-remove"
-                      onClick={() => {
-                        const next = techTypes.filter((_, j) => j !== ttIndex)
-                        setProduction(
-                          production.map((r, i) =>
-                            i === pIndex ? { ...r, technique_type: next.length ? next : undefined } : r,
-                          ),
-                        )
-                      }}
-                      disabled={disabled}
-                    >
-                      {t('recordForm.labels.remove')}
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() =>
-                    setProduction(
-                      production.map((r, i) =>
-                        i === pIndex ? { ...r, technique_type: [...techTypes, ''] } : r,
-                      ),
-                    )
-                  }
-                  disabled={disabled}
-                >
-                  {t('recordForm.history.addTechniqueType')}
-                </button>
-              </fieldset>
             </CollapsibleRepeatableRow>
           )
         })}
@@ -1249,6 +1279,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
 
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.history.usageHistoryLegend')}</legend>
+        <p className="record-form-repeatable-hint">{t('recordForm.history.usageHistoryHint')}</p>
         {usage.map((row, index) => {
           const usageLine = referenceFieldFi(row.usage)
           const noteSnip = row.note?.trim()
@@ -1272,6 +1303,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               <ReferenceSelect
                 id={`rf-uh-usage-${index}`}
                 label={t('recordForm.labels.usage')}
+                infoKey="recordForm.info.history.usagePurpose"
                 allowlist={USAGE_FI}
                 valueFi={referenceFieldFi(row.usage)}
                 onChangeFi={(fi) => {
@@ -1285,6 +1317,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               />
               <div className="form-group">
                 <label htmlFor={`rf-uh-note-${index}`}>{t('recordForm.labels.noteUsageHistory')}</label>
+                <FieldInfoText infoKey="recordForm.info.history.usageManner" />
                 <textarea
                   id={`rf-uh-note-${index}`}
                   value={row.note ?? ''}
@@ -1353,14 +1386,39 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               saveItemNoun={t('recordForm.repeatable.saveItemLabels.objectHistory')}
               summary={summary}
             >
-              <fieldset className="record-form-nested-fieldset">
-                <legend>{t('recordForm.history.associatedActivityLegend')}</legend>
-                <ReferenceSelect
-                  id={`rf-objh-act-type-${index}`}
-                  label={t('recordForm.labels.activityType')}
-                  allowlist={ASSOCIATED_ACTIVITY_TYPE_FI}
-                  valueFi={referenceFieldFi(act.type)}
-                  onChangeFi={(fi) => {
+              <ReferenceSelect
+                id={`rf-objh-act-type-${index}`}
+                label={t('recordForm.labels.activityType')}
+                infoKey="recordForm.info.history.objectHistoryActivity"
+                allowlist={ASSOCIATED_ACTIVITY_TYPE_FI}
+                valueFi={referenceFieldFi(act.type)}
+                onChangeFi={(fi) => {
+                  setObjectHist(
+                    objectHist.map((r, i) =>
+                      i === index
+                        ? {
+                            ...r,
+                            activity: {
+                              ...r.activity,
+                              type: referenceFieldToPayload(fi),
+                              note: r.activity?.note,
+                            },
+                          }
+                        : r,
+                    ),
+                  )
+                }}
+                disabled={disabled}
+                emptyLabel="—"
+              />
+              <div className="form-group form-group--grow">
+                <label htmlFor={`rf-objh-act-note-${index}`}>{t('recordForm.labels.noteObjectHistoryActivity')}</label>
+                <FieldInfoText infoKey="recordForm.info.history.objectHistoryActivityDescription" />
+                <textarea
+                  id={`rf-objh-act-note-${index}`}
+                  value={act.note ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value
                     setObjectHist(
                       objectHist.map((r, i) =>
                         i === index
@@ -1368,47 +1426,22 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                               ...r,
                               activity: {
                                 ...r.activity,
-                                type: referenceFieldToPayload(fi),
-                                note: r.activity?.note,
+                                type: r.activity?.type,
+                                note: v.trim() ? v : undefined,
                               },
                             }
                           : r,
                       ),
                     )
                   }}
+                  rows={2}
                   disabled={disabled}
-                  emptyLabel="—"
                 />
-                <div className="form-group form-group--grow">
-                  <label htmlFor={`rf-objh-act-note-${index}`}>{t('recordForm.labels.noteObjectHistoryActivity')}</label>
-                  <textarea
-                    id={`rf-objh-act-note-${index}`}
-                    value={act.note ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setObjectHist(
-                        objectHist.map((r, i) =>
-                          i === index
-                            ? {
-                                ...r,
-                                activity: {
-                                  ...r.activity,
-                                  type: r.activity?.type,
-                                  note: v.trim() ? v : undefined,
-                                },
-                              }
-                            : r,
-                        ),
-                      )
-                    }}
-                    rows={2}
-                    disabled={disabled}
-                  />
-                </div>
-              </fieldset>
+              </div>
               <ReferenceSelect
                 id={`rf-objh-cult-${index}`}
                 label={t('recordForm.labels.culturalAffinity')}
+                infoKey="recordForm.info.history.objectHistoryCulturalAffinity"
                 allowlist={ASSOCIATED_CULTURAL_AFFINITY_FI}
                 valueFi={referenceFieldFi(row.cultural_affinity)}
                 onChangeFi={(fi) => {
@@ -1423,143 +1456,45 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               />
               <fieldset className="record-form-nested-fieldset">
                 <legend>{t('recordForm.history.actorsWithRoleLegend')}</legend>
-                {renderRoledActorRows(rowActors, (next) => {
+                <RoledActorRepeatableList
+                  rows={rowActors}
+                  onChange={(next) => {
+                    setObjectHist(
+                      objectHist.map((r, i) =>
+                        i === index ? { ...r, actor: next.length ? next : undefined } : r,
+                      ),
+                    )
+                  }}
+                  idPrefix={`rf-objh-actr-${index}`}
+                  disabled={disabled}
+                  resolveActorCatalog={resolveActorCatalog}
+                  roleLabel={t('recordForm.labels.roledActorRole')}
+                  roleInfoKey="recordForm.info.history.objectHistoryActorRole"
+                />
+              </fieldset>
+              <ObjectHistoryTimeList
+                dates={rowDates}
+                onChange={(next) =>
                   setObjectHist(
-                    objectHist.map((r, i) =>
-                      i === index ? { ...r, actor: next.length ? next : undefined } : r,
-                    ),
+                    objectHist.map((r, i) => (i === index ? { ...r, date: next } : r)),
                   )
-                }, `rf-objh-actr-${index}`)}
-              </fieldset>
-              <fieldset className="record-form-nested-fieldset">
-                <legend>{t('recordForm.history.datesLegend')}</legend>
-                {rowDates.map((d, di) => (
-                  <div key={di} className="record-form-repeatable-row">
-                    <TemporalFields
-                      idPrefix={`rf-objh-date-${index}-${di}`}
-                      legend={t('recordForm.history.dateNth', { n: di + 1 })}
-                      infoPrefix="recordForm.info.history.associatedDate"
-                      value={d}
-                      onChange={(next) => {
-                        const nextDates = rowDates.map((x, j) => (j === di ? (next ?? {}) : x))
-                        setObjectHist(
-                          objectHist.map((r, i) =>
-                            i === index ? { ...r, date: nextDates.length ? nextDates : undefined } : r,
-                          ),
-                        )
-                      }}
-                      disabled={disabled}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm record-form-repeatable-remove"
-                      onClick={() => {
-                        const next = rowDates.filter((_, j) => j !== di)
-                        setObjectHist(
-                          objectHist.map((r, i) =>
-                            i === index ? { ...r, date: next.length ? next : undefined } : r,
-                          ),
-                        )
-                      }}
-                      disabled={disabled}
-                    >
-                      {t('recordForm.labels.remove')}
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() =>
-                    setObjectHist(
-                      objectHist.map((r, i) =>
-                        i === index ? { ...r, date: [...rowDates, {}] } : r,
-                      ),
-                    )
-                  }
-                  disabled={disabled}
-                >
-                  {t('recordForm.acquisition.addDate')}
-                </button>
-              </fieldset>
-              <fieldset className="record-form-nested-fieldset">
-                <legend>{t('recordForm.history.placesLegend')}</legend>
-                {rowPlaces.map((p, pi) => (
-                  <div key={pi} className="record-form-repeatable-row record-form-repeatable-row--compact">
-                    <div className="form-group form-group--grow">
-                      <label htmlFor={`rf-objh-pl-name-${index}-${pi}`}>{t('recordForm.labels.nameFinnish')}</label>
-                      <input
-                        id={`rf-objh-pl-name-${index}-${pi}`}
-                        type="text"
-                        value={p.name?.fi ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          const next = rowPlaces.map((pl, j) =>
-                            j === pi ? { ...pl, name: v.trim() ? { fi: v } : undefined } : pl,
-                          )
-                          setObjectHist(
-                            objectHist.map((r, i) =>
-                              i === index ? { ...r, place: next.length ? next : undefined } : r,
-                            ),
-                          )
-                        }}
-                        disabled={disabled}
-                      />
-                    </div>
-                    <div className="form-group form-group--grow">
-                      <label htmlFor={`rf-objh-pl-note-${index}-${pi}`}>{t('recordForm.labels.noteObjectHistoryPlace')}</label>
-                      <textarea
-                        id={`rf-objh-pl-note-${index}-${pi}`}
-                        value={p.note ?? ''}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          const next = rowPlaces.map((pl, j) =>
-                            j === pi ? { ...pl, note: v.trim() ? v : undefined } : pl,
-                          )
-                          setObjectHist(
-                            objectHist.map((r, i) =>
-                              i === index ? { ...r, place: next.length ? next : undefined } : r,
-                            ),
-                          )
-                        }}
-                        rows={2}
-                        disabled={disabled}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm record-form-repeatable-remove"
-                      onClick={() => {
-                        const next = rowPlaces.filter((_, j) => j !== pi)
-                        setObjectHist(
-                          objectHist.map((r, i) =>
-                            i === index ? { ...r, place: next.length ? next : undefined } : r,
-                          ),
-                        )
-                      }}
-                      disabled={disabled}
-                    >
-                      {t('recordForm.labels.remove')}
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() =>
-                    setObjectHist(
-                      objectHist.map((r, i) =>
-                        i === index ? { ...r, place: [...rowPlaces, {}] } : r,
-                      ),
-                    )
-                  }
-                  disabled={disabled}
-                >
-                  {t('recordForm.acquisition.addPlace')}
-                </button>
-              </fieldset>
+                }
+                idPrefix={`rf-objh-dates-${index}`}
+                disabled={disabled}
+              />
+              <ObjectHistoryPlacesList
+                places={rowPlaces}
+                onChange={(next) =>
+                  setObjectHist(
+                    objectHist.map((r, i) => (i === index ? { ...r, place: next } : r)),
+                  )
+                }
+                idPrefix={`rf-objh-pl-${index}`}
+                disabled={disabled}
+              />
               <fieldset className="record-form-nested-fieldset">
                 <legend>{t('recordForm.history.associatedEventLegend')}</legend>
+                <p className="record-form-repeatable-hint">{t('recordForm.history.associatedEventHint')}</p>
                 <ReferenceSelect
                   id={`rf-objh-ev-name-${index}`}
                   label={t('recordForm.labels.eventName')}
@@ -1583,6 +1518,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                 <ReferenceSelect
                   id={`rf-objh-ev-nt-${index}`}
                   label={t('recordForm.labels.eventNameType')}
+                  infoKey="recordForm.info.history.objectHistoryEventNameType"
                   allowlist={ASSOCIATED_EVENT_NAME_TYPE_FI}
                   valueFi={referenceFieldFi(ev.name_type)}
                   onChangeFi={(fi) => {
@@ -1600,181 +1536,53 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
                   disabled={disabled}
                   emptyLabel="—"
                 />
-                <div className="form-group form-group--grow">
-                  <label htmlFor={`rf-objh-ev-note-${index}`}>{t('recordForm.labels.noteObjectHistoryEvent')}</label>
-                  <textarea
-                    id={`rf-objh-ev-note-${index}`}
-                    value={ev.note ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
+                <fieldset className="record-form-nested-fieldset">
+                  <legend>{t('recordForm.history.eventActorsLegend')}</legend>
+                  <RoledActorRepeatableList
+                    rows={evActors}
+                    onChange={(next) => {
                       setObjectHist(
                         objectHist.map((r, i) =>
                           i === index
-                            ? { ...r, event: { ...r.event, note: v.trim() ? v : undefined } }
+                            ? { ...r, event: { ...r.event, actor: next.length ? next : undefined } }
                             : r,
                         ),
                       )
                     }}
-                    rows={2}
+                    idPrefix={`rf-objh-ev-a-${index}`}
                     disabled={disabled}
+                    resolveActorCatalog={resolveActorCatalog}
+                    roleLabel={t('recordForm.labels.roledActorRole')}
                   />
-                </div>
-                <fieldset className="record-form-nested-fieldset">
-                  <legend>{t('recordForm.history.eventActorsLegend')}</legend>
-                  {renderRoledActorRows(evActors, (next) => {
+                </fieldset>
+                <ObjectHistoryEventTimeList
+                  dates={evDates}
+                  onChange={(next) =>
                     setObjectHist(
                       objectHist.map((r, i) =>
-                        i === index
-                          ? { ...r, event: { ...r.event, actor: next.length ? next : undefined } }
-                          : r,
+                        i === index ? { ...r, event: { ...r.event, date: next } } : r,
                       ),
                     )
-                  }, `rf-objh-ev-a-${index}`)}
-                </fieldset>
-                <fieldset className="record-form-nested-fieldset">
-                  <legend>{t('recordForm.history.eventDatesLegend')}</legend>
-                  {evDates.map((d, di) => (
-                    <div key={di} className="record-form-repeatable-row">
-                      <TemporalFields
-                        idPrefix={`rf-objh-evd-${index}-${di}`}
-                        legend={t('recordForm.history.eventDateNth', { n: di + 1 })}
-                        infoPrefix="recordForm.info.history.associatedEventDate"
-                        value={d}
-                        onChange={(next) => {
-                          const nextDates = evDates.map((x, j) => (j === di ? (next ?? {}) : x))
-                          setObjectHist(
-                            objectHist.map((r, i) =>
-                              i === index
-                                ? { ...r, event: { ...r.event, date: nextDates.length ? nextDates : undefined } }
-                                : r,
-                            ),
-                          )
-                        }}
-                        disabled={disabled}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm record-form-repeatable-remove"
-                        onClick={() => {
-                          const next = evDates.filter((_, j) => j !== di)
-                          setObjectHist(
-                            objectHist.map((r, i) =>
-                              i === index
-                                ? { ...r, event: { ...r.event, date: next.length ? next : undefined } }
-                                : r,
-                            ),
-                          )
-                        }}
-                        disabled={disabled}
-                      >
-                        {t('recordForm.labels.remove')}
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() =>
-                      setObjectHist(
-                        objectHist.map((r, i) =>
-                          i === index
-                            ? { ...r, event: { ...r.event, date: [...evDates, {}] } }
-                            : r,
-                        ),
-                      )
-                    }
-                    disabled={disabled}
-                  >
-                    {t('recordForm.history.addEventDate')}
-                  </button>
-                </fieldset>
-                <fieldset className="record-form-nested-fieldset">
-                  <legend>{t('recordForm.history.eventPlacesLegend')}</legend>
-                  {evPlaces.map((p, pi) => (
-                    <div key={pi} className="record-form-repeatable-row record-form-repeatable-row--compact">
-                      <div className="form-group form-group--grow">
-                        <label htmlFor={`rf-objh-evp-n-${index}-${pi}`}>{t('recordForm.labels.nameFinnish')}</label>
-                        <input
-                          id={`rf-objh-evp-n-${index}-${pi}`}
-                          type="text"
-                          value={p.name?.fi ?? ''}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            const next = evPlaces.map((pl, j) =>
-                              j === pi ? { ...pl, name: v.trim() ? { fi: v } : undefined } : pl,
-                            )
-                            setObjectHist(
-                              objectHist.map((r, i) =>
-                                i === index
-                                  ? { ...r, event: { ...r.event, place: next.length ? next : undefined } }
-                                  : r,
-                              ),
-                            )
-                          }}
-                          disabled={disabled}
-                        />
-                      </div>
-                      <div className="form-group form-group--grow">
-                        <label htmlFor={`rf-objh-evp-note-${index}-${pi}`}>{t('recordForm.labels.noteObjectHistoryEventPlace')}</label>
-                        <textarea
-                          id={`rf-objh-evp-note-${index}-${pi}`}
-                          value={p.note ?? ''}
-                          onChange={(e) => {
-                            const v = e.target.value
-                            const next = evPlaces.map((pl, j) =>
-                              j === pi ? { ...pl, note: v.trim() ? v : undefined } : pl,
-                            )
-                            setObjectHist(
-                              objectHist.map((r, i) =>
-                                i === index
-                                  ? { ...r, event: { ...r.event, place: next.length ? next : undefined } }
-                                  : r,
-                              ),
-                            )
-                          }}
-                          rows={2}
-                          disabled={disabled}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm record-form-repeatable-remove"
-                        onClick={() => {
-                          const next = evPlaces.filter((_, j) => j !== pi)
-                          setObjectHist(
-                            objectHist.map((r, i) =>
-                              i === index
-                                ? { ...r, event: { ...r.event, place: next.length ? next : undefined } }
-                                : r,
-                            ),
-                          )
-                        }}
-                        disabled={disabled}
-                      >
-                        {t('recordForm.labels.remove')}
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() =>
-                      setObjectHist(
-                        objectHist.map((r, i) =>
-                          i === index
-                            ? { ...r, event: { ...r.event, place: [...evPlaces, {}] } }
-                            : r,
-                        ),
-                      )
-                    }
-                    disabled={disabled}
-                  >
-                    {t('recordForm.history.addEventPlace')}
-                  </button>
-                </fieldset>
+                  }
+                  idPrefix={`rf-objh-evd-${index}`}
+                  disabled={disabled}
+                />
+                <ObjectHistoryEventPlacesList
+                  places={evPlaces}
+                  onChange={(next) =>
+                    setObjectHist(
+                      objectHist.map((r, i) =>
+                        i === index ? { ...r, event: { ...r.event, place: next } } : r,
+                      ),
+                    )
+                  }
+                  idPrefix={`rf-objh-evp-${index}`}
+                  disabled={disabled}
+                />
               </fieldset>
               <div className="form-group form-group--grow">
                 <label htmlFor={`rf-objh-note-${index}`}>{t('recordForm.labels.noteObjectHistory')}</label>
+                <FieldInfoText infoKey="recordForm.info.history.objectHistoryNote" />
                 <textarea
                   id={`rf-objh-note-${index}`}
                   value={row.note ?? ''}
@@ -1792,6 +1600,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               </div>
               <div className="form-group form-group--grow">
                 <label htmlFor={`rf-objh-comments-${index}`}>{t('recordForm.labels.comments')}</label>
+                <FieldInfoText infoKey="recordForm.info.history.objectHistoryComments" />
                 <textarea
                   id={`rf-objh-comments-${index}`}
                   value={row.comments ?? ''}
@@ -1809,6 +1618,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
               </div>
               <div className="form-group form-group--grow">
                 <label htmlFor={`rf-objh-rel-${index}`}>{t('recordForm.labels.relevance')}</label>
+                <FieldInfoText infoKey="recordForm.info.history.objectHistoryRelevance" />
                 <textarea
                   id={`rf-objh-rel-${index}`}
                   value={row.relevance ?? ''}
@@ -1838,7 +1648,7 @@ export function HistoryFields({ data, onChange, disabled }: Omit<SectionProps, '
       </fieldset>
     </div>
   )
-}
+})
 
 function setRightsEntries(data: RecordPayload, entries: Rights[]): RecordPayload {
   return { ...data, rights: entries.length ? entries : undefined }
@@ -1860,6 +1670,8 @@ function rightsEntrySummary(r: Rights, t: TFunction): string {
 
 export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'errors'>) {
   const { t } = useTranslation()
+  const actorStore = useActorStore()
+  const resolveActorCatalog = (id: number) => actorStore.actorById(id)?.data
   const entries = data.rights ?? []
   const rightsCol = useRepeatableCollapsedRows(entries, rightsHasPersistableContent)
 
@@ -1896,6 +1708,7 @@ export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'e
               <ReferenceSelect
                 id={`rf-rights-type-${index}`}
                 label={t('recordForm.labels.rightsType')}
+                infoKey="recordForm.info.rights.type"
                 allowlist={RIGHTS_TYPE_FI}
                 valueFi={referenceFieldFi(r.type)}
                 onChangeFi={(fi) =>
@@ -1909,83 +1722,8 @@ export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'e
                 emptyLabel="—"
               />
               <div className="form-group">
-                <label htmlFor={`rf-rights-ref-${index}`}>{t('recordForm.labels.referenceNumber')}</label>
-                <input
-                  id={`rf-rights-ref-${index}`}
-                  type="text"
-                  value={r.reference_number ?? ''}
-                  onChange={(e) =>
-                    onChange(
-                      updateRightsEntry(data, index, (x) => {
-                        const v = e.target.value
-                        x.reference_number = v.trim() ? v : undefined
-                      })
-                    )
-                  }
-                  disabled={disabled}
-                />
-              </div>
-              <TemporalFields
-                idPrefix={`rf-rights-begin-${index}`}
-                legend={t('recordForm.rights.beginDateLegend')}
-                value={r.begin_date}
-                onChange={(next) =>
-                  onChange(
-                    updateRightsEntry(data, index, (x) => {
-                      x.begin_date = next
-                    })
-                  )
-                }
-                disabled={disabled}
-              />
-              <TemporalFields
-                idPrefix={`rf-rights-end-${index}`}
-                legend={t('recordForm.rights.endDateLegend')}
-                value={r.end_date}
-                onChange={(next) =>
-                  onChange(
-                    updateRightsEntry(data, index, (x) => {
-                      x.end_date = next
-                    })
-                  )
-                }
-                disabled={disabled}
-              />
-              <fieldset className="record-form-repeatable-fieldset">
-                <legend>{t('recordForm.rights.holdersLegend')}</legend>
-                <p className="record-form-repeatable-hint">{t('recordForm.rights.holdersHint')}</p>
-                {holders.map((actor, hIndex) => (
-                  <div key={hIndex} className="record-form-repeatable-row record-form-repeatable-row--compact">
-                    <ActorRefSelect
-                      id={`rf-rights-holder-ref-${index}-${hIndex}`}
-                      label={t('recordForm.labels.holder')}
-                      value={actor}
-                      onChange={(next) =>
-                        setHolders(holders.map((act, i) => (i === hIndex ? (next ?? {}) : act)))
-                      }
-                      disabled={disabled}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm record-form-repeatable-remove"
-                      onClick={() => setHolders(holders.filter((_, i) => i !== hIndex))}
-                      disabled={disabled}
-                    >
-                      {t('recordForm.labels.remove')}
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setHolders([...holders, {}])}
-                  disabled={disabled}
-                >
-                  {t('recordForm.rights.addHolder')}
-                </button>
-              </fieldset>
-              <div className="form-group">
                 <label htmlFor={`rf-rights-note-${index}`}>{t('recordForm.labels.noteRights')}</label>
+                <FieldInfoText infoKey="recordForm.info.rights.entryNote" />
                 <textarea
                   id={`rf-rights-note-${index}`}
                   value={r.note ?? ''}
@@ -1998,6 +1736,61 @@ export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'e
                     )
                   }
                   rows={3}
+                  disabled={disabled}
+                />
+              </div>
+              <RightsHoldersList
+                holders={holders}
+                onChange={setHolders}
+                idPrefix={`rf-rights-${index}`}
+                disabled={disabled}
+                resolveActorCatalog={resolveActorCatalog}
+              />
+              <DateDetailInputs
+                idPrefix={`rf-rights-begin-${index}`}
+                flatLayout
+                dateLabel={t('recordForm.rights.rightsBeginDateCalendarLabel')}
+                infoPrefix="recordForm.info.rights.beginDate"
+                value={r.begin_date}
+                onChange={(next) =>
+                  onChange(
+                    updateRightsEntry(data, index, (x) => {
+                      x.begin_date = next
+                    })
+                  )
+                }
+                disabled={disabled}
+              />
+              <DateDetailInputs
+                idPrefix={`rf-rights-end-${index}`}
+                flatLayout
+                dateLabel={t('recordForm.rights.rightsEndDateCalendarLabel')}
+                infoPrefix="recordForm.info.rights.endDate"
+                value={r.end_date}
+                onChange={(next) =>
+                  onChange(
+                    updateRightsEntry(data, index, (x) => {
+                      x.end_date = next
+                    })
+                  )
+                }
+                disabled={disabled}
+              />
+              <div className="form-group">
+                <label htmlFor={`rf-rights-ref-${index}`}>{t('recordForm.labels.rightsReferenceNumber')}</label>
+                <FieldInfoText infoKey="recordForm.info.rights.referenceNumber" />
+                <input
+                  id={`rf-rights-ref-${index}`}
+                  type="text"
+                  value={r.reference_number ?? ''}
+                  onChange={(e) =>
+                    onChange(
+                      updateRightsEntry(data, index, (x) => {
+                        const v = e.target.value
+                        x.reference_number = v.trim() ? v : undefined
+                      })
+                    )
+                  }
                   disabled={disabled}
                 />
               </div>
@@ -2026,10 +1819,10 @@ function patchAccess(data: RecordPayload, fn: (a: NonNullable<RecordPayload['acc
     !referenceFieldFi(a.museological_value) &&
     !a.note?.trim() &&
     !a.credit_line?.trim() &&
-    !(a.date && temporalHasPersistableContent(a.date)) &&
+    !(a.date && dateDetailHasPersistableContent(a.date)) &&
     !(
       ods &&
-      (referenceFieldFi(ods.type) || (ods.date && temporalHasPersistableContent(ods.date)))
+      (referenceFieldFi(ods.type) || (ods.date && dateDetailHasPersistableContent(ods.date)))
     )
   return { ...data, access: empty ? undefined : a }
 }
@@ -2056,90 +1849,14 @@ export function AccessFields({ data, onChange, disabled }: Omit<SectionProps, 'e
         disabled={disabled}
         emptyLabel="—"
       />
-      <TemporalFields
-        idPrefix="rf-access-date"
-        legend={t('recordForm.access.accessDateLegend')}
-        infoPrefix="recordForm.info.access.accessDate"
-        value={a.date}
-        onChange={(next) => onChange(patchAccess(data, (x) => { x.date = next }))}
-        disabled={disabled}
-      />
-      <ReferenceSelect
-        id="rf-access-mus"
-        label={t('recordForm.labels.museologicalValue')}
-        infoKey="recordForm.info.access.museologicalValue"
-        allowlist={MUSEOLOGICAL_VALUE_FI}
-        valueFi={referenceFieldFi(a.museological_value)}
-        onChangeFi={(fi) =>
-          onChange(
-            patchAccess(data, (x) => {
-              x.museological_value = referenceFieldToPayload(fi)
-            })
-          )
-        }
-        disabled={disabled}
-        emptyLabel="—"
-      />
-      <fieldset className="record-form-repeatable-fieldset">
-        <legend>{t('recordForm.access.displayStatusLegend')}</legend>
-        <p className="record-form-repeatable-hint">{t('recordForm.access.displayStatusHint')}</p>
-        <ReferenceSelect
-          id="rf-access-ods-type"
-          label={t('recordForm.labels.statusType')}
-          infoKey="recordForm.info.access.displayStatus"
-          allowlist={OBJECT_DISPLAY_STATUS_TYPE_FI}
-          valueFi={referenceFieldFi(displayStatus.type)}
-          onChangeFi={(fi) =>
-            onChange(
-              patchAccess(data, (x) => {
-                const typePayload = referenceFieldToPayload(fi)
-                const cur = x.object_display_status ?? {}
-                const next = { ...cur, type: typePayload }
-                const keep =
-                  referenceFieldFi(next.type) ||
-                  (next.date && temporalHasPersistableContent(next.date))
-                x.object_display_status = keep ? next : undefined
-              })
-            )
-          }
-          disabled={disabled}
-          emptyLabel="—"
-        />
-        <TemporalFields
-          idPrefix="rf-access-ods-date"
-          legend={t('recordForm.access.statusDateLegend')}
-          infoPrefix="recordForm.info.access.displayStatusDate"
-          value={displayStatus.date}
-          onChange={(next) =>
-            onChange(
-              patchAccess(data, (x) => {
-                const cur = x.object_display_status ?? {}
-                const merged = { ...cur, date: next }
-                const keep =
-                  referenceFieldFi(merged.type) ||
-                  (merged.date && temporalHasPersistableContent(merged.date))
-                x.object_display_status = keep ? merged : undefined
-              })
-            )
-          }
-          disabled={disabled}
-        />
-      </fieldset>
-      <div className="form-group">
-        <label htmlFor="rf-access-credit">{t('recordForm.labels.creditLine')}</label>
-        <FieldInfoText infoKey="recordForm.info.access.creditLine" />
-        <input
-          id="rf-access-credit"
-          type="text"
-          value={a.credit_line ?? ''}
-          onChange={(e) =>
-            onChange(
-              patchAccess(data, (x) => {
-                const v = e.target.value
-                x.credit_line = v.trim() ? v : undefined
-              })
-            )
-          }
+      <div className="record-form-access-date-block">
+        <DateDetailInputs
+          idPrefix="rf-access-date"
+          flatLayout
+          dateLabel={t('recordForm.access.accessDateLegend')}
+          infoPrefix="recordForm.info.access.accessDate"
+          value={a.date}
+          onChange={(next) => onChange(patchAccess(data, (x) => { x.date = next }))}
           disabled={disabled}
         />
       </div>
@@ -2161,34 +1878,34 @@ export function AccessFields({ data, onChange, disabled }: Omit<SectionProps, 'e
           disabled={disabled}
         />
       </div>
-    </div>
-  )
-}
-
-function patchLocation(data: RecordPayload, fn: (o: NonNullable<RecordPayload['object_location']>) => void): RecordPayload {
-  const o = { ...(data.object_location ?? {}) }
-  fn(o)
-  return { ...data, object_location: objectLocationHasPersistableContent(o) ? o : undefined }
-}
-
-export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionProps, 'errors'>) {
-  const { t } = useTranslation()
-  const o = data.object_location ?? {}
-  const loc = o.location ?? {}
-  return (
-    <div className="record-form-section-fields">
+      <ReferenceSelect
+        id="rf-access-mus"
+        label={t('recordForm.labels.museologicalValue')}
+        infoKey="recordForm.info.access.museologicalValue"
+        allowlist={MUSEOLOGICAL_VALUE_FI}
+        valueFi={referenceFieldFi(a.museological_value)}
+        onChangeFi={(fi) =>
+          onChange(
+            patchAccess(data, (x) => {
+              x.museological_value = referenceFieldToPayload(fi)
+            })
+          )
+        }
+        disabled={disabled}
+        emptyLabel="—"
+      />
       <div className="form-group">
-        <label htmlFor="rf-loc-id">{t('recordForm.labels.identifier')}</label>
-        <FieldInfoText infoKey="recordForm.info.location.identifier" />
+        <label htmlFor="rf-access-credit">{t('recordForm.labels.creditLine')}</label>
+        <FieldInfoText infoKey="recordForm.info.access.creditLine" />
         <input
-          id="rf-loc-id"
+          id="rf-access-credit"
           type="text"
-          value={o.identifier ?? ''}
+          value={a.credit_line ?? ''}
           onChange={(e) =>
             onChange(
-              patchLocation(data, (x) => {
+              patchAccess(data, (x) => {
                 const v = e.target.value
-                x.identifier = v.trim() ? v : undefined
+                x.credit_line = v.trim() ? v : undefined
               })
             )
           }
@@ -2196,106 +1913,228 @@ export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionP
         />
       </div>
       <fieldset className="record-form-repeatable-fieldset">
-        <legend>{t('recordForm.location.locationLegend')}</legend>
-        <p className="record-form-repeatable-hint">{t('recordForm.location.hint')}</p>
-        <div className="record-form-repeatable-row record-form-repeatable-row--compact">
-          <div className="form-group form-group--grow">
-            <label htmlFor="rf-loc-spatial-name">{t('recordForm.labels.nameFinnish')}</label>
-            <FieldInfoText infoKey="recordForm.info.location.placeName" />
-            <input
-              id="rf-loc-spatial-name"
-              type="text"
-              value={loc.name?.fi ?? ''}
-              onChange={(e) => {
-                const v = e.target.value
-                onChange(
-                  patchLocation(data, (x) => {
-                    const nextLoc = { ...loc, name: v.trim() ? { fi: v } : undefined }
-                    x.location = spatialRowHasContent(nextLoc) ? nextLoc : undefined
-                  })
-                )
-              }}
-              disabled={disabled}
-            />
-          </div>
-          <div className="form-group form-group--grow">
-            <label htmlFor="rf-loc-spatial-note">{t('recordForm.labels.noteLocationSpatial')}</label>
-            <FieldInfoText infoKey="recordForm.info.location.placeNote" />
-            <textarea
-              id="rf-loc-spatial-note"
-              value={loc.note ?? ''}
-              onChange={(e) => {
-                const v = e.target.value
-                onChange(
-                  patchLocation(data, (x) => {
-                    const nextLoc = { ...loc, note: v.trim() ? v : undefined }
-                    x.location = spatialRowHasContent(nextLoc) ? nextLoc : undefined
-                  })
-                )
-              }}
-              rows={2}
-              disabled={disabled}
-            />
-          </div>
-        </div>
-      </fieldset>
-      <ReferenceSelect
-        id="rf-loc-type"
-        label={t('recordForm.labels.locationType')}
-        allowlist={LOCATION_TYPE_FI}
-        valueFi={referenceFieldFi(o.type)}
-        onChangeFi={(fi) =>
-          onChange(
-            patchLocation(data, (x) => {
-              x.type = referenceFieldToPayload(fi)
-            })
-          )
-        }
-        disabled={disabled}
-        emptyLabel="—"
-      />
-      <TemporalFields
-        idPrefix="rf-loc-date"
-        legend={t('recordForm.location.locationDateLegend')}
-        infoPrefix="recordForm.info.location.date"
-        value={o.date}
-        onChange={(next) => onChange(patchLocation(data, (x) => { x.date = next }))}
-        disabled={disabled}
-      />
-      <div className="form-group">
-        <label htmlFor="rf-loc-note">{t('recordForm.labels.noteLocation')}</label>
-        <FieldInfoText infoKey="recordForm.info.location.note" />
-        <textarea
-          id="rf-loc-note"
-          value={o.note ?? ''}
-          onChange={(e) =>
+        <legend>{t('recordForm.access.displayStatusLegend')}</legend>
+        <ReferenceSelect
+          id="rf-access-ods-type"
+          label={t('recordForm.labels.statusType')}
+          infoKey="recordForm.info.access.displayStatus"
+          allowlist={OBJECT_DISPLAY_STATUS_TYPE_FI}
+          valueFi={referenceFieldFi(displayStatus.type)}
+          onChangeFi={(fi) =>
             onChange(
-              patchLocation(data, (x) => {
-                const v = e.target.value
-                x.note = v.trim() ? v : undefined
+              patchAccess(data, (x) => {
+                const typePayload = referenceFieldToPayload(fi)
+                const cur = x.object_display_status ?? {}
+                const next = { ...cur, type: typePayload }
+                const keep =
+                  referenceFieldFi(next.type) ||
+                  (next.date && dateDetailHasPersistableContent(next.date))
+                x.object_display_status = keep ? next : undefined
               })
             )
           }
-          rows={3}
+          disabled={disabled}
+          emptyLabel="—"
+        />
+        <DateDetailInputs
+          idPrefix="rf-access-ods-date"
+          flatLayout
+          dateLabel={t('recordForm.access.statusDateLegend')}
+          infoPrefix="recordForm.info.access.displayStatusDate"
+          value={displayStatus.date}
+          onChange={(next) =>
+            onChange(
+              patchAccess(data, (x) => {
+                const cur = x.object_display_status ?? {}
+                const merged = { ...cur, date: next }
+                const keep =
+                  referenceFieldFi(merged.type) ||
+                  (merged.date && dateDetailHasPersistableContent(merged.date))
+                x.object_display_status = keep ? merged : undefined
+              })
+            )
+          }
           disabled={disabled}
         />
-      </div>
-      <ReferenceSelect
-        id="rf-loc-fitness"
-        label={t('recordForm.labels.locationFitness')}
-        infoKey="recordForm.info.location.fitness"
-        allowlist={LOCATION_FITNESS_FI}
-        valueFi={referenceFieldFi(o.fitness)}
-        onChangeFi={(fi) =>
-          onChange(
-            patchLocation(data, (x) => {
-              x.fitness = referenceFieldToPayload(fi)
-            })
+      </fieldset>
+    </div>
+  )
+}
+
+function setObjectLocationEntries(data: RecordPayload, entries: ObjectLocation[]): RecordPayload {
+  return { ...data, object_location: entries.length ? entries : undefined }
+}
+
+function updateObjectLocationEntry(
+  data: RecordPayload,
+  index: number,
+  fn: (o: ObjectLocation) => void,
+): RecordPayload {
+  const list = [...(data.object_location ?? [])]
+  const o = { ...(list[index] ?? {}) }
+  fn(o)
+  list[index] = o
+  return setObjectLocationEntries(data, list)
+}
+
+function objectLocationEntrySummary(o: ObjectLocation, t: TFunction): string {
+  const id = o.identifier?.trim()
+  if (id) return id
+  const nameFi = o.location?.name?.fi?.trim()
+  if (nameFi) return nameFi
+  const nameEn = o.location?.name?.en?.trim()
+  if (nameEn) return nameEn
+  const typeFi = referenceFieldFi(o.type)
+  if (typeFi) return typeFi
+  return t('recordForm.location.emptyEntrySummary')
+}
+
+export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionProps, 'errors'>) {
+  const { t } = useTranslation()
+  const entries = data.object_location ?? []
+  const locationCol = useRepeatableCollapsedRows(entries, objectLocationHasPersistableContent)
+
+  const setEntries = (rows: ObjectLocation[]) => {
+    onChange(setObjectLocationEntries(data, rows))
+  }
+
+  return (
+    <div className="record-form-section-fields">
+      <fieldset className="record-form-repeatable-fieldset">
+        <legend>{t('recordForm.location.entriesLegend')}</legend>
+        <p className="record-form-repeatable-hint">{t('recordForm.location.entriesHint')}</p>
+        {entries.map((o, index) => {
+          const loc = o.location ?? {}
+          return (
+            <CollapsibleRepeatableRow
+              key={index}
+              id={`rf-loc-entry-${index}`}
+              summary={objectLocationEntrySummary(o, t)}
+              collapsed={locationCol.isCollapsed(index)}
+              onToggleCollapse={() => locationCol.toggle(index)}
+              onRemove={() => setEntries(entries.filter((_, i) => i !== index))}
+              disabled={disabled}
+              saveItemNoun={t('recordForm.repeatable.saveItemLabels.locationEntry')}
+              removeLabel={t('recordForm.location.removeEntry')}
+            >
+              <div className="form-group">
+                <label htmlFor={`rf-loc-id-${index}`}>{t('recordForm.labels.identifier')}</label>
+                <FieldInfoText infoKey="recordForm.info.location.identifier" />
+                <input
+                  id={`rf-loc-id-${index}`}
+                  type="text"
+                  value={o.identifier ?? ''}
+                  onChange={(e) =>
+                    onChange(
+                      updateObjectLocationEntry(data, index, (x) => {
+                        const v = e.target.value
+                        x.identifier = v.trim() ? v : undefined
+                      }),
+                    )
+                  }
+                  disabled={disabled}
+                />
+              </div>
+              <ReferenceSelect
+                id={`rf-loc-type-${index}`}
+                className="record-form-object-location-type"
+                label={t('recordForm.labels.locationType')}
+                allowlist={LOCATION_TYPE_FI}
+                valueFi={referenceFieldFi(o.type)}
+                onChangeFi={(fi) =>
+                  onChange(
+                    updateObjectLocationEntry(data, index, (x) => {
+                      x.type = referenceFieldToPayload(fi)
+                    }),
+                  )
+                }
+                disabled={disabled}
+                emptyLabel="—"
+              />
+              <div className="record-form-object-location-spatial">
+                <SpatialFields
+                  idPrefix={`rf-loc-${index}-spatial`}
+                  nameInputMode="multilingual"
+                  includeUndefinedLanguage={false}
+                  omitNameGroupLegend
+                  nameTypeAfterPlaceNames
+                  placeDetailsCollapsible
+                  placeDetailsToggleShowLabel={t('recordForm.location.showLocationExtraDetails')}
+                  placeDetailsToggleHideLabel={t('recordForm.location.hideLocationExtraDetails')}
+                  placeNameFinnishLabel={t('recordForm.location.placeNameFiLabel')}
+                  placeNameEnglishLabel={t('recordForm.location.placeNameEnLabel')}
+                  value={loc}
+                  onChange={(next) =>
+                    onChange(
+                      updateObjectLocationEntry(data, index, (x) => {
+                        x.location = next
+                      }),
+                    )
+                  }
+                  disabled={disabled}
+                />
+              </div>
+              <DateDetailInputs
+                idPrefix={`rf-loc-date-${index}`}
+                flatLayout
+                dateLabel={t('recordForm.location.locationDateLegend')}
+                infoPrefix="recordForm.info.location.date"
+                value={o.date}
+                onChange={(next) =>
+                  onChange(
+                    updateObjectLocationEntry(data, index, (x) => {
+                      x.date = next
+                    }),
+                  )
+                }
+                disabled={disabled}
+              />
+              <div className="form-group">
+                <label htmlFor={`rf-loc-note-${index}`}>{t('recordForm.labels.noteLocation')}</label>
+                <FieldInfoText infoKey="recordForm.info.location.note" />
+                <textarea
+                  id={`rf-loc-note-${index}`}
+                  value={o.note ?? ''}
+                  onChange={(e) =>
+                    onChange(
+                      updateObjectLocationEntry(data, index, (x) => {
+                        const v = e.target.value
+                        x.note = v.trim() ? v : undefined
+                      }),
+                    )
+                  }
+                  rows={3}
+                  disabled={disabled}
+                />
+              </div>
+              <ReferenceSelect
+                id={`rf-loc-fitness-${index}`}
+                label={t('recordForm.labels.locationFitness')}
+                infoKey="recordForm.info.location.fitness"
+                allowlist={LOCATION_FITNESS_FI}
+                valueFi={referenceFieldFi(o.fitness)}
+                onChangeFi={(fi) =>
+                  onChange(
+                    updateObjectLocationEntry(data, index, (x) => {
+                      x.fitness = referenceFieldToPayload(fi)
+                    }),
+                  )
+                }
+                disabled={disabled}
+                emptyLabel="—"
+              />
+            </CollapsibleRepeatableRow>
           )
-        }
-        disabled={disabled}
-        emptyLabel="—"
-      />
+        })}
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setEntries([...entries, {}])}
+          disabled={disabled}
+        >
+          {t('recordForm.location.addLocationEntry')}
+        </button>
+      </fieldset>
     </div>
   )
 }
@@ -2334,7 +2173,7 @@ export function ConfidentialityFields({ data, onChange, disabled }: Omit<Section
         />
       </div>
       <div className="form-group">
-        <label htmlFor="rf-conf-usage">{t('recordForm.labels.usage')}</label>
+        <label htmlFor="rf-conf-usage">{t('recordForm.labels.usageConfidentiality')}</label>
         <FieldInfoText infoKey="recordForm.info.confidentiality.usage" />
         <textarea
           id="rf-conf-usage"

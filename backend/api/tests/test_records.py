@@ -6,12 +6,17 @@ Reference: docs/api-specification.md (Record Endpoints), docs/data/record-models
 Domain payload is under `data`; optional `representative_image` for thumbnails.
 """
 
+import base64
 import json
 import io
+import uuid
 
 import pytest
 from PIL import Image
 from django.contrib.auth.models import User
+
+from api.models import Collection, Record
+from api.record_actor_refs import collect_actor_ids
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
@@ -52,6 +57,51 @@ def record_title_value(record_dict):
     if isinstance(raw, dict):
         return raw
     return {}
+
+
+def test_collect_actor_ids_ignores_legacy_identification_owning_organization():
+    """Owning org moved to Collection model; legacy JSON is not scanned for actor refs."""
+    data = {"identification_details": {"collection": {"owning_organization": {"id": 42}}}}
+    assert 42 not in collect_actor_ids(data)
+
+
+def test_collect_actor_ids_includes_description_content_actors():
+    data = {"description": {"content": {"actors": [{"id": 5}, {"id": 7}]}}}
+    assert collect_actor_ids(data) == {5, 7}
+
+
+def test_collect_actor_ids_includes_description_content_person_legacy():
+    data = {"description": {"content": {"person": {"id": 3}}}}
+    assert collect_actor_ids(data) == {3}
+
+
+def test_collect_actor_ids_includes_description_content_places():
+    data = {
+        "description": {
+            "content": {
+                "places": [
+                    {"owner": {"id": 11}},
+                    {"name": {"fi": "X"}},
+                ]
+            }
+        }
+    }
+    assert collect_actor_ids(data) == {11}
+
+
+def test_collect_actor_ids_includes_object_location_list():
+    data = {
+        "object_location": [
+            {"location": {"owner": {"id": 99}}},
+            {"location": {}},
+        ]
+    }
+    assert collect_actor_ids(data) == {99}
+
+
+def test_collect_actor_ids_includes_object_location_legacy_dict():
+    data = {"object_location": {"location": {"owner": {"id": 88}}}}
+    assert collect_actor_ids(data) == {88}
 
 
 @pytest.fixture
@@ -1049,3 +1099,549 @@ class TestRecordPermissionEdgeCases:
                     == status.HTTP_403_FORBIDDEN
                 )
                 assert authenticated_client.delete(url).status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestRecordIsListedVisibility:
+    """Records in unlisted collections are visible only to the collection owner."""
+
+    def test_anonymous_list_by_collection_returns_404_for_unlisted(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Secret List", object_number="SL-1"),
+            format="json",
+        )
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        anon = APIClient()
+        r = anon.get(reverse("records-list"), {"collection": cid})
+        assert r.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_anonymous_list_all_excludes_unlisted_records(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Hidden Globally", object_number="HG-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        anon = APIClient()
+        r = anon.get(reverse("records-list"))
+        assert r.status_code == status.HTTP_200_OK
+        assert rid not in [row["id"] for row in r.data["results"]]
+
+    def test_owner_can_list_and_retrieve_unlisted_records(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Owner Sees", object_number="OS-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        listed = authenticated_client.get(reverse("records-list"), {"collection": cid})
+        assert listed.status_code == status.HTTP_200_OK
+        assert any(row["id"] == rid for row in listed.data["results"])
+        detail = authenticated_client.get(reverse("records-detail", kwargs={"pk": rid}))
+        assert detail.status_code == status.HTTP_200_OK
+
+    def test_anonymous_retrieve_unlisted_record_returns_404(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="No Anon Get", object_number="NA-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        anon = APIClient()
+        assert (
+            anon.get(reverse("records-detail", kwargs={"pk": rid})).status_code
+            == status.HTTP_404_NOT_FOUND
+        )
+
+    def test_non_owner_cannot_retrieve_record_in_unlisted_collection(
+        self, authenticated_client, other_user, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Peer Blocked", object_number="PB-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        other_client = APIClient()
+        other_client.post(
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
+        )
+        assert (
+            other_client.get(reverse("records-detail", kwargs={"pk": rid})).status_code
+            == status.HTTP_404_NOT_FOUND
+        )
+
+
+@pytest.mark.django_db
+class TestRecordExport:
+    """GET /api/records/{id}/export/ — versioned JSON + collection + optional base64 image."""
+
+    def test_export_includes_version_system_and_collection_metadata(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Export Me", object_number="EXP-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        url = reverse("records-export", kwargs={"pk": rid})
+        r = authenticated_client.get(url)
+        assert r.status_code == status.HTTP_200_OK
+        assert r["Content-Disposition"].startswith('attachment; filename="ekho-record-')
+        body = r.json()
+        assert body["ekho_export_version"] == 1
+        assert len(body["source_ekho_instance_id"]) == 36
+        col = body["collection"]
+        assert col["name"] == "Test Collection"
+        assert col["responsible_department"] == ""
+        assert col["owning_organization"] is None
+        assert "stable_id" in col
+        assert col["original_creator"]["username"] == "testuser"
+        assert col["is_listed"] is True
+        assert col["is_closed"] is False
+        assert body["record"]["data"]["identification_details"]["object_number"] == "EXP-1"
+
+    def test_export_anonymous_succeeds_for_listed_collection(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Public Export", object_number="PE-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        anon = APIClient()
+        r = anon.get(reverse("records-export", kwargs={"pk": rid}))
+        assert r.status_code == status.HTTP_200_OK
+        assert r.json()["ekho_export_version"] == 1
+
+    def test_export_includes_base64_image(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        p = record_payload(cid, title="With Image", object_number="WI-1")
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            {
+                "collection": str(cid),
+                "data": json.dumps(p["data"]),
+                "representative_image": create_test_image(),
+            },
+            format="multipart",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        r = authenticated_client.get(reverse("records-export", kwargs={"pk": rid}))
+        assert r.status_code == status.HTTP_200_OK
+        img_part = r.json()["record"]["representative_image"]
+        assert img_part["content_type"] == "image/jpeg"
+        assert img_part["filename"].endswith(".jpg")
+        raw = base64.b64decode(img_part["base64"])
+        assert raw[:2] == b"\xff\xd8"
+
+    def test_export_unlisted_returns_404_for_non_owner(
+        self, authenticated_client, other_user, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Secret Export", object_number="SE-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        other_client = APIClient()
+        other_client.post(
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
+        )
+        assert (
+            other_client.get(reverse("records-export", kwargs={"pk": rid})).status_code
+            == status.HTTP_404_NOT_FOUND
+        )
+
+    def test_export_unlisted_owner_succeeds(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Owner Export Unlisted", object_number="OEU-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        r = authenticated_client.get(reverse("records-export", kwargs={"pk": rid}))
+        assert r.status_code == status.HTTP_200_OK
+        assert r.json()["ekho_export_version"] == 1
+
+    def test_export_unlisted_anonymous_returns_404(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Anon Blocked Export", object_number="ABE-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        assert (
+            APIClient()
+            .get(reverse("records-export", kwargs={"pk": rid}))
+            .status_code
+            == status.HTTP_404_NOT_FOUND
+        )
+
+
+def _export_payload_for_import(collection_id, record_data, **extra):
+    col = Collection.objects.get(pk=collection_id)
+    body = {
+        "ekho_export_version": 1,
+        "source_ekho_instance_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "collection": {
+            "stable_id": str(col.stable_id),
+            "name": col.name,
+            "description": col.description,
+            "responsible_department": col.responsible_department or "",
+            "owning_organization": (
+                {"id": col.owning_organization_id}
+                if col.owning_organization_id
+                else None
+            ),
+            "origin_ekho_instance_id": str(col.origin_ekho_instance_id)
+            if col.origin_ekho_instance_id
+            else None,
+            "is_closed": col.is_closed,
+            "is_listed": col.is_listed,
+        },
+        "record": {"data": record_data},
+    }
+    body.update(extra)
+    return body
+
+
+@pytest.mark.django_db
+class TestRecordImport:
+    """POST /api/records/import/ — modes, actor sanitization, original collection."""
+
+    def test_import_acquisition_requires_auth(self, collection):
+        if not collection:
+            return
+        url = reverse("records-import")
+        cid = collection["id"]
+        col = Collection.objects.get(pk=cid)
+        r = APIClient().post(
+            url,
+            _export_payload_for_import(
+                cid,
+                {
+                    "identification_details": {
+                        "object_number": "IMP-1",
+                        "title": [{"value": "Imported"}],
+                    }
+                },
+                mode="acquisition",
+                current_collection_id=cid,
+            ),
+            format="json",
+        )
+        assert r.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_import_acquisition_creates_record_in_current_only(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        col = Collection.objects.get(pk=cid)
+        data = {
+            "identification_details": {
+                "object_number": "IMP-ACQ",
+                "title": [{"value": "Acquisition Import"}],
+            }
+        }
+        r = authenticated_client.post(
+            reverse("records-import"),
+            _export_payload_for_import(cid, data, mode="acquisition", current_collection_id=cid),
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        assert r.data["mode"] == "acquisition"
+        rid = r.data["record_ids"][0]
+        rec = Record.objects.get(pk=rid)
+        assert rec.collection_id == cid
+        assert rec.imported_first is not None and rec.imported_last is not None
+        assert (
+            rec.data["identification_details"]["object_number"] == "IMP-ACQ"
+        )
+
+    def test_import_strips_missing_actor_refs(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        data = {
+            "identification_details": {
+                "object_number": "IMP-ACT",
+                "title": [{"value": "Actor Strip"}],
+            },
+            "aquisition_details": {"actor": [{"id": 999999}]},
+        }
+        r = authenticated_client.post(
+            reverse("records-import"),
+            _export_payload_for_import(cid, data, mode="acquisition", current_collection_id=cid),
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        rid = r.data["record_ids"][0]
+        rec = Record.objects.get(pk=rid)
+        assert 999999 not in collect_actor_ids(rec.data)
+        assert rec.data.get("aquisition_details", {}).get("actor") in (None, [])
+
+    def test_import_deposition_creates_unlisted_original_and_duplicate(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        fresh_stable = uuid.uuid4()
+        data = {
+            "identification_details": {
+                "object_number": "IMP-DEP",
+                "title": [{"value": "Deposition"}],
+            }
+        }
+        payload = _export_payload_for_import(
+            cid, data, mode="deposition", current_collection_id=cid
+        )
+        payload["collection"]["stable_id"] = str(fresh_stable)
+        payload["collection"]["name"] = "Imported Original Lineage"
+        r = authenticated_client.post(
+            reverse("records-import"),
+            payload,
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        assert len(r.data["record_ids"]) == 2
+        orig = Collection.objects.get(stable_id=fresh_stable)
+        assert orig.is_listed is False
+        assert orig.owner_id == Collection.objects.get(pk=cid).owner_id
+        records = Record.objects.filter(pk__in=r.data["record_ids"])
+        assert records.count() == 2
+        assert set(records.values_list("collection_id", flat=True)) == {cid, orig.id}
+
+    def test_import_original_only_creates_in_original_only(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        stable = uuid.uuid4()
+        Collection.objects.filter(pk=cid).update(stable_id=stable)
+        data = {
+            "identification_details": {
+                "object_number": "IMP-OO",
+                "title": [{"value": "Original Only"}],
+            }
+        }
+        r = authenticated_client.post(
+            reverse("records-import"),
+            _export_payload_for_import(
+                cid, data, mode="original_only", current_collection_id=cid
+            ),
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        assert len(r.data["record_ids"]) == 1
+        orig = Collection.objects.get(stable_id=stable)
+        rec = Record.objects.get(pk=r.data["record_ids"][0])
+        assert rec.collection_id == orig.id
+
+    def test_import_rejects_closed_current_collection(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        Collection.objects.filter(pk=cid).update(is_closed=True)
+        data = {
+            "identification_details": {
+                "object_number": "IMP-X",
+                "title": [{"value": "Closed"}],
+            }
+        }
+        r = authenticated_client.post(
+            reverse("records-import"),
+            _export_payload_for_import(cid, data, mode="acquisition", current_collection_id=cid),
+            format="json",
+        )
+        assert r.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_import_deposition_fails_if_stable_id_owned_by_other(
+        self, authenticated_client, user, other_user, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        other_col = Collection.objects.create(
+            name="Other Original",
+            description="",
+            owner=other_user,
+            is_listed=False,
+        )
+        foreign_stable = other_col.stable_id
+        data = {
+            "identification_details": {
+                "object_number": "IMP-F",
+                "title": [{"value": "Conflict"}],
+            }
+        }
+        payload = _export_payload_for_import(
+            cid, data, mode="deposition", current_collection_id=cid
+        )
+        payload["collection"]["stable_id"] = str(foreign_stable)
+        r = authenticated_client.post(
+            reverse("records-import"),
+            payload,
+            format="json",
+        )
+        assert r.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_import_invalid_mode_returns_400(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        data = {
+            "identification_details": {
+                "object_number": "IMP-MODE",
+                "title": [{"value": "Bad mode"}],
+            }
+        }
+        body = _export_payload_for_import(
+            cid, data, mode="not_a_mode", current_collection_id=cid
+        )
+        r = authenticated_client.post(reverse("records-import"), body, format="json")
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_import_unsupported_schema_version_returns_400(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        data = {
+            "identification_details": {
+                "object_number": "IMP-VER",
+                "title": [{"value": "Version"}],
+            }
+        }
+        body = _export_payload_for_import(
+            cid, data, mode="acquisition", current_collection_id=cid
+        )
+        body["ekho_export_version"] = 99
+        r = authenticated_client.post(reverse("records-import"), body, format="json")
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_import_acquisition_missing_current_collection_id_returns_400(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        data = {
+            "identification_details": {
+                "object_number": "IMP-NOCC",
+                "title": [{"value": "No current"}],
+            }
+        }
+        body = _export_payload_for_import(cid, data, mode="acquisition")
+        body.pop("current_collection_id", None)
+        r = authenticated_client.post(reverse("records-import"), body, format="json")
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_import_rejects_export_marked_closed_for_new_original(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        data = {
+            "identification_details": {
+                "object_number": "IMP-CLO",
+                "title": [{"value": "Closed meta"}],
+            }
+        }
+        payload = _export_payload_for_import(
+            cid, data, mode="original_only", current_collection_id=cid
+        )
+        payload["collection"]["stable_id"] = str(uuid.uuid4())
+        payload["collection"]["is_closed"] = True
+        r = authenticated_client.post(reverse("records-import"), payload, format="json")
+        assert r.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_import_fails_when_resolved_original_collection_is_closed(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        stable = uuid.uuid4()
+        Collection.objects.filter(pk=cid).update(stable_id=stable)
+        Collection.objects.filter(pk=cid).update(is_closed=True)
+        data = {
+            "identification_details": {
+                "object_number": "IMP-OC",
+                "title": [{"value": "Closed orig"}],
+            }
+        }
+        r = authenticated_client.post(
+            reverse("records-import"),
+            _export_payload_for_import(
+                cid, data, mode="original_only", current_collection_id=cid
+            ),
+            format="json",
+        )
+        assert r.status_code == status.HTTP_403_FORBIDDEN

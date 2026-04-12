@@ -17,9 +17,7 @@ Reference<ObjectType> # possible values, in finnish
 
 ObjectIdentificationInformation
 ```
-    owning_organization: Organization
-    responsible_department: CharField
-    collection: Collection
+    collection: { collection_id, responsible_department?, owning_organization? }
     object_type: Reference<ObjectType>
     
 ```

@@ -511,7 +511,7 @@ describe('RecordDetail Component Tests (US-014)', () => {
     expect(within(domain).queryByText('Acquisition')).not.toBeInTheDocument()
     const identificationBlock = screen.getByText('Identification').closest('details')
     expect(identificationBlock).toBeTruthy()
-    expect(within(identificationBlock!).getByText('Object number')).toBeInTheDocument()
+    expect(within(identificationBlock!).getByText('Object identification number')).toBeInTheDocument()
     expect(within(identificationBlock!).getByText('OBJ-99')).toBeInTheDocument()
   })
 

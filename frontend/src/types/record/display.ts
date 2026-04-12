@@ -61,23 +61,45 @@ export function getLegacyYearLine(data: RecordPayload): string | undefined {
   return m?.[1]?.trim()
 }
 
-/** Tertiary card line: legacy `Year:` line, else first acquisition Temporal hint. */
-export function getRecordCardYearLine(data: RecordPayload): string | undefined {
-  const legacy = getLegacyYearLine(data)
-  if (legacy) return legacy
-  const first = data.aquisition_details?.date?.[0]
-  if (!first) return undefined
-  const note = (first.note ?? first.text)?.trim()
+function yearLineFromAcquisitionTemporalBlob(fd: Record<string, unknown> | undefined): string | undefined {
+  if (!fd || typeof fd !== 'object') return undefined
+  const single = typeof fd.single === 'string' ? fd.single.trim() : ''
+  if (single) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(single)) return single.slice(0, 4)
+    if (/^\d{4}$/.test(single)) return single
+    const m = single.match(/\b(1\d{3}|20\d{2})\b/)
+    if (m) return m[1]
+  }
+  const note =
+    typeof fd.note === 'string'
+      ? fd.note.trim()
+      : typeof fd.text === 'string'
+        ? fd.text.trim()
+        : ''
   if (note) {
     if (/^\d{4}$/.test(note)) return note
     const m = note.match(/\b(1\d{3}|20\d{2})\b/)
     if (m) return m[1]
   }
-  const es = first.earliest?.single?.trim()
+  const earliest = fd.earliest as { single?: string } | undefined
+  const es = typeof earliest?.single === 'string' ? earliest.single.trim() : ''
   if (es && /^\d{4}$/.test(es)) return es
-  const ls = first.latest?.single?.trim()
+  const latest = fd.latest as { single?: string } | undefined
+  const ls = typeof latest?.single === 'string' ? latest.single.trim() : ''
   if (ls && /^\d{4}$/.test(ls)) return ls
   return undefined
+}
+
+/** Tertiary card line: legacy `Year:` line, else acquisition time (primary Temporal, then first “other” temporal). */
+export function getRecordCardYearLine(data: RecordPayload): string | undefined {
+  const legacy = getLegacyYearLine(data)
+  if (legacy) return legacy
+  const acq = data.aquisition_details
+  const fromPrimary = yearLineFromAcquisitionTemporalBlob(
+    acq?.acquisition_time as Record<string, unknown> | undefined,
+  )
+  if (fromPrimary) return fromPrimary
+  return yearLineFromAcquisitionTemporalBlob(acq?.date?.[0] as Record<string, unknown> | undefined)
 }
 
 function extractPrefixedLine(block: string, prefix: string): string {

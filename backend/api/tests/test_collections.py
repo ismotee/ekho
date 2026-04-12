@@ -29,9 +29,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from datetime import datetime
 
-
-# Note: These tests assume Collection model exists
-# In actual implementation, import would be: from api.models import Collection
+from api.models import Collection
 
 
 @pytest.fixture
@@ -509,6 +507,27 @@ class TestUpdateCollection:
             
             assert response.status_code == status.HTTP_200_OK
             assert response.data['name'] == 'Updated Name'
+
+    def test_update_responsible_department(self, authenticated_client):
+        create_url = reverse('collections-list')
+        create_response = authenticated_client.post(
+            create_url,
+            {'name': 'RD Test', 'description': 'D'},
+            format='json',
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        collection_id = create_response.data['id']
+        url = reverse('collections-detail', kwargs={'pk': collection_id})
+        response = authenticated_client.patch(
+            url,
+            {'responsible_department': ' Archives '},
+            format='json',
+        )
+        assert response.status_code == status.HTTP_200_OK
+        # DRF CharField trims surrounding whitespace by default
+        assert response.data['responsible_department'] == 'Archives'
+        get_r = authenticated_client.get(url)
+        assert get_r.data['responsible_department'] == 'Archives'
     
     def test_successful_update_with_put(self, authenticated_client):
         """Test successful update with PUT (full update)"""
@@ -815,3 +834,91 @@ class TestCollectionPermissionEdgeCases:
             # Owner tries to update
             update_response = authenticated_client.patch(url, {'name': 'Updated'}, format='json')
             assert update_response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestCollectionIsListedVisibility:
+    """is_listed=False hides collections from non-owners (catalog + retrieve)."""
+
+    def test_anonymous_list_excludes_unlisted(self, authenticated_client):
+        create_url = reverse("collections-list")
+        r = authenticated_client.post(
+            create_url,
+            {"name": "Unlisted For Anon", "description": "x"},
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        cid = r.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        anon = APIClient()
+        response = anon.get(create_url)
+        assert response.status_code == status.HTTP_200_OK
+        assert cid not in [row["id"] for row in response.data["results"]]
+
+    def test_anonymous_retrieve_unlisted_returns_404(self, authenticated_client):
+        create_url = reverse("collections-list")
+        r = authenticated_client.post(
+            create_url,
+            {"name": "Unlisted Detail", "description": "x"},
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        cid = r.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        anon = APIClient()
+        detail = anon.get(reverse("collections-detail", kwargs={"pk": cid}))
+        assert detail.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_owner_lists_and_retrieves_unlisted(self, authenticated_client):
+        create_url = reverse("collections-list")
+        r = authenticated_client.post(
+            create_url,
+            {"name": "My Unlisted", "description": "x"},
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        cid = r.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        listed = authenticated_client.get(create_url, {"owner": "testuser"})
+        assert cid in [row["id"] for row in listed.data["results"]]
+        detail = authenticated_client.get(reverse("collections-detail", kwargs={"pk": cid}))
+        assert detail.status_code == status.HTTP_200_OK
+
+    def test_non_owner_list_by_owner_excludes_unlisted(self, authenticated_client, other_user):
+        create_url = reverse("collections-list")
+        r = authenticated_client.post(
+            create_url,
+            {"name": "Hidden From Peer", "description": "x"},
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        cid = r.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        other_client = APIClient()
+        other_client.post(
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
+        )
+        response = other_client.get(create_url, {"owner": "testuser"})
+        assert response.status_code == status.HTTP_200_OK
+        assert cid not in [row["id"] for row in response.data["results"]]
+
+    def test_non_owner_retrieve_unlisted_returns_404(self, authenticated_client, other_user):
+        create_url = reverse("collections-list")
+        r = authenticated_client.post(
+            create_url,
+            {"name": "No Peek", "description": "x"},
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        cid = r.data["id"]
+        Collection.objects.filter(pk=cid).update(is_listed=False)
+        other_client = APIClient()
+        other_client.post(
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
+        )
+        detail = other_client.get(reverse("collections-detail", kwargs={"pk": cid}))
+        assert detail.status_code == status.HTTP_404_NOT_FOUND
