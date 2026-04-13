@@ -23,7 +23,8 @@ import './Collections.css'
 function isValidEkhoImportPayload(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
   const o = value as Record<string, unknown>
-  if (o.ekho_export_version !== 1) return false
+  const ver = Number(o.ekho_export_version)
+  if (ver !== 1 && ver !== 2) return false
   if (typeof o.collection !== 'object' || o.collection === null || Array.isArray(o.collection)) return false
   const col = o.collection as Record<string, unknown>
   if (col.stable_id == null || String(col.stable_id).trim() === '') return false

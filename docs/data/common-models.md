@@ -63,3 +63,34 @@ Image (JSON / API serialization)
     # Nested domain uses (e.g. Interpretation.photo) serialize as this string in responses;
     # dedicated upload flows for nested images may be added later.
 ```
+
+### Record-attached images: closed `role` and `context`
+
+Binary files and rich file metadata stay **outside** `Record.data` JSON. When the API exposes a top-level **`images`** list on a record (or an equivalent resource), each item uses two **closed string enums**: **`role`** (what the file is for in the system) and **`context`** (where or why it is shown or kept). Clients and imports must use only the values below; the API rejects unknown tokens once validation is wired.
+
+**Rules of thumb:** assign **one** `role` and **one** `context` per file. Combine them instead of overloading a single field (e.g. exhibit list preview → `role` = `thumbnail`, `context` = `exhibit`). Do not duplicate the same axis across both fields.
+
+#### `role` — wire values (snake_case)
+
+| Value | Meaning |
+|-------|--------|
+| `thumbnail` | Small list/card preview. |
+| `preview` | Larger on-screen preview (still web-oriented). |
+| `preservation_master` | Archival or vault-side **master** for this object (lossless or policy-defined highest fidelity kept long-term). |
+| `access_derivative` | **Access** copy for viewing or sharing: reduced resolution or compression, typically produced from `preservation_master` (or from a single capture when no separate master exists). |
+| `derivative` | Generic downscaled or re-encoded copy when none of the more specific roles apply. |
+| `print` | Print-ready asset (high resolution; CMYK-aware workflows may apply later). |
+| `detail` | Crop or close-up of a feature or area of the object. |
+| `document_scan` | Photo or scan focused on labels, verso, paperwork, or similar documentary surfaces. |
+
+#### `context` — wire values (snake_case)
+
+| Value | Meaning |
+|-------|--------|
+| `portfolio` | Collection owner or public portfolio presentation. |
+| `exhibit` | Exhibition or gallery display context. |
+| `archive` | Long-term collection documentation or vault-oriented logic. |
+| `documentation` | General object documentation (default when nothing more specific fits). |
+| `condition` | Condition assessment or monitoring imagery. |
+| `publication` | Catalogue, book, article, or similar reproduction context. |
+| `digitalization` | Imagery from a formal digitization or imaging campaign (lab output, structured capture session, or project-classified imaging). |

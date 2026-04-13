@@ -446,11 +446,18 @@ Each record resource includes:
 | `collection` | integer | Collection ID |
 | `created_at`, `updated_at` | string (ISO 8601) | Timestamps |
 | `data` | object | **Domain payload.** Nested object whose keys match [docs/data/record-models.md](data/record-models.md): `identification_details`, `aquisition_details`, `rights` (array of rights entries or `null`), `history`, `description`, `access`, `object_location`, `confidentiality`. Values are domain objects (or arrays where specified) or `null` when unset. Keeps DRF top-level metadata distinct from domain fields. |
-| `representative_image` | string or `null` | **Optional.** Absolute URL of the list/detail thumbnail image; not part of the `data` graph. |
+| `representative_image` | string or `null` | **Optional.** Absolute URL of the list/detail thumbnail image; not part of the `data` graph. See **Representative image resolution** below. |
+| `images` | array | Read-only. Ordered list of [record-attached images](#record-attached-images-sub-resources) (`RecordImage` rows): file URL, `role`, `context`, autofill metadata (dimensions, checksum, MIME, …), and optional `labels` JSON. Empty when no images are stored. |
 | `collection_name` | string | Read-only; list responses |
 | `collection_owner_username` | string | Read-only; list responses |
 
 **Wrapper key name:** `data` (locked). **Presentation image field name:** `representative_image` (locked).
+
+#### Representative image resolution
+
+- If the record still has a legacy **`representative_image`** file on the server (multipart create/update), that file’s absolute URL is returned.
+- Otherwise the URL is taken from the first **`images`** row with `role` **`thumbnail`** and `context` **`portfolio`**, then the first row with `role` **`thumbnail`** only.
+- **One-time migration:** existing legacy thumbnails were copied into **`images`** as `role=thumbnail`, `context=portfolio`, `is_primary=true`, and the legacy file field was cleared so each file is owned by a single `RecordImage` row. Clients can keep using **`representative_image`** in responses; new uploads should prefer the **`images`** sub-endpoints.
 
 ---
 
@@ -651,7 +658,7 @@ Updates a record. Only the collection owner can update, and only if the collecti
 
 **DELETE** `/api/records/{id}/`
 
-Permanently deletes a record and its stored **representative_image** file (if any). Only the collection owner can delete, and only if the collection is not closed.
+Permanently deletes a record and **all** stored **`images`** files plus any legacy **representative_image** file. Only the collection owner can delete, and only if the collection is not closed.
 
 **Response:** `204 No Content`
 
@@ -666,6 +673,32 @@ Permanently deletes a record and its stored **representative_image** file (if an
 
 ---
 
+#### Record-attached images (sub-resources)
+
+**List / create:** **GET** or **POST** `/api/records/{record_id}/images/`
+
+**Detail / update / delete:** **GET**, **PUT**, **PATCH**, or **DELETE** `/api/records/{record_id}/images/{image_id}/`
+
+**Visibility:** **GET** follows the same rules as [Retrieve Record](#retrieve-record) (parent record must be visible). **POST**, **PUT**, **PATCH**, and **DELETE** require an authenticated **collection owner** and the collection must **not** be [closed](#record-endpoints).
+
+**POST** accepts **multipart/form-data** with:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `image` | Yes | Binary upload. Same allowlist as `representative_image`: **JPEG**, **PNG**, **GIF**; max **10MB**. |
+| `role` | Yes | Closed enum — see [Record image `role` and `context`](#record-image-role-and-context-closed-vocabularies). |
+| `context` | Yes | Closed enum — same section. |
+| `sort_order` | No | Integer; default `0`. |
+| `is_primary` | No | Boolean; default `false`. If `true`, other images on the same record are set to non-primary. |
+| `status` | No | `draft`, `approved`, or `suppressed`; default `draft`. |
+| `labels` | No | JSON object (or JSON string in multipart) for optional captions, credits, etc. |
+
+**PATCH** / **PUT** may omit `image`; when a new `image` is sent, autofill fields are recomputed. Writable scalar fields: `role`, `context`, `sort_order`, `is_primary`, `status`, `labels`.
+
+Each **GET** response item includes: `id`, `url` (absolute media URL), `role`, `context`, `byte_size`, `width`, `height`, `format` (ImageMagick-style tag, e.g. `JPEG`), `mime_type`, `checksum_sha256`, `sort_order`, `is_primary`, `status`, `derived_from` (`null` or `{ "id": <int> }` for future derivatives), `labels`, `created_at`, `updated_at`. The upload field `image` is write-only and omitted from responses.
+
+---
+
 #### Export record (JSON download)
 
 **GET** `/api/records/{id}/export/`
@@ -674,14 +707,16 @@ Returns a JSON document suitable for **Import record** (below) on this or anothe
 
 **Response:** `200 OK` — `application/json` with `Content-Disposition: attachment; filename="ekho-record-{id}.json"`.
 
-**Payload shape (version 1):**
+**Payload shape:** current exports use **`ekho_export_version` `2`**. Servers still accept **`1`** for import (same `record` fields as before; no `record.images`).
 
 | Key | Description |
 |-----|-------------|
-| `ekho_export_version` | Integer; currently `1`. |
+| `ekho_export_version` | Integer; **`2`** for new exports from this API version. |
 | `source_ekho_instance_id` | UUID string for this deployment ([System identity](#system-identity-export-provenance)). |
-| `collection` | Object: `stable_id`, `name`, `description`, `origin_ekho_instance_id` (nullable UUID string), `is_closed`, `is_listed`. |
-| `record` | Object: `data` (validated domain payload). If a representative image exists, `representative_image`: `{ "filename", "content_type", "base64" }`. |
+| `collection` | Object: `stable_id`, `name`, `description`, `responsible_department`, `owning_organization` (`null` or `{ "id": <int> }`), `origin_ekho_instance_id` (nullable UUID string), `is_closed`, `is_listed`, `original_creator` (`{ "username" }`). |
+| `record` | Object: `data` (validated domain payload). Optional `representative_image`: `{ "filename", "content_type", "base64" }` when a representative file exists. **`images`** (v2): array of attachment blocks (may be empty). |
+
+**`record.images` items (version 2):** each element includes `role`, `context`, `sort_order`, `is_primary`, `status`, `labels` (object), `derived_from_index` (`null` or zero-based index into this same array for derivative lineage), and `image`: `{ "filename", "content_type", "base64" }`. Omitted or empty when there are no record-attached images.
 
 **Authorization:** Same visibility as record retrieve — listed collections are world-readable; **unlisted** collections allow export only to the **owner** (others receive `404`).
 
@@ -701,10 +736,10 @@ Returns a JSON document suitable for **Import record** (below) on this or anothe
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `ekho_export_version` | Yes | Must be `1`. |
+| `ekho_export_version` | Yes | **`1`** or **`2`**. Version `2` may include `record.images` as in [Export record](#export-record-json-download). |
 | `source_ekho_instance_id` | Ignored for validation | Echoed from exports; informational. |
 | `collection` | Yes | Must include `stable_id` (UUID) and other fields as in an export. |
-| `record` | Yes | Must include `data` (domain object). Optional `representative_image` as in export. |
+| `record` | Yes | Must include `data` (domain object). Optional `representative_image` and, for v2, optional `record.images` array. |
 | `mode` | Yes | `acquisition`, `deposition`, or `original_only`. |
 | `current_collection_id` | For `acquisition` and `deposition` | Integer PK of the collection page context; must exist, be owned by the user, and **not** be closed. |
 
@@ -729,6 +764,16 @@ On each created record, the server sets `imported_first` and `imported_last` (no
 
 ## Image Upload Specifications
 
+### Record image `role` and `context` (closed vocabularies)
+
+Record-level image metadata (the read-only **`images`** array on the record resource and the [Record-attached images](#record-attached-images-sub-resources) sub-endpoints) uses two required **closed string enums** on each image: **`role`** and **`context`**. Allowed wire values are **snake_case** strings exactly as listed below. The server treats any other value as invalid input once validation is enforced; extend the list in **docs**, **backend**, and **frontend** together.
+
+**`role`** — one of: `thumbnail`, `preview`, `preservation_master`, `access_derivative`, `derivative`, `print`, `detail`, `document_scan`.
+
+**`context`** — one of: `portfolio`, `exhibit`, `archive`, `documentation`, `condition`, `publication`, `digitalization`.
+
+Semantics and usage rules: [docs/data/common-models.md](data/common-models.md) (section *Record-attached images: closed `role` and `context`*). Canonical lists in code: `backend/api/record_image_vocab.py`, `frontend/src/types/record/imageVocabulary.ts`.
+
 ### Supported Formats
 
 - JPEG (.jpg, .jpeg)
@@ -747,7 +792,8 @@ On each created record, the server sets `imported_first` and `imported_last` (no
 
 ### Image URLs
 
-- **Representative** (list/detail) images are served under `http://localhost:8000/media/records/{filename}` and exposed as the `representative_image` absolute URL on each record resource.
+- **Representative** (list/detail) thumbnails use the same media path pattern (`http://localhost:8000/media/records/{filename}`) and are exposed as the **`representative_image`** absolute URL on each record resource, with [resolution rules](#representative-image-resolution) when thumbnails live only under **`images`**.
+- **`images`:** each item includes an absolute **`url`** for that row’s file (same `media/records/` layout).
 - Nested domain image references (see `Image` in [docs/data/common-models.md](data/common-models.md)) serialize as absolute URL strings inside `data` when present.
 - Images are publicly accessible (no authentication required for viewing)
 

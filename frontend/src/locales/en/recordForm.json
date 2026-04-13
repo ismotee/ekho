@@ -49,6 +49,66 @@
     "previewAlt": "Preview",
     "remove": "Remove"
   },
+  "recordImages": {
+    "heading": "Images",
+    "hintCreate": "Choose role and context for each file. Images upload after the record is created.",
+    "hintEdit": "Uploaded images show file details from the server. Add more files below; they upload when you save the record.",
+    "ownerOnly": "Only the collection owner can add or remove images.",
+    "serverListAria": "Images attached to this record",
+    "noImages": "No images attached yet.",
+    "addBlockTitle": "Add an image",
+    "fileLabel": "Image file",
+    "roleLabel": "Role",
+    "contextLabel": "Context",
+    "primaryLabel": "Mark as primary image",
+    "primaryShort": "Primary",
+    "pendingTitle": "Queued for upload when you save",
+    "removePending": "Remove from queue",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "deleteConfirm": "Remove this image from the record? The file will be deleted.",
+    "deleteError": "Could not delete the image.",
+    "uploadError": "The record was saved but one or more images could not be uploaded. You can try again from this page.",
+    "galleryHeading": "Attached images",
+    "yes": "Yes",
+    "no": "No",
+    "statusValues": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "suppressed": "Suppressed"
+    },
+    "fields": {
+      "dimensions": "Dimensions",
+      "byte_size": "File size",
+      "mime_type": "MIME type",
+      "format": "Format",
+      "status": "Status",
+      "sort_order": "Sort order",
+      "is_primary": "Primary",
+      "checksum_sha256": "SHA-256"
+    },
+    "vocab": {
+      "role": {
+        "thumbnail": "Thumbnail",
+        "preview": "Preview",
+        "preservation_master": "Preservation master",
+        "access_derivative": "Access derivative",
+        "derivative": "Derivative",
+        "print": "Print",
+        "detail": "Detail",
+        "document_scan": "Document scan"
+      },
+      "context": {
+        "portfolio": "Portfolio",
+        "exhibit": "Exhibit",
+        "archive": "Archive",
+        "documentation": "Documentation",
+        "condition": "Condition",
+        "publication": "Publication",
+        "digitalization": "Digitalization"
+      }
+    }
+  },
   "repeatable": {
     "edit": "Edit",
     "save": "Save",

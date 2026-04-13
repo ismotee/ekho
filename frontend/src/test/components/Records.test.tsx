@@ -19,7 +19,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 // These imports will FAIL until components are implemented (TDD approach)
-import { RecordList, RecordCard, RecordForm, RecordDetail, ImageUpload, DeleteRecordDialog } from '../../components/records/'
+import { RecordList, RecordCard, RecordDetail, ImageUpload, DeleteRecordDialog } from '../../components/records/'
 import { useRecordStore } from '../../stores/recordStore'
 import { useCollectionStore } from '../../stores/collectionStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -38,6 +38,8 @@ vi.mock('../../stores/recordStore', () => ({
     createRecord: vi.fn(),
     updateRecord: vi.fn(),
     deleteRecord: vi.fn(),
+    createRecordImage: vi.fn(),
+    deleteRecordImage: vi.fn(),
   })),
 }))
 
@@ -129,6 +131,8 @@ describe('RecordList Component Tests (US-013)', () => {
       createRecord: vi.fn(),
       updateRecord: vi.fn(),
       deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
     })
     render(<RecordList collectionId={1} />)
     expect(screen.getByRole('list')).toBeInTheDocument()
@@ -410,6 +414,8 @@ describe('RecordDetail Component Tests (US-014)', () => {
       createRecord: vi.fn(),
       updateRecord: vi.fn(),
       deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
     })
     vi.mocked(useCollectionStore).mockReturnValue({
       collections: [],
@@ -492,6 +498,8 @@ describe('RecordDetail Component Tests (US-014)', () => {
       createRecord: vi.fn(),
       updateRecord: vi.fn(),
       deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
     })
     vi.mocked(useCollectionStore).mockReturnValue({
       collections: [],
@@ -537,6 +545,8 @@ describe('RecordDetail Component Tests (US-014)', () => {
       createRecord: vi.fn(),
       updateRecord: vi.fn(),
       deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
     })
     vi.mocked(useCollectionStore).mockReturnValue({
       collections: [],
@@ -585,6 +595,8 @@ describe('RecordDetail Component Tests (US-014)', () => {
       createRecord: vi.fn(),
       updateRecord: vi.fn(),
       deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
     })
     vi.mocked(useCollectionStore).mockReturnValue({
       collections: [],

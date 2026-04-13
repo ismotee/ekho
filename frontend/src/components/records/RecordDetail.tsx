@@ -23,6 +23,7 @@ import {
   getRecordThumbnailUrl,
 } from '../../types/record'
 import { NestedDomainFields } from './NestedDomainFields'
+import { RecordImageMetadataPanel } from './RecordImageMetadataPanel'
 import './Records.css'
 
 /** UI order: Identification → Acquisition → Description → History → Rights → Access → Location → Confidentiality */
@@ -216,6 +217,30 @@ export const RecordDetail = observer(() => {
           )}
         </div>
       </div>
+
+      {record.images && record.images.length > 0 && (
+        <section className="record-detail-images" aria-label={t('recordForm.recordImages.galleryHeading')}>
+          <h2 className="record-detail-images-heading">{t('recordForm.recordImages.galleryHeading')}</h2>
+          <ul className="record-detail-images-grid">
+            {record.images.map((img) => (
+              <li key={img.id} className="record-detail-images-card">
+                <a href={img.url} target="_blank" rel="noreferrer" className="record-detail-images-thumb-wrap">
+                  <img src={img.url} alt="" className="record-detail-images-thumb" loading="lazy" />
+                </a>
+                <div className="record-detail-images-meta">
+                  <p className="record-detail-images-badges">
+                    <span className="record-multi-image-badge">{t(`recordForm.recordImages.vocab.role.${img.role}`)}</span>
+                    <span className="record-multi-image-badge record-multi-image-badge--muted">
+                      {t(`recordForm.recordImages.vocab.context.${img.context}`)}
+                    </span>
+                  </p>
+                  <RecordImageMetadataPanel image={img} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {RECORD_DETAIL_SECTIONS.some(({ key }) => !isDomainSectionEmpty(data[key])) && (
         <section className="record-domain-sections" aria-label={t('recordForm.detail.dataByDomainAria')}>

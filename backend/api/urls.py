@@ -26,5 +26,15 @@ auth_urlpatterns = [
 urlpatterns = [
     path('health/', views.health_check, name='health_check'),
     path('auth/', include(auth_urlpatterns)),
+    path(
+        'records/<int:record_pk>/images/',
+        views.RecordImageListCreateView.as_view(),
+        name='record-images-list',
+    ),
+    path(
+        'records/<int:record_pk>/images/<int:pk>/',
+        views.RecordImageDetailView.as_view(),
+        name='record-images-detail',
+    ),
     path('', include(router.urls)),
 ]

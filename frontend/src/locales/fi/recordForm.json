@@ -49,6 +49,66 @@
     "previewAlt": "Esikatselu",
     "remove": "Poista"
   },
+  "recordImages": {
+    "heading": "Kuvat",
+    "hintCreate": "Valitse rooli ja konteksti kullekin tiedostolle. Kuvat lähetetään, kun tallenne on luotu.",
+    "hintEdit": "Palvelimen täyttämät tiedot näkyvät alla. Lisää uusia tiedostoja; ne lähetetään, kun tallennat lomakkeen.",
+    "ownerOnly": "Vain kokoelman omistaja voi lisätä tai poistaa kuvia.",
+    "serverListAria": "Tallenteeseen liitetyt kuvat",
+    "noImages": "Kuvia ei ole vielä liitetty.",
+    "addBlockTitle": "Lisää kuva",
+    "fileLabel": "Kuvatiedosto",
+    "roleLabel": "Rooli",
+    "contextLabel": "Konteksti",
+    "primaryLabel": "Merkitse ensisijaiseksi kuvaksi",
+    "primaryShort": "Ensisijainen",
+    "pendingTitle": "Jonossa tallennukseen",
+    "removePending": "Poista jonosta",
+    "delete": "Poista",
+    "deleting": "Poistetaan…",
+    "deleteConfirm": "Poistetaanko tämä kuva tallenteesta? Tiedosto poistetaan.",
+    "deleteError": "Kuvan poisto epäonnistui.",
+    "uploadError": "Tallenne tallennettiin, mutta yhden tai useamman kuvan lähetys epäonnistui. Voit yrittää uudelleen tällä sivulla.",
+    "galleryHeading": "Liitetyt kuvat",
+    "yes": "Kyllä",
+    "no": "Ei",
+    "statusValues": {
+      "draft": "Luonnos",
+      "approved": "Hyväksytty",
+      "suppressed": "Piilotettu"
+    },
+    "fields": {
+      "dimensions": "Mitat",
+      "byte_size": "Tiedostokoko",
+      "mime_type": "MIME-tyyppi",
+      "format": "Formaatti",
+      "status": "Tila",
+      "sort_order": "Järjestys",
+      "is_primary": "Ensisijainen",
+      "checksum_sha256": "SHA-256"
+    },
+    "vocab": {
+      "role": {
+        "thumbnail": "Pienkuva",
+        "preview": "Esikatselu",
+        "preservation_master": "Säilytysmasteri",
+        "access_derivative": "Käyttökopio",
+        "derivative": "Johdannainen",
+        "print": "Paino",
+        "detail": "Lähikuva",
+        "document_scan": "Asiakirjaskannaus"
+      },
+      "context": {
+        "portfolio": "Portfolio",
+        "exhibit": "Näyttely",
+        "archive": "Arkisto",
+        "documentation": "Dokumentaatio",
+        "condition": "Kunto",
+        "publication": "Julkaisu",
+        "digitalization": "Digitalisointi"
+      }
+    }
+  },
   "repeatable": {
     "edit": "Muokkaa",
     "save": "Tallenna",

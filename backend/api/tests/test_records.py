@@ -15,7 +15,7 @@ import pytest
 from PIL import Image
 from django.contrib.auth.models import User
 
-from api.models import Collection, Record
+from api.models import Collection, Record, RecordImage
 from api.record_actor_refs import collect_actor_ids
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
@@ -30,6 +30,31 @@ def create_test_image():
     image.save(img_io, format="JPEG")
     data = img_io.getvalue()
     return SimpleUploadedFile("test.jpg", data, content_type="image/jpeg")
+
+
+def create_test_png(width=60, height=40):
+    """Create a test PNG upload (distinct dimensions for autofill assertions)."""
+    image = Image.new("RGBA", (width, height), color=(10, 20, 30, 255))
+    img_io = io.BytesIO()
+    image.save(img_io, format="PNG")
+    data = img_io.getvalue()
+    return SimpleUploadedFile("tile.png", data, content_type="image/png")
+
+
+def create_test_gif():
+    """Create a small GIF upload."""
+    image = Image.new("RGB", (24, 16), color="yellow")
+    img_io = io.BytesIO()
+    image.save(img_io, format="GIF")
+    data = img_io.getvalue()
+    return SimpleUploadedFile("anim.gif", data, content_type="image/gif")
+
+
+def _paginated_results(response_data):
+    """DRF page for list endpoints, or raw list."""
+    if isinstance(response_data, dict) and "results" in response_data:
+        return response_data["results"]
+    return response_data
 
 
 def record_payload(collection_id, *, title="Untitled", object_number="OBJ-1", **extra_domains):
@@ -1228,7 +1253,9 @@ class TestRecordExport:
         assert r.status_code == status.HTTP_200_OK
         assert r["Content-Disposition"].startswith('attachment; filename="ekho-record-')
         body = r.json()
-        assert body["ekho_export_version"] == 1
+        assert body["ekho_export_version"] == 2
+        assert isinstance(body["record"].get("images"), list)
+        assert body["record"]["images"] == []
         assert len(body["source_ekho_instance_id"]) == 36
         col = body["collection"]
         assert col["name"] == "Test Collection"
@@ -1254,7 +1281,7 @@ class TestRecordExport:
         anon = APIClient()
         r = anon.get(reverse("records-export", kwargs={"pk": rid}))
         assert r.status_code == status.HTTP_200_OK
-        assert r.json()["ekho_export_version"] == 1
+        assert r.json()["ekho_export_version"] == 2
 
     def test_export_includes_base64_image(self, authenticated_client, collection):
         if not collection:
@@ -1319,7 +1346,48 @@ class TestRecordExport:
         Collection.objects.filter(pk=cid).update(is_listed=False)
         r = authenticated_client.get(reverse("records-export", kwargs={"pk": rid}))
         assert r.status_code == status.HTTP_200_OK
-        assert r.json()["ekho_export_version"] == 1
+        assert r.json()["ekho_export_version"] == 2
+
+    def test_export_includes_record_images_v2(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Multi img", object_number="MI-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        png = create_test_png(40, 30)
+        r_img = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {
+                "image": png,
+                "role": "detail",
+                "context": "documentation",
+                "sort_order": 1,
+                "is_primary": True,
+                "status": "approved",
+                "labels": json.dumps({"en": "detail"}),
+            },
+            format="multipart",
+        )
+        assert r_img.status_code == status.HTTP_201_CREATED
+        r = authenticated_client.get(reverse("records-export", kwargs={"pk": rid}))
+        assert r.status_code == status.HTTP_200_OK
+        body = r.json()
+        assert body["ekho_export_version"] == 2
+        imgs = body["record"]["images"]
+        assert len(imgs) == 1
+        assert imgs[0]["role"] == "detail"
+        assert imgs[0]["context"] == "documentation"
+        assert imgs[0]["sort_order"] == 1
+        assert imgs[0]["is_primary"] is True
+        assert imgs[0]["status"] == "approved"
+        assert imgs[0]["labels"] == {"en": "detail"}
+        assert imgs[0]["derived_from_index"] is None
+        assert "base64" in imgs[0]["image"]
 
     def test_export_unlisted_anonymous_returns_404(self, authenticated_client, collection):
         if not collection:
@@ -1341,10 +1409,15 @@ class TestRecordExport:
         )
 
 
-def _export_payload_for_import(collection_id, record_data, **extra):
+def _export_payload_for_import(
+    collection_id, record_data, *, export_version=1, **extra
+):
     col = Collection.objects.get(pk=collection_id)
+    rec_block = {"data": record_data}
+    if export_version >= 2:
+        rec_block["images"] = []
     body = {
-        "ekho_export_version": 1,
+        "ekho_export_version": export_version,
         "source_ekho_instance_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
         "collection": {
             "stable_id": str(col.stable_id),
@@ -1362,7 +1435,7 @@ def _export_payload_for_import(collection_id, record_data, **extra):
             "is_closed": col.is_closed,
             "is_listed": col.is_listed,
         },
-        "record": {"data": record_data},
+        "record": rec_block,
     }
     body.update(extra)
     return body
@@ -1422,6 +1495,52 @@ class TestRecordImport:
         assert (
             rec.data["identification_details"]["object_number"] == "IMP-ACQ"
         )
+
+    def test_import_v2_with_record_images(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        data = {
+            "identification_details": {
+                "object_number": "IMP-V2-IMG",
+                "title": [{"value": "V2 Images"}],
+            }
+        }
+        png = create_test_png(32, 24)
+        png.seek(0)
+        b64 = base64.b64encode(png.read()).decode("ascii")
+        body = _export_payload_for_import(
+            cid, data, export_version=2, mode="acquisition", current_collection_id=cid
+        )
+        body["record"]["images"] = [
+            {
+                "role": "thumbnail",
+                "context": "portfolio",
+                "sort_order": 0,
+                "is_primary": True,
+                "status": "approved",
+                "labels": {"fi": "kuva"},
+                "derived_from_index": None,
+                "image": {
+                    "filename": "tile.png",
+                    "content_type": "image/png",
+                    "base64": b64,
+                },
+            }
+        ]
+        r = authenticated_client.post(reverse("records-import"), body, format="json")
+        assert r.status_code == status.HTTP_201_CREATED
+        rid = r.data["record_ids"][0]
+        rec = Record.objects.get(pk=rid)
+        imgs = list(rec.images.order_by("sort_order", "id"))
+        assert len(imgs) == 1
+        assert imgs[0].role == "thumbnail"
+        assert imgs[0].context == "portfolio"
+        assert imgs[0].is_primary is True
+        assert imgs[0].status == "approved"
+        assert imgs[0].labels == {"fi": "kuva"}
+        assert imgs[0].width == 32
+        assert imgs[0].height == 24
 
     def test_import_strips_missing_actor_refs(self, authenticated_client, collection):
         if not collection:
@@ -1645,3 +1764,475 @@ class TestRecordImport:
             format="json",
         )
         assert r.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestRecordImages:
+    def test_record_detail_includes_images_array(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        r = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Images array", object_number="RI-1"),
+            format="json",
+        )
+        assert r.status_code == status.HTTP_201_CREATED
+        rid = r.data["id"]
+        detail = authenticated_client.get(reverse("records-detail", kwargs={"pk": rid}))
+        assert detail.status_code == status.HTTP_200_OK
+        assert detail.data["images"] == []
+
+    def test_create_record_image_autofill_and_representative(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        r = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Images autofill", object_number="RI-2"),
+            format="json",
+        )
+        rid = r.data["id"]
+        img = create_test_image()
+        url = reverse("record-images-list", kwargs={"record_pk": rid})
+        r2 = authenticated_client.post(
+            url,
+            {
+                "image": img,
+                "role": "thumbnail",
+                "context": "portfolio",
+            },
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_201_CREATED, r2.data
+        body = r2.data
+        assert body["width"] == 100
+        assert body["height"] == 100
+        assert body["format"] == "JPEG"
+        assert body["mime_type"] == "image/jpeg"
+        assert len(body["checksum_sha256"]) == 64
+        assert body["url"].startswith("http")
+        assert body["derived_from"] is None
+        detail = authenticated_client.get(reverse("records-detail", kwargs={"pk": rid}))
+        assert len(detail.data["images"]) == 1
+        assert detail.data["representative_image"] == body["url"]
+        assert RecordImage.objects.filter(record_id=rid).count() == 1
+
+    def test_create_record_image_requires_owner(self, client, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        r = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Images anon", object_number="RI-3"),
+            format="json",
+        )
+        rid = r.data["id"]
+        img = create_test_image()
+        url = reverse("record-images-list", kwargs={"record_pk": rid})
+        r2 = client.post(
+            url,
+            {"image": img, "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_create_record_image_non_owner_forbidden(
+        self, authenticated_client, other_user, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        r = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Images owner only", object_number="RI-3b"),
+            format="json",
+        )
+        rid = r.data["id"]
+        other_client = APIClient()
+        other_client.post(
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
+        )
+        url = reverse("record-images-list", kwargs={"record_pk": rid})
+        r2 = other_client.post(
+            url,
+            {"image": create_test_image(), "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_delete_record_removes_record_images(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        r = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Images delete", object_number="RI-4"),
+            format="json",
+        )
+        rid = r.data["id"]
+        authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {
+                "image": create_test_image(),
+                "role": "preview",
+                "context": "documentation",
+            },
+            format="multipart",
+        )
+        assert RecordImage.objects.filter(record_id=rid).count() == 1
+        d = authenticated_client.delete(reverse("records-detail", kwargs={"pk": rid}))
+        assert d.status_code == status.HTTP_204_NO_CONTENT
+        assert RecordImage.objects.filter(record_id=rid).count() == 0
+
+    def test_list_record_images_empty_then_populated(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        r = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Images list", object_number="RI-L1"),
+            format="json",
+        )
+        rid = r.data["id"]
+        base = reverse("record-images-list", kwargs={"record_pk": rid})
+        empty = authenticated_client.get(base)
+        assert empty.status_code == status.HTTP_200_OK
+        assert _paginated_results(empty.data) == []
+        up = authenticated_client.post(
+            base,
+            {"image": create_test_image(), "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert up.status_code == status.HTTP_201_CREATED
+        filled = authenticated_client.get(base)
+        assert filled.status_code == status.HTTP_200_OK
+        rows = _paginated_results(filled.data)
+        assert len(rows) == 1
+        assert rows[0]["id"] == up.data["id"]
+
+    def test_records_list_includes_images_array(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        r = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="List has images", object_number="RI-L2"),
+            format="json",
+        )
+        rid = r.data["id"]
+        authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_png(), "role": "preview", "context": "documentation"},
+            format="multipart",
+        )
+        lst = authenticated_client.get(reverse("records-list"), {"collection": cid})
+        assert lst.status_code == status.HTTP_200_OK
+        row = next(x for x in lst.data["results"] if x["id"] == rid)
+        assert "images" in row
+        assert len(row["images"]) == 1
+        assert row["images"][0]["format"] == "PNG"
+        assert row["images"][0]["width"] == 60
+        assert row["images"][0]["height"] == 40
+
+    def test_create_record_image_invalid_role(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Bad role", object_number="RI-BR"),
+            format="json",
+        ).data["id"]
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "not_a_real_role", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_400_BAD_REQUEST
+        assert RecordImage.objects.filter(record_id=rid).count() == 0
+
+    def test_create_record_image_invalid_context(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Bad ctx", object_number="RI-BC"),
+            format="json",
+        ).data["id"]
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "thumbnail", "context": "museum_gift_shop"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_record_image_missing_file(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="No file", object_number="RI-NF"),
+            format="json",
+        ).data["id"]
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_record_image_corrupt_bytes(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Corrupt", object_number="RI-CO"),
+            format="json",
+        ).data["id"]
+        bad = SimpleUploadedFile(
+            "fake.jpg", b"not a jpeg", content_type="image/jpeg"
+        )
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": bad, "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_record_image_disallowed_format_bmp(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="BMP", object_number="RI-BMP"),
+            format="json",
+        ).data["id"]
+        buf = io.BytesIO()
+        Image.new("RGB", (8, 8), color="blue").save(buf, format="BMP")
+        bmp = SimpleUploadedFile("x.bmp", buf.getvalue(), content_type="image/bmp")
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": bmp, "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_record_image_over_10mb(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Huge", object_number="RI-HU"),
+            format="json",
+        ).data["id"]
+        huge = SimpleUploadedFile(
+            "big.jpg",
+            b"x" * (10 * 1024 * 1024 + 1),
+            content_type="image/jpeg",
+        )
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": huge, "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_create_record_image_gif_autofill(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="GIF", object_number="RI-GIF"),
+            format="json",
+        ).data["id"]
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_gif(), "role": "derivative", "context": "digitalization"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_201_CREATED
+        assert r2.data["format"] == "GIF"
+        assert r2.data["mime_type"] == "image/gif"
+        assert r2.data["width"] == 24
+        assert r2.data["height"] == 16
+
+    def test_patch_record_image_invalid_status(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Status", object_number="RI-ST"),
+            format="json",
+        ).data["id"]
+        created = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        iid = created.data["id"]
+        bad = authenticated_client.patch(
+            reverse("record-images-detail", kwargs={"record_pk": rid, "pk": iid}),
+            {"status": "published"},
+            format="json",
+        )
+        assert bad.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_record_image_metadata_without_new_file(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Patch meta", object_number="RI-PM"),
+            format="json",
+        ).data["id"]
+        created = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "preview", "context": "exhibit"},
+            format="multipart",
+        )
+        iid = created.data["id"]
+        chk_before = created.data["checksum_sha256"]
+        patched = authenticated_client.patch(
+            reverse("record-images-detail", kwargs={"record_pk": rid, "pk": iid}),
+            {"status": "approved", "sort_order": 5},
+            format="json",
+        )
+        assert patched.status_code == status.HTTP_200_OK
+        assert patched.data["status"] == "approved"
+        assert patched.data["sort_order"] == 5
+        assert patched.data["checksum_sha256"] == chk_before
+
+    def test_patch_record_image_new_file_recomputes_autofill(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Patch file", object_number="RI-PF"),
+            format="json",
+        ).data["id"]
+        created = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        iid = created.data["id"]
+        c1 = created.data["checksum_sha256"]
+        replacement = create_test_png(width=100, height=100)
+        patched = authenticated_client.patch(
+            reverse("record-images-detail", kwargs={"record_pk": rid, "pk": iid}),
+            {"image": replacement, "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert patched.status_code == status.HTTP_200_OK
+        assert patched.data["checksum_sha256"] != c1
+        assert patched.data["format"] == "PNG"
+        assert patched.data["width"] == 100
+        assert patched.data["height"] == 100
+
+    def test_delete_record_image_detail_removes_model(self, authenticated_client, collection):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Del img", object_number="RI-DI"),
+            format="json",
+        ).data["id"]
+        created = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "detail", "context": "condition"},
+            format="multipart",
+        )
+        iid = created.data["id"]
+        d = authenticated_client.delete(
+            reverse("record-images-detail", kwargs={"record_pk": rid, "pk": iid})
+        )
+        assert d.status_code == status.HTTP_204_NO_CONTENT
+        assert RecordImage.objects.filter(pk=iid).count() == 0
+        detail = authenticated_client.get(reverse("records-detail", kwargs={"pk": rid}))
+        assert detail.data["images"] == []
+
+    def test_delete_record_image_non_owner_forbidden(
+        self, authenticated_client, other_user, collection
+    ):
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Lock img", object_number="RI-LO"),
+            format="json",
+        ).data["id"]
+        created = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "thumbnail", "context": "archive"},
+            format="multipart",
+        )
+        iid = created.data["id"]
+        other_client = APIClient()
+        other_client.post(
+            reverse("auth-login"),
+            {"username": "otheruser", "password": "testpass123"},
+            format="json",
+        )
+        d = other_client.delete(
+            reverse("record-images-detail", kwargs={"record_pk": rid, "pk": iid})
+        )
+        assert d.status_code == status.HTTP_403_FORBIDDEN
+        assert RecordImage.objects.filter(pk=iid).count() == 1
+
+    def test_create_record_image_closed_collection_forbidden(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Closed imgs", object_number="RI-CL"),
+            format="json",
+        ).data["id"]
+        authenticated_client.patch(
+            reverse("collections-detail", kwargs={"pk": cid}),
+            {"is_closed": True},
+            format="json",
+        )
+        r2 = authenticated_client.post(
+            reverse("record-images-list", kwargs={"record_pk": rid}),
+            {"image": create_test_image(), "role": "thumbnail", "context": "portfolio"},
+            format="multipart",
+        )
+        assert r2.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_deleting_parent_record_image_nulls_derivative_fk(self, authenticated_client, collection):
+        """``derived_from`` uses SET_NULL when the referenced image is deleted."""
+        if not collection:
+            return
+        rid = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(collection["id"], title="Deriv", object_number="RI-DV"),
+            format="json",
+        ).data["id"]
+        base_url = reverse("record-images-list", kwargs={"record_pk": rid})
+        m = authenticated_client.post(
+            base_url,
+            {"image": create_test_image(), "role": "preservation_master", "context": "archive"},
+            format="multipart",
+        )
+        d = authenticated_client.post(
+            base_url,
+            {"image": create_test_png(8, 8), "role": "access_derivative", "context": "archive"},
+            format="multipart",
+        )
+        assert m.status_code == status.HTTP_201_CREATED
+        assert d.status_code == status.HTTP_201_CREATED
+        master_id = m.data["id"]
+        child = RecordImage.objects.get(pk=d.data["id"])
+        RecordImage.objects.filter(pk=child.pk).update(derived_from_id=master_id)
+        del_resp = authenticated_client.delete(
+            reverse("record-images-detail", kwargs={"record_pk": rid, "pk": master_id})
+        )
+        assert del_resp.status_code == status.HTTP_204_NO_CONTENT
+        child.refresh_from_db()
+        assert child.derived_from_id is None
+        assert RecordImage.objects.filter(pk=child.pk).exists()

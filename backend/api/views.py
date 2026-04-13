@@ -4,15 +4,14 @@ Django REST Framework views for Ekho API
 Reference: docs/api-specification.md
 """
 
-import base64
-import mimetypes
 import os
 import uuid
 
 from django.core.files.base import ContentFile
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import viewsets, status
+from rest_framework import generics, viewsets, status
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -26,7 +25,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from .models import Actor, Collection, Record
+from .models import Actor, Collection, Record, RecordImage
 from .record_validators import validate_record_data_payload
 from .system_identity import get_or_create_system_instance_id
 from .record_actor_refs import (
@@ -35,11 +34,24 @@ from .record_actor_refs import (
     sanitize_actor_refs_for_import,
     strip_actor_id,
 )
-from .serializers import ActorSerializer, UserSerializer, CollectionSerializer, RecordSerializer
+from .serializers import (
+    ActorSerializer,
+    CollectionSerializer,
+    RecordImageSerializer,
+    RecordSerializer,
+    UserSerializer,
+)
 from .permissions import (
     IsActorEditorOrReadOnly,
     IsCollectionOwnerOrReadOnly,
     IsRecordOwnerOrReadOnly,
+)
+from .record_export_import import (
+    EKHO_EXPORT_VERSIONS_IMPORT,
+    apply_import_nested_images,
+    build_record_export_payload,
+    decode_import_nested_images,
+    decode_import_representative_image,
 )
 
 
@@ -75,8 +87,16 @@ def _require_import_uuid(value, field_label: str) -> uuid.UUID:
 
 def _validated_import_payload(request_data: dict):
     ver = request_data.get("ekho_export_version")
-    if ver != 1:
-        raise ValueError("Unsupported or missing ekho_export_version (expected 1).")
+    try:
+        ver_int = int(ver)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "Unsupported or missing ekho_export_version (expected 1 or 2)."
+        ) from None
+    if ver_int not in EKHO_EXPORT_VERSIONS_IMPORT:
+        raise ValueError(
+            "Unsupported or missing ekho_export_version (expected 1 or 2)."
+        )
     col = request_data.get("collection")
     if not isinstance(col, dict):
         raise ValueError("collection must be an object.")
@@ -91,38 +111,7 @@ def _validated_import_payload(request_data: dict):
         raise ValueError("record.data is required.")
     if not isinstance(raw_data, dict):
         raise ValueError("record.data must be a JSON object.")
-    return col, rec, raw_data
-
-
-def _decode_import_image(rec_block: dict) -> tuple[bytes, str] | None:
-    p = rec_block.get("representative_image")
-    if not p:
-        return None
-    if not isinstance(p, dict):
-        raise ValueError("record.representative_image must be an object.")
-    b64 = p.get("base64")
-    if not isinstance(b64, str) or not b64.strip():
-        raise ValueError(
-            "record.representative_image.base64 is required when an image is present."
-        )
-    try:
-        raw = base64.b64decode(b64)
-    except Exception:
-        raise ValueError("record.representative_image.base64 is not valid base64.") from None
-    max_size = 10 * 1024 * 1024
-    if len(raw) > max_size:
-        raise ValueError("Image file size cannot exceed 10MB")
-    filename = p.get("filename") or "import.jpg"
-    if not isinstance(filename, str):
-        filename = "import.jpg"
-    filename = os.path.basename(filename.strip()) or "import.jpg"
-    content_type = p.get("content_type")
-    if content_type is None:
-        content_type = mimetypes.guess_type(filename)[0]
-    allowed_types = ["image/jpeg", "image/png", "image/gif"]
-    if content_type not in allowed_types:
-        raise ValueError("Image must be JPEG, PNG, or GIF")
-    return raw, filename
+    return col, rec, raw_data, ver_int
 
 
 def _current_collection_for_import(user, collection_id):
@@ -200,7 +189,12 @@ def _get_or_create_original_collection(user, col_meta: dict) -> Collection:
     )
 
 
-def _save_imported_record(collection, data_dict: dict, image_tuple: tuple[bytes, str] | None):
+def _save_imported_record(
+    collection,
+    data_dict: dict,
+    image_tuple: tuple[bytes, str] | None,
+    nested_image_specs: list | None = None,
+):
     now = timezone.now()
     rec = Record.objects.create(
         collection=collection,
@@ -213,6 +207,8 @@ def _save_imported_record(collection, data_dict: dict, image_tuple: tuple[bytes,
         cf = ContentFile(bytes(raw), name=fname)
         unique = f"{uuid.uuid4().hex}_{os.path.basename(fname)}"
         rec.representative_image.save(unique, cf, save=True)
+    if nested_image_specs:
+        apply_import_nested_images(rec, nested_image_specs)
     return rec
 
 
@@ -580,8 +576,10 @@ class RecordViewSet(viewsets.ModelViewSet):
                 | Q(collection__description__icontains=search)
             )
 
-        return queryset.select_related("collection", "collection__owner").order_by(
-            "-created_at"
+        return (
+            queryset.select_related("collection", "collection__owner")
+            .prefetch_related("images")
+            .order_by("-created_at")
         )
     
     def list(self, request, *args, **kwargs):
@@ -691,7 +689,10 @@ class RecordViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_destroy(self, instance):
-        """Delete stored image file when record is deleted."""
+        """Delete stored image files when record is deleted."""
+        for img in instance.images.all():
+            if img.image:
+                img.image.delete(save=False)
         if instance.representative_image:
             instance.representative_image.delete(save=False)
         instance.delete()
@@ -700,11 +701,10 @@ class RecordViewSet(viewsets.ModelViewSet):
     def export(self, request, pk=None):
         """
         Download a versioned JSON export of this record (domain data, collection
-        metadata for cross-system import, optional embedded representative image).
+        metadata, optional representative image, record.images for v2).
         GET /api/records/{id}/export/
         """
         record = self.get_object()
-        collection = record.collection
 
         try:
             raw_data = record.data if isinstance(record.data, dict) else {}
@@ -715,50 +715,11 @@ class RecordViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        origin = collection.origin_ekho_instance_id
-        owner = collection.owner
-        payload = {
-            "ekho_export_version": 1,
-            "source_ekho_instance_id": str(get_or_create_system_instance_id()),
-            "collection": {
-                "stable_id": str(collection.stable_id),
-                "name": collection.name,
-                "description": collection.description,
-                "responsible_department": collection.responsible_department or "",
-                "owning_organization": (
-                    {"id": collection.owning_organization_id}
-                    if collection.owning_organization_id
-                    else None
-                ),
-                "origin_ekho_instance_id": str(origin) if origin is not None else None,
-                "is_closed": collection.is_closed,
-                "is_listed": collection.is_listed,
-                "original_creator": {
-                    "username": owner.username,
-                },
-            },
-            "record": {
-                "data": data,
-            },
-        }
-
-        if record.representative_image:
-            img = record.representative_image
-            img.open("rb")
-            try:
-                blob = img.read()
-            finally:
-                img.close()
-            name = img.name or ""
-            filename = os.path.basename(name) if name else ""
-            content_type = (
-                mimetypes.guess_type(filename)[0] or "application/octet-stream"
-            )
-            payload["record"]["representative_image"] = {
-                "filename": filename,
-                "content_type": content_type,
-                "base64": base64.b64encode(blob).decode("ascii"),
-            }
+        payload = build_record_export_payload(
+            record,
+            system_instance_id=get_or_create_system_instance_id(),
+            validated_data=data,
+        )
 
         response = JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
         filename = f'ekho-record-{record.pk}.json'
@@ -787,14 +748,17 @@ class RecordViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            col_meta, rec_block, raw_data = _validated_import_payload(request.data)
+            col_meta, rec_block, raw_data, export_ver = _validated_import_payload(
+                request.data
+            )
             data_sanitized = sanitize_actor_refs_for_import(raw_data, request.user)
             data_validated = validate_record_data_payload(data_sanitized)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            image_tuple = _decode_import_image(rec_block)
+            image_tuple = decode_import_representative_image(rec_block)
+            nested_specs = decode_import_nested_images(rec_block, export_ver)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -804,7 +768,9 @@ class RecordViewSet(viewsets.ModelViewSet):
             if mode == "acquisition":
                 current = _current_collection_for_import(request.user, current_id)
                 with transaction.atomic():
-                    rec = _save_imported_record(current, data_validated, image_tuple)
+                    rec = _save_imported_record(
+                        current, data_validated, image_tuple, nested_specs
+                    )
                 return Response(
                     {"record_ids": [rec.pk], "mode": mode},
                     status=status.HTTP_201_CREATED,
@@ -813,7 +779,9 @@ class RecordViewSet(viewsets.ModelViewSet):
             if mode == "original_only":
                 with transaction.atomic():
                     original = _get_or_create_original_collection(request.user, col_meta)
-                    rec = _save_imported_record(original, data_validated, image_tuple)
+                    rec = _save_imported_record(
+                        original, data_validated, image_tuple, nested_specs
+                    )
                 return Response(
                     {"record_ids": [rec.pk], "mode": mode},
                     status=status.HTTP_201_CREATED,
@@ -823,8 +791,12 @@ class RecordViewSet(viewsets.ModelViewSet):
             current = _current_collection_for_import(request.user, current_id)
             with transaction.atomic():
                 original = _get_or_create_original_collection(request.user, col_meta)
-                r1 = _save_imported_record(original, data_validated, image_tuple)
-                r2 = _save_imported_record(current, data_validated, image_tuple)
+                r1 = _save_imported_record(
+                    original, data_validated, image_tuple, nested_specs
+                )
+                r2 = _save_imported_record(
+                    current, data_validated, image_tuple, nested_specs
+                )
             return Response(
                 {"record_ids": [r1.pk, r2.pk], "mode": mode},
                 status=status.HTTP_201_CREATED,
@@ -833,3 +805,225 @@ class RecordViewSet(viewsets.ModelViewSet):
             return _permission_denied_response(e)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RecordImageListCreateView(generics.ListCreateAPIView):
+    """
+    GET/POST /api/records/{record_pk}/images/
+    List is visible to anyone who can see the parent record; create requires the
+    collection owner and an open collection.
+    """
+
+    permission_classes = [AllowAny]
+    serializer_class = RecordImageSerializer
+
+    def get_parent_record(self):
+        return get_object_or_404(
+            Record.objects.filter(_record_visibility_q(self.request.user)),
+            pk=self.kwargs["record_pk"],
+        )
+
+    def get_queryset(self):
+        return RecordImage.objects.filter(record_id=self.kwargs["record_pk"]).order_by(
+            "sort_order", "id"
+        )
+
+    def list(self, request, *args, **kwargs):
+        self.get_parent_record()
+        return super().list(request, *args, **kwargs)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    def create(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        record = self.get_parent_record()
+        if record.collection.owner != request.user:
+            return Response(
+                {"error": "Only the collection owner can add images to this record."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if record.collection.is_closed:
+            return Response(
+                {"error": "Cannot add images to a record in a closed collection."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(record=self.get_parent_record())
+
+
+class RecordImageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET/PUT/PATCH/DELETE /api/records/{record_pk}/images/{pk}/
+    Retrieve follows record visibility; writes require the collection owner.
+    """
+
+    permission_classes = [AllowAny]
+    serializer_class = RecordImageSerializer
+
+    def get_parent_record(self):
+        return get_object_or_404(
+            Record.objects.filter(_record_visibility_q(self.request.user)),
+            pk=self.kwargs["record_pk"],
+        )
+
+    def get_object(self):
+        record = self.get_parent_record()
+        return get_object_or_404(RecordImage, pk=self.kwargs["pk"], record=record)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    def update(self, request, *args, **kwargs):
+        return self._check_write_then(super().update, request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self._check_write_then(super().partial_update, request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return self._check_write_then(super().destroy, request, *args, **kwargs)
+
+    def _check_write_then(self, fn, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        image = self.get_object()
+        if image.record.collection.owner != request.user:
+            return Response(
+                {"error": "Only the collection owner can modify this image."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if image.record.collection.is_closed:
+            return Response(
+                {"error": "Cannot modify images in a closed collection."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return fn(request, *args, **kwargs)
+
+    def perform_destroy(self, instance):
+        if instance.image:
+            instance.image.delete(save=False)
+        instance.delete()
+
+
+class RecordImageListCreateView(generics.ListCreateAPIView):
+    """
+    GET/POST /api/records/{record_pk}/images/
+    List is visible to anyone who can see the parent record; create requires the
+    collection owner and an open collection.
+    """
+
+    permission_classes = [AllowAny]
+    serializer_class = RecordImageSerializer
+
+    def get_parent_record(self):
+        return get_object_or_404(
+            Record.objects.filter(_record_visibility_q(self.request.user)),
+            pk=self.kwargs["record_pk"],
+        )
+
+    def get_queryset(self):
+        return RecordImage.objects.filter(record_id=self.kwargs["record_pk"]).order_by(
+            "sort_order", "id"
+        )
+
+    def list(self, request, *args, **kwargs):
+        self.get_parent_record()
+        return super().list(request, *args, **kwargs)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    def create(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        record = self.get_parent_record()
+        if record.collection.owner != request.user:
+            return Response(
+                {"error": "Only the collection owner can add images to this record."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if record.collection.is_closed:
+            return Response(
+                {"error": "Cannot add images to a record in a closed collection."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(record=self.get_parent_record())
+
+
+class RecordImageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET/PUT/PATCH/DELETE /api/records/{record_pk}/images/{pk}/
+    Retrieve follows record visibility; writes require the collection owner.
+    """
+
+    permission_classes = [AllowAny]
+    serializer_class = RecordImageSerializer
+
+    def get_parent_record(self):
+        return get_object_or_404(
+            Record.objects.filter(_record_visibility_q(self.request.user)),
+            pk=self.kwargs["record_pk"],
+        )
+
+    def get_object(self):
+        record = self.get_parent_record()
+        return get_object_or_404(RecordImage, pk=self.kwargs["pk"], record=record)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+    def update(self, request, *args, **kwargs):
+        return self._check_write_then(super().update, request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self._check_write_then(super().partial_update, request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return self._check_write_then(super().destroy, request, *args, **kwargs)
+
+    def _check_write_then(self, fn, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        image = self.get_object()
+        if image.record.collection.owner != request.user:
+            return Response(
+                {"error": "Only the collection owner can modify this image."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if image.record.collection.is_closed:
+            return Response(
+                {"error": "Cannot modify images in a closed collection."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return fn(request, *args, **kwargs)
+
+    def perform_destroy(self, instance):
+        if instance.image:
+            instance.image.delete(save=False)
+        instance.delete()

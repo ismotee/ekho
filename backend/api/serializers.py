@@ -9,10 +9,21 @@ import json
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from .models import Actor, Collection, Record
+from .models import Actor, Collection, Record, RecordImage
 from .actor_catalog_validate import actor_catalog_kind, validate_actor_catalog_data
 from .record_actor_refs import validate_actor_refs_for_user
 from .record_validators import validate_record_data_payload
+from .record_image_vocab import (
+    RECORD_IMAGE_CONTEXT_SET,
+    RECORD_IMAGE_ROLE_SET,
+    RECORD_IMAGE_STATUS_SET,
+)
+from .record_image_ingest import analyze_uploaded_file
+from .record_image_format_map import (
+    ALLOWED_MIME_TYPES,
+    IMAGE_UPLOAD_POLICY_SHORT_TEXT,
+    normalized_image_mime,
+)
 
 
 class OrganizationActorRefField(serializers.RelatedField):
@@ -126,6 +137,133 @@ class RecordDataField(serializers.Field):
         raise serializers.ValidationError("data must be a JSON object or JSON string.")
 
 
+class RecordImageSerializer(serializers.ModelSerializer):
+    """Record-attached image: file URL plus autofill metadata (checksum, dimensions, …)."""
+
+    image = serializers.ImageField(write_only=True, required=False)
+    url = serializers.SerializerMethodField(read_only=True)
+    format = serializers.CharField(source="magick_format", read_only=True)
+    derived_from = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = RecordImage
+        fields = [
+            "id",
+            "url",
+            "image",
+            "role",
+            "context",
+            "byte_size",
+            "width",
+            "height",
+            "format",
+            "mime_type",
+            "checksum_sha256",
+            "sort_order",
+            "is_primary",
+            "status",
+            "derived_from",
+            "labels",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "url",
+            "byte_size",
+            "width",
+            "height",
+            "format",
+            "mime_type",
+            "checksum_sha256",
+            "created_at",
+            "updated_at",
+            "derived_from",
+        ]
+
+    def get_url(self, obj):
+        request = self.context.get("request")
+        if not obj.image:
+            return None
+        url = obj.image.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+
+    def get_derived_from(self, obj):
+        if obj.derived_from_id:
+            return {"id": obj.derived_from_id}
+        return None
+
+    def validate_role(self, value):
+        if value not in RECORD_IMAGE_ROLE_SET:
+            raise serializers.ValidationError("Invalid image role.")
+        return value
+
+    def validate_context(self, value):
+        if value not in RECORD_IMAGE_CONTEXT_SET:
+            raise serializers.ValidationError("Invalid image context.")
+        return value
+
+    def validate_status(self, value):
+        if value not in RECORD_IMAGE_STATUS_SET:
+            raise serializers.ValidationError("Invalid image status.")
+        return value
+
+    def validate_labels(self, value):
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("labels must be a JSON object.")
+        return value
+
+    def validate(self, attrs):
+        if self.instance is None and not attrs.get("image"):
+            raise serializers.ValidationError({"image": "No file was submitted."})
+        return attrs
+
+    def create(self, validated_data):
+        upload = validated_data.pop("image")
+        record = validated_data.pop("record")
+        try:
+            analysis = analyze_uploaded_file(upload)
+        except ValueError as exc:
+            raise serializers.ValidationError({"image": str(exc)}) from exc
+        if validated_data.get("is_primary"):
+            RecordImage.objects.filter(record=record).update(is_primary=False)
+        ri = RecordImage(record=record, **validated_data, **analysis)
+        ri.image.save(upload.name, upload, save=True)
+        return ri
+
+    def update(self, instance, validated_data):
+        upload = validated_data.pop("image", None)
+        if validated_data.get("is_primary"):
+            RecordImage.objects.filter(record=instance.record).exclude(
+                pk=instance.pk
+            ).update(is_primary=False)
+        if upload is not None:
+            if instance.image:
+                instance.image.delete(save=False)
+            try:
+                analysis = analyze_uploaded_file(upload)
+            except ValueError as exc:
+                raise serializers.ValidationError({"image": str(exc)}) from exc
+            for key in (
+                "byte_size",
+                "width",
+                "height",
+                "magick_format",
+                "mime_type",
+                "checksum_sha256",
+            ):
+                setattr(instance, key, analysis[key])
+            instance.image.save(upload.name, upload, save=False)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
 class ActorSerializer(serializers.ModelSerializer):
     """Actor catalog entry (`data`: person XOR organization identifies the actor; org may include contact_person)."""
 
@@ -145,6 +283,7 @@ class RecordSerializer(serializers.ModelSerializer):
 
     data = RecordDataField(required=False)
     representative_image = serializers.ImageField(required=False, allow_null=True)
+    images = RecordImageSerializer(many=True, read_only=True)
     collection_name = serializers.SerializerMethodField(read_only=True)
     collection_owner_username = serializers.SerializerMethodField(read_only=True)
 
@@ -154,6 +293,7 @@ class RecordSerializer(serializers.ModelSerializer):
             "id",
             "data",
             "representative_image",
+            "images",
             "collection",
             "collection_name",
             "collection_owner_username",
@@ -166,6 +306,7 @@ class RecordSerializer(serializers.ModelSerializer):
             "updated_at",
             "collection_name",
             "collection_owner_username",
+            "images",
         ]
 
     def get_collection_name(self, obj):
@@ -178,14 +319,15 @@ class RecordSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        if instance.representative_image:
-            request = self.context.get("request")
+        request = self.context.get("request")
+        file_field = instance.get_representative_image_file()
+        if file_field:
             if request:
                 representation["representative_image"] = request.build_absolute_uri(
-                    instance.representative_image.url
+                    file_field.url
                 )
             else:
-                representation["representative_image"] = instance.representative_image.url
+                representation["representative_image"] = file_field.url
         else:
             representation["representative_image"] = None
         return representation
@@ -222,7 +364,9 @@ class RecordSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Image file size cannot exceed 10MB"
                 )
-            allowed_types = ["image/jpeg", "image/png", "image/gif"]
-            if value.content_type not in allowed_types:
-                raise serializers.ValidationError("Image must be JPEG, PNG, or GIF")
+            ct = normalized_image_mime(value.content_type)
+            if ct not in ALLOWED_MIME_TYPES:
+                raise serializers.ValidationError(
+                    f"Image must be {IMAGE_UPLOAD_POLICY_SHORT_TEXT}"
+                )
         return value

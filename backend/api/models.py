@@ -9,6 +9,12 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import User
 
+from .record_image_vocab import (
+    RECORD_IMAGE_CONTEXTS,
+    RECORD_IMAGE_ROLES,
+    RECORD_IMAGE_STATUSES,
+)
+
 
 class SystemIdentity(models.Model):
     """
@@ -100,6 +106,73 @@ class Record(models.Model):
             if num:
                 return str(num)
         return f"Record {self.pk}"
+
+    def get_representative_image_file(self):
+        """
+        FieldFile for list/detail thumbnail: legacy `representative_image`, else the first
+        RecordImage with role/context thumbnail+portfolio, else first thumbnail.
+        """
+        if self.representative_image:
+            return self.representative_image
+        qs = self.images.order_by("sort_order", "id")
+        for im in qs:
+            if im.role == "thumbnail" and im.context == "portfolio":
+                return im.image
+        for im in qs:
+            if im.role == "thumbnail":
+                return im.image
+        return None
+
+
+class RecordImage(models.Model):
+    """
+    Multi-image attachment for a record (role/context vocab in record_image_vocab).
+    Binary file and indexed autofill columns live here, not in Record.data JSON.
+    """
+
+    record = models.ForeignKey(
+        Record,
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    image = models.ImageField(upload_to="records/", max_length=255)
+    role = models.CharField(max_length=32, choices=[(r, r) for r in RECORD_IMAGE_ROLES])
+    context = models.CharField(
+        max_length=32, choices=[(c, c) for c in RECORD_IMAGE_CONTEXTS]
+    )
+    byte_size = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    magick_format = models.CharField(max_length=32, blank=True, null=True)
+    mime_type = models.CharField(max_length=128)
+    checksum_sha256 = models.CharField(max_length=64)
+    sort_order = models.IntegerField(default=0)
+    is_primary = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=16,
+        choices=[(s, s) for s in RECORD_IMAGE_STATUSES],
+        default=RECORD_IMAGE_STATUSES[0],
+    )
+    derived_from = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="derivatives",
+    )
+    labels = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        indexes = [
+            models.Index(fields=["record", "sort_order"]),
+            models.Index(fields=["record", "role", "context"]),
+        ]
+
+    def __str__(self):
+        return f"RecordImage {self.pk} ({self.role}/{self.context})"
 
 
 class Actor(models.Model):

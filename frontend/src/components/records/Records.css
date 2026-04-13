@@ -957,3 +957,245 @@
     padding-top: 0.35rem;
   }
 }
+
+/* Multi-image editor + detail gallery */
+.record-multi-image-section {
+  margin-top: 0.5rem;
+}
+
+.record-multi-image-heading {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.record-multi-image-server-list {
+  list-style: none;
+  margin: 0 0 1.25rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.record-multi-image-server-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+}
+
+.record-multi-image-server-main {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.record-multi-image-thumb-link {
+  flex-shrink: 0;
+  display: block;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border-muted);
+}
+
+.record-multi-image-thumb {
+  display: block;
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+}
+
+.record-multi-image-server-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.record-multi-image-role-line {
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.record-multi-image-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  background: var(--color-primary-soft-bg, rgba(99, 102, 241, 0.12));
+  color: var(--color-text);
+}
+
+.record-multi-image-badge--muted {
+  font-weight: 500;
+  background: var(--color-border-muted);
+  color: var(--color-text-secondary);
+}
+
+.record-multi-image-empty {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.record-multi-image-stager {
+  padding: 1rem;
+  border: 1px dashed var(--color-border-dashed);
+  border-radius: 0.375rem;
+  background: var(--color-bg-muted);
+}
+
+.record-multi-image-stager-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.record-multi-image-stager-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .record-multi-image-stager-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1rem;
+  }
+
+  .record-multi-image-stager-fields .record-multi-image-primary-row {
+    grid-column: 1 / -1;
+  }
+}
+
+.record-multi-image-primary-row {
+  margin: 0;
+}
+
+.record-multi-image-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.record-multi-image-pending {
+  margin-top: 1rem;
+}
+
+.record-multi-image-pending-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.record-multi-image-pending-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.record-multi-image-pending-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.record-multi-image-pending-name {
+  flex: 1 1 140px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-image-metadata {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.record-image-metadata-row {
+  display: contents;
+}
+
+.record-image-metadata dt {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.record-image-metadata dd {
+  margin: 0;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.record-detail-images {
+  margin: 2rem 0;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.record-detail-images-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: var(--color-text);
+}
+
+.record-detail-images-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.record-detail-images-card {
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.record-detail-images-thumb-wrap {
+  display: block;
+  background: var(--color-bg-muted);
+}
+
+.record-detail-images-thumb {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.record-detail-images-meta {
+  padding: 0.75rem 1rem 1rem;
+}
+
+.record-detail-images-badges {
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}

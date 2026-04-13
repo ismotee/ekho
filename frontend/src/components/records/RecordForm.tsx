@@ -1,18 +1,19 @@
 /**
  * RecordForm Component
  *
- * Sectioned editor / wizard for creating and editing records (domain payload + representative image).
+ * Sectioned editor / wizard for creating and editing records (domain payload + record images).
  *
  * Reference: docs/user-stories/03-records.md (US-010, US-011, US-015), docs/design/03-record-management-design.md
  */
 
-import { useState, FormEvent, useEffect, useCallback, useMemo } from 'react'
+import { useState, FormEvent, useEffect, useCallback, useMemo, useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useRecordStore } from '../../stores/recordStore'
 import { useCollectionStore } from '../../stores/collectionStore'
+import { useAuthStore } from '../../stores/authStore'
 import type { Record as ArtRecord } from '../../stores/recordStore'
 import type { RecordDataDomainKey, RecordPayload } from '../../types/record'
 import type { IdentificationDetails } from '../../types/record/identification'
@@ -22,7 +23,7 @@ import {
   getRecordSecondaryLine,
   getRecordCardYearLine,
 } from '../../types/record'
-import { ImageUpload } from './ImageUpload'
+import { RecordMultiImageSection, type PendingRecordImage } from './RecordMultiImageSection'
 import {
   IdentificationFields,
   AcquisitionFields,
@@ -45,7 +46,7 @@ import './Records.css'
 interface RecordFormProps {
   collectionId?: number
   record?: ArtRecord | null
-  onSave?: (data: { data: RecordPayload; representative_image?: File }) => Promise<void>
+  onSave?: (data: { data: RecordPayload; representative_image?: File; pendingRecordImages?: PendingRecordImage[] }) => Promise<void>
 }
 
 function clonePayload(data: RecordPayload | undefined): RecordPayload {
@@ -155,9 +156,11 @@ function validateDraft(
 export const RecordForm = observer(({ collectionId: propsCollectionId, record: propsRecord, onSave }: RecordFormProps) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { collectionId: urlCollectionId, id: recordId } = useParams<{ collectionId?: string; id?: string }>()
   const recordStore = useRecordStore()
   const collectionStore = useCollectionStore()
+  const authStore = useAuthStore()
   const collectionId: number | undefined =
     propsCollectionId ??
     (urlCollectionId != null &&
@@ -188,8 +191,9 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
     isEditMode ? emptyRecordPayload() : createModeDefaultPayload(),
   )
   const [activeStep, setActiveStep] = useState(0)
-  const [image, setImage] = useState<File | null>(null)
-  const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>(undefined)
+  const [pendingImages, setPendingImages] = useState<PendingRecordImage[]>([])
+  const [imagesUploading, setImagesUploading] = useState(false)
+  const imageErrorHandledRef = useRef(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [sectionErrors, setSectionErrors] = useState<RecordFormSectionErrors>({})
   /** API record `collection` FK — not part of `data.identification_details`. */
@@ -209,20 +213,30 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
     if (currentRecord) {
       setDraft(mergeIdentificationEditDefaults(clonePayload(currentRecord.data)))
       setFormCollectionId(currentRecord.collection)
-      setExistingImageUrl(currentRecord.representative_image || undefined)
       if (!collectionId && currentRecord.collection) {
         collectionStore.fetchCollection(currentRecord.collection)
       }
     }
   }, [isEditMode, propsRecord, recordStore.currentRecord?.id, recordStore.currentRecord?.updated_at, collectionId])
 
+  useEffect(() => {
+    const msg = (location.state as { imageError?: string } | null)?.imageError
+    if (!msg) {
+      imageErrorHandledRef.current = false
+      return
+    }
+    if (imageErrorHandledRef.current) return
+    imageErrorHandledRef.current = true
+    setErrors((prev) => ({ ...prev, general: msg }))
+    navigate(location.pathname + location.search, { replace: true, state: {} })
+  }, [location.state, location.pathname, location.search, navigate])
+
   /** Reset create form when entering create mode or changing URL collection — not on every currentRecord update (that wiped draft after collection default was applied). */
   useEffect(() => {
     if (isEditMode) return
     setDraft(createModeDefaultPayload())
     setFormCollectionId(collectionId)
-    setImage(null)
-    setExistingImageUrl(undefined)
+    setPendingImages([])
     setErrors({})
     setSectionErrors({})
     setActiveStep(0)
@@ -243,6 +257,13 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
     (formCollectionId != null && collectionStore.collections.find((c) => c.id === formCollectionId)) ||
     null
   const isDisabled = collection?.is_closed || false
+  const canManageImages =
+    !!authStore.user &&
+    !!collection &&
+    authStore.user.id === collection.owner.id &&
+    authStore.isAuthenticated
+
+  const serverImages = (propsRecord ?? recordStore.currentRecord)?.images ?? []
 
   const reviewSummary = useMemo(() => {
     return {
@@ -280,21 +301,72 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
     }
 
     try {
-      const savePayload: { data: RecordPayload; representative_image?: File } = {
+      const savePayload: {
+        data: RecordPayload
+        representative_image?: File
+        pendingRecordImages?: PendingRecordImage[]
+      } = {
         data: compactRecordPayloadForSave(draft),
-        ...(image ? { representative_image: image } : {}),
+        ...(pendingImages.length > 0 ? { pendingRecordImages: pendingImages } : {}),
       }
 
       if (onSave) {
         await onSave(savePayload)
+        setPendingImages([])
       } else if (isEditMode && recordId) {
-        await recordStore.updateRecord(Number(recordId), {
-          ...savePayload,
+        const rid = Number(recordId)
+        await recordStore.updateRecord(rid, {
+          data: savePayload.data,
           ...(formCollectionId != null ? { collection: formCollectionId } : {}),
         })
+        if (pendingImages.length > 0 && canManageImages) {
+          setImagesUploading(true)
+          try {
+            for (const p of pendingImages) {
+              await recordStore.createRecordImage(rid, {
+                file: p.file,
+                role: p.role,
+                context: p.context,
+                is_primary: p.is_primary,
+              })
+            }
+            setPendingImages([])
+            await recordStore.fetchRecord(rid)
+          } catch {
+            setErrors((prev) => ({ ...prev, general: t('recordForm.recordImages.uploadError') }))
+            setImagesUploading(false)
+            await recordStore.fetchRecord(rid)
+            return
+          }
+          setImagesUploading(false)
+        }
         navigate(`/records/${recordId}`)
       } else if (formCollectionId != null) {
-        await recordStore.createRecord(formCollectionId, savePayload)
+        const created = await recordStore.createRecord(formCollectionId, {
+          data: savePayload.data,
+        })
+        if (pendingImages.length > 0 && canManageImages) {
+          setImagesUploading(true)
+          try {
+            for (const p of pendingImages) {
+              await recordStore.createRecordImage(created.id, {
+                file: p.file,
+                role: p.role,
+                context: p.context,
+                is_primary: p.is_primary,
+              })
+            }
+            setPendingImages([])
+          } catch {
+            setImagesUploading(false)
+            navigate(`/records/${created.id}/edit`, {
+              replace: true,
+              state: { imageError: t('recordForm.recordImages.uploadError') },
+            })
+            return
+          }
+          setImagesUploading(false)
+        }
         navigate(`/collections/${formCollectionId}`)
       } else {
         throw new Error('Collection ID is required to create a record')
@@ -452,13 +524,13 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
                     ))}
                   {errors.object_number && <span className="field-error">{errors.object_number}</span>}
                   <div className="record-form-image-block">
-                    <ImageUpload
-                      label={t('recordForm.wizard.representativeImageLabel')}
-                      inputId="record-representative-image"
-                      image={image}
-                      onImageChange={setImage}
+                    <RecordMultiImageSection
                       disabled={isDisabled}
-                      existingImageUrl={existingImageUrl}
+                      canManageImages={canManageImages}
+                      recordId={isEditMode && recordId ? Number(recordId) : undefined}
+                      serverImages={serverImages}
+                      pendingImages={pendingImages}
+                      onPendingChange={setPendingImages}
                     />
                   </div>
                 </>
@@ -533,9 +605,9 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
                 type={activeStep === reviewStepIndex ? 'submit' : 'button'}
                 onClick={activeStep === reviewStepIndex ? undefined : () => void submitRecord()}
                 className="btn btn-primary"
-                disabled={isDisabled || recordStore.loading}
+                disabled={isDisabled || recordStore.loading || imagesUploading}
               >
-                {recordStore.loading
+                {recordStore.loading || imagesUploading
                   ? t('recordForm.wizard.loadingSave')
                   : isEditMode
                     ? t('recordForm.wizard.saveChanges')

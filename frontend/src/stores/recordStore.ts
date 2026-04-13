@@ -9,9 +9,10 @@
 
 import { makeAutoObservable, runInAction } from 'mobx'
 import { api, ApiError } from '../services/api'
-import type { Record, RecordPayload } from '../types/record'
+import type { Record, RecordPayload, RecordImage } from '../types/record'
+import type { RecordImageContext, RecordImageRole } from '../types/record/imageVocabulary'
 
-export type { Record, RecordPayload } from '../types/record'
+export type { Record, RecordPayload, RecordImage } from '../types/record'
 
 export interface PaginatedResponse<T> {
   count: number
@@ -34,6 +35,15 @@ export interface UpdateRecordOptions {
   representative_image?: File
   /** REST `collection` FK — not part of `data`. */
   collection?: number
+}
+
+export interface CreateRecordImageOptions {
+  file: File
+  role: RecordImageRole
+  context: RecordImageContext
+  is_primary?: boolean
+  sort_order?: number
+  status?: 'draft' | 'approved' | 'suppressed'
 }
 
 export class RecordStore {
@@ -263,6 +273,32 @@ export class RecordStore {
       })
       throw error
     }
+  }
+
+  async createRecordImage(recordId: number, options: CreateRecordImageOptions): Promise<RecordImage> {
+    const formData = new FormData()
+    formData.append('image', options.file)
+    formData.append('role', options.role)
+    formData.append('context', options.context)
+    if (options.sort_order !== undefined) {
+      formData.append('sort_order', String(options.sort_order))
+    }
+    if (options.is_primary) {
+      formData.append('is_primary', 'true')
+    }
+    if (options.status) {
+      formData.append('status', options.status)
+    }
+
+    const response = await api.post<RecordImage>(`/records/${recordId}/images/`, formData, true)
+    if (!response.data) {
+      throw new Error('No data returned from create record image')
+    }
+    return response.data
+  }
+
+  async deleteRecordImage(recordId: number, imageId: number): Promise<void> {
+    await api.delete(`/records/${recordId}/images/${imageId}/`)
   }
 
   async deleteRecord(id: number): Promise<void> {
