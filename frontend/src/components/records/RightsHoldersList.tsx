@@ -30,6 +30,14 @@ export function RightsHoldersList({
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.rights.holdersLegend')}</legend>
       <p className="record-form-repeatable-hint">{t('recordForm.rights.holdersHint')}</p>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange([...holders, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.rights.addHolder')}
+      </button>
       {holders.map((actor, hIndex) => (
         <CollapsibleRepeatableRow
           key={hIndex}
@@ -60,14 +68,6 @@ export function RightsHoldersList({
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange([...holders, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.rights.addHolder')}
-      </button>
     </fieldset>
   )
 }

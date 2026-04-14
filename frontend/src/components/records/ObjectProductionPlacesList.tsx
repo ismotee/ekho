@@ -28,6 +28,14 @@ export function ObjectProductionPlacesList({
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.history.productionPlacesLegend')}</legend>
       <p className="record-form-repeatable-hint">{t('recordForm.history.productionPlacesHint')}</p>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange([...places, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.history.addProductionPlace')}
+      </button>
       {places.map((row, index) => (
         <CollapsibleRepeatableRow
           key={index}
@@ -77,14 +85,6 @@ export function ObjectProductionPlacesList({
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange([...places, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.history.addProductionPlace')}
-      </button>
     </fieldset>
   )
 }

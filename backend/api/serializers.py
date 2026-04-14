@@ -26,8 +26,8 @@ from .record_image_format_map import (
 )
 
 
-class OrganizationActorRefField(serializers.RelatedField):
-    """Read/write `{id}` or `null` for a catalog actor that must be an organization."""
+class CatalogActorRefField(serializers.RelatedField):
+    """Read/write `{id}` or `null` for a catalog actor (person or organization)."""
 
     queryset = Actor.objects.all()
 
@@ -70,7 +70,7 @@ class CollectionSerializer(serializers.ModelSerializer):
     """Serializer for Collection model"""
     owner = UserSerializer(read_only=True)
     record_count = serializers.SerializerMethodField()
-    owning_organization = OrganizationActorRefField(
+    owning_organization = CatalogActorRefField(
         allow_null=True,
         required=False,
     )
@@ -87,9 +87,10 @@ class CollectionSerializer(serializers.ModelSerializer):
     def validate_owning_organization(self, value):
         if value is None:
             return None
-        if actor_catalog_kind(value.data) != "organization":
+        kind = actor_catalog_kind(value.data)
+        if kind not in ("person", "organization"):
             raise serializers.ValidationError(
-                "owning_organization must reference an organization actor."
+                "owning_organization must reference a catalog actor (person or organization)."
             )
         request = self.context.get("request")
         user = getattr(request, "user", None) if request else None

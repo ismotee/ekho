@@ -37,6 +37,14 @@ export function RoledActorRepeatableList({
 
   return (
     <>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange([...rows, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.history.addActor')}
+      </button>
       {rows.map((row, index) => (
         <CollapsibleRepeatableRow
           key={index}
@@ -77,14 +85,6 @@ export function RoledActorRepeatableList({
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange([...rows, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.history.addActor')}
-      </button>
     </>
   )
 }

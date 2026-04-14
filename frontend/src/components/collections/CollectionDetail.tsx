@@ -36,7 +36,8 @@ function isValidEkhoImportPayload(value: unknown): value is Record<string, unkno
 }
 
 export const CollectionDetail = observer(() => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage ?? i18n.language
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const collectionStore = useCollectionStore()
@@ -148,20 +149,20 @@ export const CollectionDetail = observer(() => {
 
   return (
     <div className="collection-detail">
-      <Link to="/collections" className="back-link">← Back to Collections</Link>
+      <Link to="/collections" className="back-link">{t('collections.detail.backToList')}</Link>
       
       <div className="collection-header">
         <div className="collection-title-section">
           <h1>{collection.name}</h1>
-          {collection.is_closed && <span className="badge">Closed</span>}
+          {collection.is_closed && <span className="badge">{t('collections.closed')}</span>}
         </div>
         {canEdit && (
           <div className="collection-actions">
             <button onClick={() => navigate(`/collections/${collection.id}/edit`)} className="btn btn-primary">
-              Edit
+              {t('common.edit')}
             </button>
             <button onClick={() => setShowCloseDialog(true)} className="btn btn-danger">
-              Close Collection
+              {t('collections.detail.closeCollection')}
             </button>
           </div>
         )}
@@ -169,7 +170,9 @@ export const CollectionDetail = observer(() => {
       
       <div className="collection-info">
         {collection.description && (
-          <p><strong>Description:</strong> {collection.description}</p>
+          <p>
+            <strong>{t('collections.descriptionLabel')}:</strong> {collection.description}
+          </p>
         )}
         {collection.responsible_department?.trim() ? (
           <p>
@@ -182,23 +185,27 @@ export const CollectionDetail = observer(() => {
             <strong>{t('collections.owningOrganization')}:</strong> {owningOrgLabel}
           </p>
         ) : null}
-        <p><strong>Owner:</strong> {collection.owner.username}</p>
-        <p><strong>Created:</strong> {new Date(collection.created_at).toLocaleDateString()}</p>
+        <p>{t('collections.listCardOwner', { username: collection.owner.username })}</p>
+        <p>
+          {t('collections.listCardCreated', {
+            date: new Date(collection.created_at).toLocaleDateString(locale),
+          })}
+        </p>
         {collection.record_count !== undefined && (
-          <p><strong>Records:</strong> {collection.record_count}</p>
+          <p>{t('collections.detail.recordCount', { count: collection.record_count })}</p>
         )}
       </div>
 
       <div className="records-section">
         <div className="records-section-header">
-          <h2>Records</h2>
+          <h2>{t('records.title')}</h2>
           {canEdit && (
             <div className="records-section-actions">
               <Link 
                 to={`/collections/${collection.id}/records/new`} 
                 className="btn btn-primary"
               >
-                + Add Record
+                {t('collections.detail.addRecord')}
               </Link>
               <button
                 type="button"

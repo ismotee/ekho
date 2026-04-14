@@ -19,26 +19,8 @@ export const OBJECT_TYPE_FI: readonly string[] = [
   'äänite',
 ]
 
-/** docs/data/identification-models.md — Reference<ObjectNameValue> */
-export const OBJECT_NAME_VALUE_FI: readonly string[] = [
-  'asetelmat (kuvataide)',
-  'assemblaasit',
-  'friisit (kuvataide)',
-  'installaatiot',
-  'kokonaistaideteokset',
-  'kollaasit',
-  'maalaukset',
-  'madonnat (taide)',
-  'mosaiikit',
-  'muotokuvat',
-  'pastissit',
-  'piirustukset (taide)',
-  'readymade-teokset',
-  'taidelasi',
-  'thangkat',
-  'tussityöt',
-  'veistokset',
-]
+/** docs/data/identification-models.md — Reference<ObjectNameValue> (MAO/TAO leaves under http://www.yso.fi/onto/mao/p2990) */
+export { OBJECT_NAME_VALUE_FI } from './maoObjectNameValues'
 
 /** docs/data/identification-models.md — Reference<ObjectNameType> */
 export const OBJECT_NAME_TYPE_FI: readonly string[] = ['pääluokka', 'erikoisluokka']

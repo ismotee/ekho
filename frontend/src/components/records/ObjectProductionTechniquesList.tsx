@@ -28,6 +28,14 @@ export function ObjectProductionTechniquesList({
   return (
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.history.techniquesLegend')}</legend>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange([...techniques, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.history.addTechnique')}
+      </button>
       {techniques.map((row, index) => (
         <CollapsibleRepeatableRow
           key={index}
@@ -76,14 +84,6 @@ export function ObjectProductionTechniquesList({
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange([...techniques, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.history.addTechnique')}
-      </button>
     </fieldset>
   )
 }

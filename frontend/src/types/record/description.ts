@@ -22,7 +22,8 @@ export interface PhysicalDescription {
   text?: string
   photo_format?: ReferenceField
   orientation?: ReferenceField
-  color?: ReferenceField
+  /** YSA värit; one term or several when multiselect in UI. */
+  color?: ReferenceField | ReferenceField[]
   audio?: ReferenceField
   form?: ReferenceField
   edition_number?: string

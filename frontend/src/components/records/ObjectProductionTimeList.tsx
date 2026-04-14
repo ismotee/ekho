@@ -34,6 +34,14 @@ export function ObjectProductionTimeList({
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.history.productionDatesLegend')}</legend>
       <p className="record-form-repeatable-hint">{t('recordForm.history.productionDatesHint')}</p>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange([...dates, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.history.addProductionDate')}
+      </button>
       {dates.map((row, index) => (
         <CollapsibleRepeatableRow
           key={index}
@@ -93,14 +101,6 @@ export function ObjectProductionTimeList({
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange([...dates, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.history.addProductionDate')}
-      </button>
     </fieldset>
   )
 }

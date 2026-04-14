@@ -115,7 +115,9 @@ export function physicalDescriptionHasContent(p: PhysicalDescription): boolean {
     p.object_component?.some(objectComponentRowHasContent) ||
     referenceFieldFi(p.photo_format) ||
     referenceFieldFi(p.orientation) ||
-    referenceFieldFi(p.color) ||
+    (Array.isArray(p.color)
+      ? p.color.some((c) => (typeof c === 'string' ? c.trim() : referenceFieldFi(c)))
+      : referenceFieldFi(p.color)) ||
     referenceFieldFi(p.audio) ||
     referenceFieldFi(p.form)
   )
@@ -292,6 +294,20 @@ export function compactDescriptionForSave(d: Description): Description | undefin
         })
         .filter(objectComponentRowHasContent)
       if (p.object_component.length === 0) delete p.object_component
+    }
+    if (p.color != null) {
+      if (Array.isArray(p.color)) {
+        const cols = p.color
+          .map((c) => (typeof c === 'string' ? referenceFieldToPayload(c.trim()) : c))
+          .filter((c) => referenceFieldFi(c))
+        if (cols.length) p.color = cols
+        else delete p.color
+      } else {
+        const ref =
+          typeof p.color === 'string' ? referenceFieldToPayload(p.color.trim()) : p.color
+        if (referenceFieldFi(ref)) p.color = [ref]
+        else delete p.color
+      }
     }
     if (physicalDescriptionHasContent(p)) out.physical_description = p
     else delete out.physical_description

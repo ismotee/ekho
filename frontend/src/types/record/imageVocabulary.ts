@@ -25,6 +25,7 @@ export const RECORD_IMAGE_CONTEXTS = [
   'archive',
   'documentation',
   'condition',
+  'object_condition_survey',
   'publication',
   'digitalization',
 ] as const

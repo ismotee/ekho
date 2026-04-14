@@ -92,5 +92,6 @@ Binary files and rich file metadata stay **outside** `Record.data` JSON. When th
 | `archive` | Long-term collection documentation or vault-oriented logic. |
 | `documentation` | General object documentation (default when nothing more specific fits). |
 | `condition` | Condition assessment or monitoring imagery. |
+| `object_condition_survey` | Object condition survey / condition mapping (kuntokartoitus) imagery. |
 | `publication` | Catalogue, book, article, or similar reproduction context. |
 | `digitalization` | Imagery from a formal digitization or imaging campaign (lab output, structured capture session, or project-classified imaging). |

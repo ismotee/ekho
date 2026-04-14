@@ -120,7 +120,7 @@ describe('compactRecordPayloadForSave', () => {
             {},
             {
               description: 'Corner',
-              object_name: { value: { pref_label: { fi: 'maalaukset' } } },
+              object_name: { value: { pref_label: { fi: 'öljymaalaukset' } } },
               object_number: 'OC-1',
             },
           ],
@@ -133,7 +133,7 @@ describe('compactRecordPayloadForSave', () => {
       {
         description: 'Corner',
         object_name: {
-          value: { pref_label: { fi: 'maalaukset' } },
+          value: { pref_label: { fi: 'öljymaalaukset' } },
           language: { pref_label: { fi: 'suomi' } },
         },
         object_number: 'OC-1',

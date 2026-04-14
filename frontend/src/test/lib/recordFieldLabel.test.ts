@@ -13,6 +13,6 @@ describe('translateRecordFieldKey', () => {
   })
 
   it('maps nested object history event label', () => {
-    expect(translateRecordFieldKey('event', i18n, t)).toBe('Associated event')
+    expect(translateRecordFieldKey('event', i18n, t)).toBe('Event related to the object')
   })
 })

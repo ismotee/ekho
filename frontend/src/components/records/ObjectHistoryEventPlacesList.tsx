@@ -28,6 +28,14 @@ export function ObjectHistoryEventPlacesList({
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.history.eventPlacesLegend')}</legend>
       <p className="record-form-repeatable-hint">{t('recordForm.history.eventPlacesHint')}</p>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange([...places, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.history.addEventPlace')}
+      </button>
       {places.map((row, index) => (
         <CollapsibleRepeatableRow
           key={index}
@@ -78,14 +86,6 @@ export function ObjectHistoryEventPlacesList({
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange([...places, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.history.addEventPlace')}
-      </button>
     </fieldset>
   )
 }

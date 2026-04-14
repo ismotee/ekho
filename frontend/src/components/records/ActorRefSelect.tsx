@@ -63,6 +63,7 @@ export const ActorRefSelect = observer(
     <div className="form-group">
       <label htmlFor={id}>{label}</label>
       <FieldInfoText infoKey={infoKey} />
+      <FieldInfoText infoKey="recordForm.actorRef.catalogSelectHelp" />
       {legacy && (
         <p className="record-form-repeatable-hint">
           This value uses legacy inline data. Choose a catalog actor to replace it for saving.

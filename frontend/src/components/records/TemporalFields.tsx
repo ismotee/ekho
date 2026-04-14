@@ -123,6 +123,7 @@ export function DateDetailInputs({
           <ReferenceSelect
             id={`${idPrefix}-qual`}
             label={t('recordForm.temporal.dateQualifier')}
+            infoKey="recordForm.temporal.dateQualifierHelp"
             allowlist={DATE_QUALIFIER_FI}
             valueFi={referenceFieldFi(d.qualifier as never)}
             onChangeFi={(fi) => patchDetail({ qualifier: fi.trim() ? fi : undefined })}
@@ -133,7 +134,7 @@ export function DateDetailInputs({
             <>
               <div className="form-group form-group--grow">
                 <label htmlFor={`${idPrefix}-note`}>{t('recordForm.temporal.note')}</label>
-                <FieldInfoText infoKey={infoPrefix ? `${infoPrefix}.note` : undefined} />
+                <FieldInfoText infoKey="recordForm.temporal.noteHelp" />
                 <textarea
                   id={`${idPrefix}-note`}
                   value={temporalNote(d as Temporal)}
@@ -235,7 +236,7 @@ export function TemporalFields({
   const noteField = (
     <div className="form-group form-group--grow">
       <label htmlFor={`${idPrefix}-note`}>{t('recordForm.temporal.note')}</label>
-      <FieldInfoText infoKey={infoPrefix ? `${infoPrefix}.note` : undefined} />
+      <FieldInfoText infoKey="recordForm.temporal.noteHelp" />
       <textarea
         id={`${idPrefix}-note`}
         value={temporalNote(temporal)}

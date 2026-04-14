@@ -50,12 +50,16 @@
   },
   "collections": {
     "title": "Kokoelmat",
+    "listPageGuide": "Tällä sivulla voit selata olemassa olevia kokoelmia tai aloittaa uuden kokoelman. Klikkaa kokoelmakorttia alla olevasta luettelosta nähdäksesi lisätietoa kyseisestä kokoelmasta.",
+    "listPageGuideGuest": "Tällä sivulla voit selata olemassa olevia kokoelmia. Klikkaa kokoelmakorttia alla olevasta luettelosta nähdäksesi lisätietoa kyseisestä kokoelmasta.",
+    "filterGroupLabel": "Laajenna hakua",
+    "filtersGuide": "Voit laajentaa kokoelmien hakuehtoja valitsemalla yhden tai useamman hakuehdon laajennuksen. Valitse näytä kaikki kokoelmat jos haluta selata myös toisten käyttäjien tekemiä kokoelmia. Valitse näytä suljetut kokoelmat, jos haluat selata kokoelmia, joita ei enää ylläpidetä.",
     "showAll": "Näytä kaikki kokoelmat",
-    "hideClosed": "Piilota suljetut kokoelmat",
-    "create": "+ Luo kokoelma",
+    "showClosed": "Näytä suljetut kokoelmat",
+    "listCreate": "Aloita uusi kokoelma",
     "createFirst": "Luo ensimmäinen kokoelmasi",
     "empty": "Kokoelmia ei löytynyt",
-    "importRecord": "Tuo",
+    "importRecord": "Lisää tallenne JSON tiedostosta",
     "importModalTitle": "Tuo tallenne",
     "importModalIntro": "Valitse miten vienti otetaan käyttöön. Hankinta lisää kopion vain tähän kokoelmaan. Talletus luo tallenteen alkuperäiseen kokoelmaan (luo sen tarvittaessa) ja kopioi sen tänne. Vain alkuperäinen sijoittaa tallenteen vain alkuperäiseen kokoelmaan.",
     "importModeAcquisition": "Hankinta — vain tähän kokoelmaan",
@@ -73,9 +77,26 @@
     "formCreateTitle": "Luo kokoelma",
     "nameLabel": "Kokoelman nimi",
     "descriptionLabel": "Kokoelman kuvaus",
+    "descriptionHelp": "Kuvaile kokoelmaa.  Mitä kokoelma pääasiassa sisältää?\nMiten suurin osa kokoelman kuvista on hankittu?\nMillaisia kuvatyyppejä kokoelmassa on eniten?\nMitä muita aineistomuotoja kokoelmaan kuuluu yksittäisten kuvien lisäksi?\nMillaisia alkuperäisteoksia (esim. taideteoksia) kokoelmassa on mukana?\n\nMiten lahjoitukset ovat vaikuttaneet kokoelman sisältöön?\nMillaista ulkomaista aineistoa kokoelmasta löytyy?\nMitä kieliä kokoelman kuvien painotiedoissa ja kuvateksteissä esiintyy, ja mitä se kertoo kokoelmasta?\n\nKuinka vanhoja kokoelman vanhimmat kuvat ovat?\nMille aikakaudelle kokoelman ajallinen painopiste sijoittuu?\nMitä tämä ajallinen painotus kertoo kokoelman luonteesta tai tarkoituksesta?",
     "cancel": "Peruuta",
     "update": "Tallenna",
     "create": "Luo",
+    "listCardOwner": "Omistaja: {{username}}",
+    "listCardCreated": "Luotu: {{date}}",
+    "listCardRecordCount_one": "{{count}} tallennetta",
+    "listCardRecordCount_other": "{{count}} tallennetta",
+    "closed": "Suljettu",
+    "detail": {
+      "backToList": "← Takaisin kokoelmiin",
+      "closeCollection": "Sulje kokoelma",
+      "addRecord": "+ Lisää tallenne",
+      "recordCount": "Tallenteet: {{count}}"
+    },
+    "closeDialog": {
+      "title": "Sulje kokoelma",
+      "message": "Haluatko varmasti sulkea kokoelman \"{{name}}\"? Kokoelmasta tulee vain luku -tilassa. Et voi enää muokata sitä tai lisätä siihen uusia tallenteita.",
+      "confirm": "Sulje kokoelma"
+    },
     "loading": "Ladataan…",
     "validation": {
       "nameRequired": "Nimi vaaditaan",
@@ -101,7 +122,8 @@
     },
     "searchPlaceholder": "Etsi tallenteita…",
     "searchAria": "Etsi tallenteita",
-    "empty": "Tallenteita ei löytynyt"
+    "empty": "Tallenteita ei löytynyt",
+    "emptyInCollection": "Ei lisättyjä tallenteita"
   },
   "actors": {
     "title": "Toimijat",

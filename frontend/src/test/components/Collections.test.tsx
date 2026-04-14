@@ -14,9 +14,10 @@
  * - Assertion failures when components don't match expected behavior
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import i18n from '../../i18n'
 
 // These imports will FAIL until components are implemented (TDD approach)
 import { CollectionList, CollectionCard, CollectionForm, CollectionDetail, CloseCollectionDialog } from '../../components/collections/'
@@ -191,27 +192,6 @@ describe('CollectionList Component Tests (US-008)', () => {
     expect(closedElements.length).toBeGreaterThan(0)
   })
 
-  it('displays record count', () => {
-    // This test will FAIL until CollectionList component is implemented
-    const mockCollections = [
-      { id: 1, name: 'Test Collection', record_count: 5, owner: { id: 1, username: 'testuser' }, created_at: '2024-01-01T00:00:00Z' }
-    ]
-    vi.mocked(useCollectionStore).mockReturnValue({
-      collections: mockCollections,
-      currentCollection: null,
-      loading: false,
-      error: null,
-      pagination: null,
-      fetchCollections: vi.fn(),
-      fetchCollection: vi.fn(),
-      createCollection: vi.fn(),
-      updateCollection: vi.fn(),
-      closeCollection: vi.fn(),
-    })
-    render(<CollectionList />)
-    expect(screen.getByText(/5/)).toBeInTheDocument()
-  })
-
   it('shows empty state when no collections', () => {
     // This test will FAIL until CollectionList component is implemented
     render(<CollectionList collections={[]} />)
@@ -280,8 +260,7 @@ describe('CollectionList Component Tests (US-008)', () => {
       fetchCurrentUser: vi.fn(),
     })
     render(<CollectionList />)
-    // Pagination shows "Total: 50" - check for the text (case insensitive)
-    expect(screen.getByText(/total:.*50/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument()
   })
 
   it('navigates to detail page on click', async () => {
@@ -329,8 +308,8 @@ describe('CollectionList Component Tests (US-008)', () => {
       closeCollection: vi.fn(),
     })
     render(<CollectionList />)
-    expect(screen.getByText(/show all collections/i)).toBeInTheDocument()
-    expect(screen.getByText(/hide closed collections/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/show all collections/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/show closed collections/i)).toBeInTheDocument()
   })
 
   it('shows "Create Collection" button when authenticated', () => {
@@ -355,7 +334,7 @@ describe('CollectionList Component Tests (US-008)', () => {
       closeCollection: vi.fn(),
     })
     render(<CollectionList />)
-    expect(screen.getByText(/create collection/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /create collection/i })).toBeInTheDocument()
   })
 
   it('has responsive layout', () => {
@@ -458,6 +437,36 @@ describe('CollectionCard Component Tests', () => {
     expect(screen.getByText(/testuser/i)).toBeInTheDocument()
   })
 
+  it('displays record count after title', () => {
+    const collection = {
+      id: 1,
+      name: 'Test',
+      owner: { id: 1, username: 'testuser' },
+      created_at: '2024-01-01T00:00:00Z',
+      record_count: 2,
+    }
+    render(<CollectionCard collection={collection} />)
+    expect(screen.getByText(/2 records/i)).toBeInTheDocument()
+  })
+
+  it('shows Finnish owner and created labels when language is Finnish', async () => {
+    await act(async () => {
+      await i18n.changeLanguage('fi')
+    })
+    const collection = {
+      id: 1,
+      name: 'Test',
+      owner: { id: 1, username: 'laura' },
+      created_at: '2024-01-15T10:30:00Z',
+    }
+    render(<CollectionCard collection={collection} />)
+    expect(screen.getByText(/Omistaja:\s*laura/i)).toBeInTheDocument()
+    expect(screen.getByText(/Luotu:/)).toBeInTheDocument()
+    await act(async () => {
+      await i18n.changeLanguage('en')
+    })
+  })
+
   it('displays creation date formatted', () => {
     // This test will FAIL until CollectionCard component is implemented
     const collection = { 
@@ -531,6 +540,10 @@ describe('CollectionCard Component Tests', () => {
 })
 
 describe('CollectionForm Component Tests (US-005, US-006)', () => {
+  afterEach(() => {
+    mockUseParamsValue = { id: '1' }
+  })
+
   it('renders with empty fields in create mode', () => {
     // This test will FAIL until CollectionForm component is implemented
     vi.mocked(useCollectionStore).mockReturnValue({
@@ -673,6 +686,8 @@ describe('CollectionForm Component Tests (US-005, US-006)', () => {
   it('creates collection in create mode', async () => {
     // This test will FAIL until CollectionForm component is implemented
     const user = userEvent.setup()
+    mockNavigate.mockClear()
+    mockUseParamsValue = {}
     const mockCreate = vi.fn().mockResolvedValue({ id: 1, name: 'New Collection' })
     vi.mocked(useCollectionStore).mockImplementation(() => ({
       collections: [],
@@ -696,6 +711,7 @@ describe('CollectionForm Component Tests (US-005, US-006)', () => {
     
     await waitFor(() => {
       expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Collection' }))
+      expect(mockNavigate).toHaveBeenCalledWith('/collections/1')
     }, { timeout: 5000 })
   })
 
@@ -821,6 +837,8 @@ describe('CollectionForm Component Tests (US-005, US-006)', () => {
   it('shows success message after creation/update', async () => {
     // This test will FAIL until CollectionForm component is implemented
     const user = userEvent.setup()
+    mockNavigate.mockClear()
+    mockUseParamsValue = {}
     const mockCreate = vi.fn().mockResolvedValue({ id: 1, name: 'Test' })
     vi.mocked(useCollectionStore).mockReturnValue({
       collections: [],
@@ -840,9 +858,9 @@ describe('CollectionForm Component Tests (US-005, US-006)', () => {
     const submitButton = screen.getByRole('button', { name: /submit|save|create|update/i })
     await user.click(submitButton)
     
-    // Form navigates on success, so check navigation was called
+    // Form navigates to the new collection detail after create
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalled()
+      expect(mockNavigate).toHaveBeenCalledWith('/collections/1')
     })
   })
 

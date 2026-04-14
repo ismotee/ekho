@@ -4,6 +4,9 @@
     "actorNumber": "Actor #{{id}}",
     "legacyActor": "Legacy actor"
   },
+  "actorRef": {
+    "catalogSelectHelp": "Choose an actor from the list. If the right actor is not listed, you can create new actors in the \"Actors\" tool. Created actors will appear in this picker."
+  },
   "wizard": {
     "titleEdit": "Edit record",
     "titleCreate": "Create record",
@@ -29,10 +32,12 @@
     "cancel": "Cancel",
     "back": "Back",
     "next": "Next",
+    "reviewRecord": "Review record",
     "saveChanges": "Save changes",
     "createRecord": "Create record",
     "representativeImageLabel": "Representative image (list and thumbnail)",
-    "loadingSave": "Loading…"
+    "loadingSave": "Loading…",
+    "validationBottomHeading": "Please fix the following:"
   },
   "validation": {
     "identificationRequired": "Enter a title or an object number.",
@@ -51,18 +56,28 @@
   },
   "recordImages": {
     "heading": "Images",
-    "hintCreate": "Choose role and context for each file. Images upload after the record is created.",
-    "hintEdit": "Uploaded images show file details from the server. Add more files below; they upload when you save the record.",
+    "hintCreate": "Use Add file, set role and context, pick an image, then Move file to the save queue. Images upload after the record is created.",
+    "hintEdit": "Uploaded images show file details from the server. Queue more files the same way; they upload when you save the record.",
     "ownerOnly": "Only the collection owner can add or remove images.",
     "serverListAria": "Images attached to this record",
     "noImages": "No images attached yet.",
-    "addBlockTitle": "Add an image",
+    "addBlockTitle": "New image",
+    "addFileButton": "Add file",
+    "saveToQueueButton": "Move file to save queue",
+    "discardDraftButton": "Remove",
+    "chooseFileButton": "Choose file",
+    "changeFileButton": "Change file",
+    "draftNoFileHint": "Choose an image file before saving to the queue.",
+    "draftFilePlaceholder": "No file selected",
     "fileLabel": "Image file",
+    "roleLabelImage": "Image role",
+    "contextLabelImage": "Image context",
     "roleLabel": "Role",
     "contextLabel": "Context",
     "primaryLabel": "Mark as primary image",
     "primaryShort": "Primary",
     "pendingTitle": "Queued for upload when you save",
+    "pendingHint": "Added images stay in this queue until you save the record. After saving, they appear in the record’s image list.",
     "removePending": "Remove from queue",
     "delete": "Delete",
     "deleting": "Deleting…",
@@ -70,6 +85,9 @@
     "deleteError": "Could not delete the image.",
     "uploadError": "The record was saved but one or more images could not be uploaded. You can try again from this page.",
     "galleryHeading": "Attached images",
+    "galleryShowDetails": "Show image details",
+    "galleryHideDetails": "Hide image details",
+    "galleryOpenFullSize": "Open full size in new tab",
     "yes": "Yes",
     "no": "No",
     "statusValues": {
@@ -104,6 +122,7 @@
         "archive": "Archive",
         "documentation": "Documentation",
         "condition": "Condition",
+        "object_condition_survey": "Object condition survey",
         "publication": "Publication",
         "digitalization": "Digitalization"
       }
@@ -148,14 +167,17 @@
       "productionTechnique": "technique",
       "objectHistoryEventTimeEntry": "time for the event related to the object",
       "objectHistoryEventPlace": "place for the event related to the object",
-      "locationEntry": "location entry"
+      "locationEntry": "location entry",
+      "pendingRecordImage": "image"
     }
   },
   "temporal": {
     "date": "Date",
     "dateCertainty": "Date certainty",
-    "dateQualifier": "Date qualifier",
-    "note": "Additional information about the date",
+    "dateQualifier": "Date time bracket",
+    "dateQualifierHelp": "How the object-related point in time sits within a temporal bracket.",
+    "note": "Verbal description of temporal information",
+    "noteHelp": "A verbal description of the temporal information for when an event related to the object's history is estimated to have occurred.",
     "association": "Time role",
     "period": "Time period",
     "earliest": "Earliest",
@@ -558,6 +580,10 @@
       "typeMinChars": "Type at least 2 characters",
       "noResults": "No results in Finto",
       "loading": "Searching the KOKO vocabulary in Finto..."
+    },
+    "colorAllowlistSelect": {
+      "placeholder": "Select colors or search the list…",
+      "noOptionsMessage": "No matches"
     }
   },
   "info": {
@@ -566,8 +592,11 @@
       "collection": "The collection the object belongs to.",
       "objectKind": "Term expressing what kind of object this is.",
       "objectNumber": "An identifier for the object. Each object or object group should have a unique identifier, often called an acquisition, diary, inventory, or image number, object number, or file name.",
-      "objectName": "A term describing the object’s function, form, or type.",
-      "numberOfObjects": "How many distinct objects this record refers to."
+      "objectName": "A term describing the object’s function, form, or type. Add as many names as needed. For example: installation, main category sculptures, special category.",
+      "numberOfObjects": "How many distinct objects this record refers to.",
+      "titleType": "The type of title recorded for the object.",
+      "titleLanguage": "The language in which the object’s foreign-language title is written. Use this when the title language differs from the language the museum generally uses for cataloguing.",
+      "noteNimeke": "Additional information related to the object’s name. Notes are written as complete sentences with correct grammar. A note may explain the name or reduce ambiguity."
     },
     "acquisition": {
       "referenceNumber": "Unique acquisition reference that links to acquisition documentation.",
@@ -663,8 +692,8 @@
       "museologicalValue": "Object museum value category.",
       "displayStatus": "Processing/display stage of an object prepared for display.",
       "displayStatusDate": {
-        "date": "Date when the processing stage of the exhibit-prepared object was recorded.",
-        "note": "Date when the display stage was recorded."
+        "date": "The date when usage rights were processed or changed.",
+        "note": "The date when usage rights were processed or changed."
       },
       "creditLine": "Text naming donor, lender, or owner.",
       "note": "Additional details about the access category."
@@ -691,7 +720,7 @@
       "usage": "Information on how object data has been used."
     },
     "description": {
-      "objectStatus": "Object status in relation to similar objects.",
+      "objectStatus": "The catalogued object's position or status in relation to other similar objects.",
       "objectComponents": "A fixed part or component of the object being described.",
       "objectComponentDescription": "Verbal description of this part of the object.",
       "objectComponentIdentifier": "Identifier used for this part or component.",
@@ -722,7 +751,7 @@
       "inscriptionMethod": "Method used to make the inscription.",
       "inscriptionDirection": "Direction or orientation of the inscription.",
       "inscriptionInscriber": "The person, group, or organization that made the inscription.",
-      "inscriptionInterpretations": "Interpretation of an inscription on the object.",
+      "interpretationText": "Interpretation of an inscription on the object.",
       "inscriptionInterpretator": "The person or organization that produced the interpretation of the inscription.",
       "inscriptionDate": {
         "date": "Date when the inscription was made. Record the timing as precisely as possible.",

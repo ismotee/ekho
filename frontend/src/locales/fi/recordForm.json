@@ -4,6 +4,9 @@
     "actorNumber": "Toimija nro {{id}}",
     "legacyActor": "Vanha toimija"
   },
+  "actorRef": {
+    "catalogSelectHelp": "Valitse toimija listasta. Jos listalta ei löydy oikeaa toimijaa, voi käydä luomassa uusia toimijoita \"Toimijat\"-työkalussa. Luodut toimijat ilmestyvät toimijavalintaan."
+  },
   "wizard": {
     "titleEdit": "Muokkaa tallennetta",
     "titleCreate": "Luo tallenne",
@@ -29,10 +32,12 @@
     "cancel": "Peruuta",
     "back": "Takaisin",
     "next": "Seuraava",
+    "reviewRecord": "Tarkista tallenne",
     "saveChanges": "Tallenna muutokset",
     "createRecord": "Luo tallenne",
     "representativeImageLabel": "Kuvatiedosto",
-    "loadingSave": "Tallennetaan…"
+    "loadingSave": "Tallennetaan…",
+    "validationBottomHeading": "Korjaa seuraavat:"
   },
   "validation": {
     "identificationRequired": "Anna nimeke tai objektitunnus.",
@@ -51,18 +56,28 @@
   },
   "recordImages": {
     "heading": "Kuvat",
-    "hintCreate": "Valitse rooli ja konteksti kullekin tiedostolle. Kuvat lähetetään, kun tallenne on luotu.",
-    "hintEdit": "Palvelimen täyttämät tiedot näkyvät alla. Lisää uusia tiedostoja; ne lähetetään, kun tallennat lomakkeen.",
+    "hintCreate": "Lisää tiedosto, täytä rooli ja konteksti, valitse kuva ja paina Siirrä tiedosto tallennusjonoon. Kuvat lähetetään, kun tallenne on luotu.",
+    "hintEdit": "Palvelimen täyttämät tiedot näkyvät alla. Lisää uusia tiedostoja jonoon samalla tavalla; ne lähetetään, kun tallennat lomakkeen.",
     "ownerOnly": "Vain kokoelman omistaja voi lisätä tai poistaa kuvia.",
     "serverListAria": "Tallenteeseen liitetyt kuvat",
     "noImages": "Kuvia ei ole vielä liitetty.",
-    "addBlockTitle": "Lisää kuva",
+    "addBlockTitle": "Uusi kuva",
+    "addFileButton": "Lisää tiedosto",
+    "saveToQueueButton": "Siirrä tiedosto tallennusjonoon",
+    "discardDraftButton": "Poista",
+    "chooseFileButton": "Valitse tiedosto",
+    "changeFileButton": "Vaihda tiedosto",
+    "draftNoFileHint": "Valitse kuvatiedosto ennen tallennusta jonoon.",
+    "draftFilePlaceholder": "Ei valittua tiedostoa",
     "fileLabel": "Kuvatiedosto",
+    "roleLabelImage": "Kuvan rooli",
+    "contextLabelImage": "Kuvan konteksti",
     "roleLabel": "Rooli",
     "contextLabel": "Konteksti",
     "primaryLabel": "Merkitse ensisijaiseksi kuvaksi",
     "primaryShort": "Ensisijainen",
     "pendingTitle": "Jonossa tallennukseen",
+    "pendingHint": "Lisätyt kuvat ovat jonossa kunnes tallenne tallennetaan. Tallennuksen jälkeen kuvat ilmestyvät nähtäville tallenteen tietoihin.",
     "removePending": "Poista jonosta",
     "delete": "Poista",
     "deleting": "Poistetaan…",
@@ -70,6 +85,9 @@
     "deleteError": "Kuvan poisto epäonnistui.",
     "uploadError": "Tallenne tallennettiin, mutta yhden tai useamman kuvan lähetys epäonnistui. Voit yrittää uudelleen tällä sivulla.",
     "galleryHeading": "Liitetyt kuvat",
+    "galleryShowDetails": "Näytä kuvan tiedot",
+    "galleryHideDetails": "Piilota kuvan tiedot",
+    "galleryOpenFullSize": "Avaa täysikoko uudessa välilehdessä",
     "yes": "Kyllä",
     "no": "Ei",
     "statusValues": {
@@ -104,6 +122,7 @@
         "archive": "Arkisto",
         "documentation": "Dokumentaatio",
         "condition": "Kunto",
+        "object_condition_survey": "Objektin kuntokartoitus",
         "publication": "Julkaisu",
         "digitalization": "Digitalisointi"
       }
@@ -148,23 +167,26 @@
       "productionTechnique": "tekniikka",
       "objectHistoryEventTimeEntry": "objektiin liittyvän tapahtuman aika",
       "objectHistoryEventPlace": "objektiin liittyvän tapahtuman paikka",
-      "locationEntry": "sijaintimerkintä"
+      "locationEntry": "sijaintimerkintä",
+      "pendingRecordImage": "kuva"
     }
   },
   "temporal": {
     "date": "Päivämäärä",
     "dateCertainty": "Päivämäärän varmuus",
-    "dateQualifier": "Päivämäärän määrite",
-    "note": "Lisätietoa päivämäärästä",
+    "dateQualifier": "Päivämäärän aikahaarukka",
+    "dateQualifierHelp": "Objektiin liittyvän ajankohdan sijoittuminen aikahaarukkaan.",
+    "note": "Aikatiedon sanallinen kuvaus",
+    "noteHelp": "Sanallinen kuvaus aikatiedosta, jolloin objektin historiaan liittyvän tapahtuman on arvioitu tapahtuneen.",
     "association": "Ajan rooli",
     "period": "Aikakausi",
     "earliest": "Varhaisin",
     "latest": "Myöhäisin",
-    "showDateDetails": "Näytä päivämäärän lisätiedot",
+    "showDateDetails": "Lisää päivämäärän lisätiedot",
     "hideDateDetails": "Piilota lisäkentät"
   },
   "spatialPlace": {
-    "showPlaceDetails": "Näytä paikan lisätiedot",
+    "showPlaceDetails": "Lisää paikan lisätiedot",
     "hidePlaceDetails": "Piilota lisäkentät"
   },
   "labels": {
@@ -182,7 +204,7 @@
     "noteAccess": "Lisätietoja käyttörajoituksesta",
     "noteLocation": "Lisätietoja sijainnista",
     "noteConfidentiality": "Tietojen luottamuksellisuus",
-    "usageConfidentiality": "Tietojen käyttö",
+    "usageConfidentiality": "Tallenteen tietojen käyttöhistoria",
     "noteMaterialComponent": "Lisätietoja materiaalin ainesosasta",
     "noteContent": "Lisätietoja sisällöstä",
     "notePlaceOwnerHistory": "Lisätietoja omistuspaikasta",
@@ -290,7 +312,7 @@
     "rightsType": "Oikeuden luonne",
     "accessCategory": "Käyttörajoitus",
     "museologicalValue": "Museoarvoluokka",
-    "statusType": "Käsittelyvaiheen tila",
+    "statusType": "Käyttöoikeuden käsittelyvaiheen tila",
     "locationType": "Sijainnin tyyppi",
     "locationFitness": "Sijainnin soveltuvuus",
     "rightsTypeShort": "Oikeuden luonne",
@@ -336,8 +358,8 @@
     "deleteTitle": "Poista tallenne",
     "deleteConfirm": "Haluatko varmasti poistaa tallenteen \"{{name}}\"? Tätä ei voi perua.",
     "deleting": "Poistetaan…",
-    "export": "Vie",
-    "exporting": "Viedään…",
+    "export": "Lataa JSON tiedostona",
+    "exporting": "Ladataan…",
     "exportError": "Tallenteen vienti epäonnistui.",
     "noData": "Ei tietoja",
     "yes": "Kyllä",
@@ -473,7 +495,7 @@
   "access": {
     "accessDateLegend": "Käyttörajoituksen kirjaamisaika",
     "displayStatusLegend": "Esille pantavan objektin käsittelyvaihe",
-    "statusDateLegend": "Käsittelyvaiheen kirjaamisaika"
+    "statusDateLegend": "Käyttöoikeuden käsittelyvaiheen kirjaamisaika"
   },
   "location": {
     "entriesLegend": "Objektin sijainnit",
@@ -485,7 +507,7 @@
     "locationDateLegend": "Sijaintipaikkaan sijoittamisaika",
     "placeNameFiLabel": "Sijainnin paikannimi suomeksi",
     "placeNameEnLabel": "Sijainnin paikannimi englanniksi",
-    "showLocationExtraDetails": "Näytä sijainnin lisätiedot",
+    "showLocationExtraDetails": "Lisää sijainnin lisätiedot",
     "hideLocationExtraDetails": "Piilota sijainnin lisätiedot",
     "hint": "Paikan tiedot: nimi, tyyppi, koordinaatit, omistaja ja muut kentät."
   },
@@ -558,6 +580,10 @@
       "typeMinChars": "Kirjoita vähintään 2 merkkiä",
       "noResults": "Ei hakutuloksia Fintossa",
       "loading": "Haetaan Finton KOKO-sanastosta..."
+    },
+    "colorAllowlistSelect": {
+      "placeholder": "Valitse värejä tai hae listasta…",
+      "noOptionsMessage": "Ei hakutuloksia"
     }
   },
   "info": {
@@ -566,11 +592,14 @@
       "collection": "Kokoelma, johon objekti kuuluu.",
       "objectKind": "Termi, jolla ilmaistaan objektin laji.",
       "objectNumber": "Objektin identifioiva tunnus. Jokaisella objektilla tai objektikokonaisuudella tulee olla yksilöllinen tunnus. Objektin identifiointitunnusta nimitetään usein esimerkiksi hankinta-, diariointi-, inventaario- tai kuvanumeroksi, esinenumeroksi tai tiedostonimeksi.",
-      "objectName": "Objektin funktiota, muotoa tai tyyppiä kuvaileva termi.",
-      "numberOfObjects": "Kuinka monta erillistä objektia tämä merkintä koskee."
+      "objectName": "Objektin funktiota, muotoa tai tyyppiä kuvaileva termi. Lisää niin monta nimeä kuin on tarpeen. Esimerkiksi installaatio pääluokka veistokset, erikoisluokka.",
+      "numberOfObjects": "Kuinka monta erillistä objektia tämä merkintä koskee.",
+      "titleType": "Objektille kirjatun nimekkeen tyyppi.",
+      "titleLanguage": "Kieli, jolla objektin vieraskielinen nimeke on kirjoitettu. Ilmoitetaan, kun nimen kieli poikkeaa luetteloinnissa museon yleensä käyttämästä kielestä.",
+      "noteNimeke": "Objektin nimeen liittyviä lisätietoja. Lisätiedot kirjataan kokonaisin lausein kieliopin mukaisesti. Lisätieto voi olla nimeä selittävä tai monitulkintaisuutta vähentävä kuvaus."
     },
     "acquisition": {
-      "referenceNumber": "Tunnus muodostetaan kunkin museon käytäntöjä noudattaen. Tunnus voi sisältää numeroita, kirjaimia ja välimerkkejä. Tunnus voi koostua esimerkiksi vuosiluvusta ja juoksevasta numeroinnista. Katso vastaava ohje kohdasta Objektin identifiointitunnus. Sama hankintatunnus voidaan antaa yhdelle tai useammalle yhdessä hankitulle objektille.",
+      "referenceNumber": "Tunnus muodostetaan kunkin museon käytäntöjä noudattaen. Tunnus voi sisältää numeroita, kirjaimia ja välimerkkejä. Tunnus voi koostua esimerkiksi vuosiluvusta ja juoksevasta numeroinnista. Sama hankintatunnus voidaan antaa yhdelle tai useammalle yhdessä hankitulle objektille.",
       "acquisitionTime": {
         "date": ""
       },
@@ -669,10 +698,10 @@
       "museologicalValue": "Objektin museoarvoluokka, joka kuvaa objektin sopivuutta museon kokoelmaprofiiliin, objektin museoarvoa ja suhdetta objektin tulevaan hoitoon, säilytykseen, käyttöön ja muuhun kokoelmaan.",
       "displayStatus": "Näytteille pantavan objektin saavuttama käsittelyvaihe Kokoelmien käyttötiedot -prosessissa.",
       "displayStatusDate": {
-        "date": "Ajankohta, jolloin esille pantavan objektin käsittelyvaihe kirjattiin.",
-        "note": "Ajankohta, jolloin esille pantavan objektin käsittelyvaihe kirjattiin."
+        "date": "Päivämäärä, jolloin käyttöoikeutta on käsitelty tai muutettu.",
+        "note": "Päivämäärä, jolloin käyttöoikeutta on käsitelty tai muutettu."
       },
-      "creditLine": "Teksti, jossa mainitaan objektin lahjoittajan, lainanantajan tai omistajan tiedot. Tekstiä käytetään yleensä näyttelyteksteissä. Esimerkki: Lahjoittanus Ms. B. Smith, Sydney, Australia.",
+      "creditLine": "Teksti, jossa mainitaan objektin lahjoittajan, lainanantajan tai omistajan tiedot. Tekstiä käytetään yleensä näyttelyteksteissä. Esimerkki: Lahjoittanut Ms. B. Smith, Sydney, Australia.",
       "note": "Lisätietoja objektille kirjatusta käyttörajoituksesta. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu. Esimerkki: Tutkijat saavat tutkia teosta ainoastaan valvotuissa tiloissa."
     },
     "location": {
@@ -699,11 +728,11 @@
       "usage": "Tiedot siitä, miten objektin tietoja tai muita tietoihin liittyviä resursseja käytettiin. Esimerkki: Käytetty viikingeistä kertovassa multimediaesityksessä."
     },
     "description": {
-      "objectStatus": "Luetteloitavan objektin asema tai status suhteessa muihin samanlaisiin.",
+      "objectStatus": "Luetteloitavan objektin asema tai status suhteessa muihin samanlaisiin objekteihin.",
       "objectComponents": "Objektin kiinteä osa tai komponentti, jota kuvaillaan.",
       "objectComponentDescription": "Sanallinen kuvaus tästä objektin osasta tai komponentista.",
       "objectComponentIdentifier": "Tälle osalle tai komponentille käytettävä tunniste.",
-      "physicalDescription": "Objektin ulkoasun tai ulkonäön sanallinen kuvaus. Kuvaus kirjoitetaan kokonaisin lausein kieliopin mukaisesti. Kuvaus voi sisältää myös maininnat objektin kokonaisuudesta (esim. vasen käsi puuttuu). Objektin kuntoa kommentoidaan vain, jos tieto liittyy objektin kokonaisuuteen. Kuvaillaan objektista/objektilla mahdollisesti valmistettavat tuotteet (esim. paperinarusta voidaan tehdä vaatteita). Kehystä ja tukea kuvaillaan myös, kun tarpeellista. Esimerkiksi: Minkä muotoinen objekti on? Kuinka ja mistä kohdista objekti on koristeltu? Miten se on kehystetty tai tuettu? Mitä värejä on käytetty? Mitta mittakaavaa on käytetty?",
+      "physicalDescription": "Objektin ulkoasun tai ulkonäön sanallinen kuvaus. Kuvaus kirjoitetaan kokonaisin lausein kieliopin mukaisesti.\n\nKuvaus voi sisältää myös maininnat objektin kokonaisuudesta (esim. vasen käsi puuttuu). Objektin kuntoa kommentoidaan vain, jos tieto liittyy objektin kokonaisuuteen.\n\nKuvaillaan objektista/objektilla mahdollisesti valmistettavat tuotteet (esim. paperinarusta voidaan tehdä vaatteita). Kehystä ja tukea kuvaillaan myös, kun tarpeellista.\n\nEsimerkiksi: Minkä muotoinen objekti on? Kuinka ja mistä kohdista objekti on koristeltu? Miten se on kehystetty tai tuettu? Mitä värejä on käytetty? Mitta mittakaavaa on käytetty?",
       "photoType": "Termi, joka kuvaa objektin ulkoista olemusta.",
       "orientation": "Objektin kuva-alan suuntaa kuvaava määre.",
       "color": "Objektin väri. Kirjataan värit, jotka ovat tärkeitä objektin tunnistamisen tai löytämisen kannalta. Jos objekti koostuu monesta väristä, kirjaa tieto siitä vain, jos se on merkityksellistä.",
@@ -730,7 +759,7 @@
       "inscriptionMethod": "Menetelmä, jolla merkintä on tehty objektiin.",
       "inscriptionDirection": "Merkinnän sijainti- tai kirjoitussuunta.",
       "inscriptionInscriber": "Merkinnän tehnyt henkilö, henkilöryhmä tai organisaatio.",
-      "inscriptionInterpretations": "Tulkinta objektissa olevasta merkinnästä.",
+      "interpretationText": "Tulkinta objektissa olevasta merkinnästä.",
       "inscriptionInterpretator": "Henkilö tai organisaatio, joka on tehnyt tulkinnan merkinnästä.",
       "inscriptionDate": {
         "date": "Ajankohta, jolloin merkintä on tehty. Aikatieto kirjataan aina mahdollisimman tarkasti.",

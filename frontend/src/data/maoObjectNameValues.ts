@@ -1,0 +1,51 @@
+/**
+ * MAO/TAO objektin nimi (arvo) — http://www.yso.fi/onto/mao/p2990
+ * Generated: 2026-04-14T19:20:14.803Z
+ * Regenerate: node scripts/fetch_mao_object_name_values.mjs
+ */
+
+/** Finnish prefLabels (leaves only) for Reference<ObjectNameValue>. */
+export const OBJECT_NAME_VALUE_FI: readonly string[] = [
+  'akvarellit',
+  'alttari-ikonit',
+  'anekuvat',
+  'diptyykit',
+  'fotomontaasit',
+  'freskot',
+  'graffitit',
+  'holvimaalaukset',
+  'ihmishahmoiset idolit',
+  'installaatiot',
+  'kalliomaalaukset (maalaukset)',
+  'kattomaalaukset',
+  'kollaasit',
+  'käyrät savi-idolit',
+  'laatukuvat',
+  'lahjoittajakuvat',
+  'lasimaalaukset',
+  'lasimaalausjäljitelmät',
+  'lintuidolit',
+  'luolamaalaukset',
+  'medaljongit (maalaukset)',
+  'meripihkaidolit',
+  'miniatyyrit (maalaukset)',
+  'monotypiat',
+  'mosaiikit',
+  'muraalit',
+  'omakuvat',
+  'Paimion idolit',
+  'patsaat',
+  'pentatyykit',
+  'pii-idolit',
+  'polyptyykit',
+  'puistoveistokset',
+  'puuveistokset',
+  'rakentajamaalaukset',
+  'reliefit (veistokset)',
+  'tilateokset',
+  'tondot',
+  'triptyykit',
+  'täysplastiset veistokset',
+  'vaivaisukot',
+  'öljymaalaukset',
+]

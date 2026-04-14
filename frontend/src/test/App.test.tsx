@@ -95,6 +95,7 @@ describe('App', () => {
     const nav = screen.getByRole('navigation')
     expect(nav).toBeInTheDocument()
     expect(screen.getByText(/ekho/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Ekho$/i })).toHaveAttribute('href', '/records')
   })
 
   it('renders Records link in navigation (US-016)', () => {

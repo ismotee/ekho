@@ -153,6 +153,27 @@ function validateDraft(
   return { ok, sectionErrors, fieldErrors }
 }
 
+/** Messages for the wizard footer validation block (deduped by exact text). */
+function collectWizardFooterValidationMessages(
+  fieldErrors: Record<string, string>,
+  sectionErrs: RecordFormSectionErrors,
+): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  const add = (msg: string | undefined) => {
+    const m = msg?.trim()
+    if (!m || seen.has(m)) return
+    seen.add(m)
+    out.push(m)
+  }
+  add(sectionErrs.identification)
+  add(sectionErrs.collection)
+  for (const key of Object.keys(fieldErrors).sort()) {
+    add(fieldErrors[key])
+  }
+  return out
+}
+
 export const RecordForm = observer(({ collectionId: propsCollectionId, record: propsRecord, onSave }: RecordFormProps) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -278,6 +299,12 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
     setSectionErrors({})
   }, [])
 
+  const scrollWizardToTop = useCallback(() => {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }, [])
+
   const submitRecord = async (): Promise<void> => {
     if (isDisabled) return
 
@@ -399,11 +426,13 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
     }
     clearValidation()
     setActiveStep((s) => Math.min(s + 1, reviewStepIndex))
+    scrollWizardToTop()
   }
 
   const goBack = () => {
     clearValidation()
     setActiveStep((s) => Math.max(s - 1, 0))
+    scrollWizardToTop()
   }
 
   const jumpToStep = (index: number) => {
@@ -415,6 +444,11 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
     identification: sectionErrors.identification || errors.identification,
     collection: sectionErrors.collection || errors.collection,
   }
+
+  const wizardFooterValidationMessages = useMemo(
+    () => collectWizardFooterValidationMessages(errors, sectionErrors),
+    [errors, sectionErrors],
+  )
 
   const formTitle = isEditMode ? t('recordForm.wizard.titleEdit') : t('recordForm.wizard.titleCreate')
 
@@ -576,9 +610,13 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
                       {heading}
                     </button>
                     :{' '}
-                    {domainSectionHasContent(domainKey, draft)
-                      ? t('recordForm.wizard.reviewSectionHasData')
-                      : t('recordForm.wizard.reviewSectionEmpty')}
+                    {domainSectionHasContent(domainKey, draft) ? (
+                      <span className="record-form-wizard-step-badge">{t('recordForm.wizard.reviewSectionHasData')}</span>
+                    ) : (
+                      <span className="record-form-wizard-step-badge record-form-wizard-step-badge--empty">
+                        {t('recordForm.wizard.reviewSectionEmpty')}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -597,23 +635,53 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
                 </button>
               )}
               {activeStep < reviewStepIndex && (
-                <button type="button" onClick={goNext} className="btn btn-primary" disabled={isDisabled}>
-                  {t('recordForm.wizard.next')}
+                <>
+                  <button type="button" onClick={goNext} className="btn btn-primary" disabled={isDisabled}>
+                    {t('recordForm.wizard.next')}
+                  </button>
+                  <button
+                    type="button"
+                    className="record-form-wizard-to-review"
+                    onClick={() => {
+                      jumpToStep(reviewStepIndex)
+                      scrollWizardToTop()
+                    }}
+                    disabled={isDisabled}
+                  >
+                    {t('recordForm.wizard.reviewRecord')}
+                  </button>
+                </>
+              )}
+              {activeStep === reviewStepIndex && (
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isDisabled || recordStore.loading || imagesUploading}
+                >
+                  {recordStore.loading || imagesUploading
+                    ? t('recordForm.wizard.loadingSave')
+                    : isEditMode
+                      ? t('recordForm.wizard.saveChanges')
+                      : t('recordForm.wizard.createRecord')}
                 </button>
               )}
-              <button
-                type={activeStep === reviewStepIndex ? 'submit' : 'button'}
-                onClick={activeStep === reviewStepIndex ? undefined : () => void submitRecord()}
-                className="btn btn-primary"
-                disabled={isDisabled || recordStore.loading || imagesUploading}
-              >
-                {recordStore.loading || imagesUploading
-                  ? t('recordForm.wizard.loadingSave')
-                  : isEditMode
-                    ? t('recordForm.wizard.saveChanges')
-                    : t('recordForm.wizard.createRecord')}
-              </button>
             </div>
+            {wizardFooterValidationMessages.length > 0 && (
+              <div
+                className="record-form-wizard-validation-bottom form-error-summary"
+                role="alert"
+                aria-live="polite"
+              >
+                <p className="record-form-wizard-validation-bottom-heading">
+                  {t('recordForm.wizard.validationBottomHeading')}
+                </p>
+                <ul className="form-error-summary-list record-form-wizard-validation-bottom-list">
+                  {wizardFooterValidationMessages.map((msg, idx) => (
+                    <li key={`${idx}-${msg.slice(0, 48)}`}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -90,7 +90,7 @@ export interface SpatialFieldsProps {
   contentPlaceRoleInfoKey?: string
   /**
    * When true (non-acquisition UI), hide place core fields (from environmental details onward) and note
-   * behind the same “Näytä paikan lisätiedot” control as acquisition place rows.
+   * behind the same “Lisää paikan lisätiedot” control as acquisition place rows.
    */
   placeDetailsCollapsible?: boolean
   /** Override default `recordForm.spatialPlace.showPlaceDetails` / `hidePlaceDetails` on the toggle (e.g. object location). */

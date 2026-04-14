@@ -8,6 +8,7 @@
 
 import { useEffect } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useTranslation } from 'react-i18next'
 import { useRecordStore } from '../../stores/recordStore'
 import { RecordCard } from './RecordCard'
 import './Records.css'
@@ -20,6 +21,7 @@ interface RecordListProps {
 }
 
 export const RecordList = observer(({ collectionId, records: propsRecords, loading: propsLoading, error: propsError }: RecordListProps) => {
+  const { t } = useTranslation()
   const recordStore = useRecordStore()
   const records = propsRecords ?? recordStore.records
   const loading = propsLoading ?? recordStore.loading
@@ -32,7 +34,7 @@ export const RecordList = observer(({ collectionId, records: propsRecords, loadi
   }, [collectionId])
 
   if (loading) {
-    return <div role="status">Loading...</div>
+    return <div role="status">{t('common.loading')}</div>
   }
 
   if (error) {
@@ -40,7 +42,7 @@ export const RecordList = observer(({ collectionId, records: propsRecords, loadi
   }
 
   if (records.length === 0) {
-    return <div className="empty-state">No records found</div>
+    return <div className="empty-state">{t('records.emptyInCollection')}</div>
   }
 
   return (

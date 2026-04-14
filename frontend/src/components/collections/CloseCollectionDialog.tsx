@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { observer } from 'mobx-react-lite'
-import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useCollectionStore } from '../../stores/collectionStore'
 import { Collection } from '../../stores/collectionStore'
 import './Collections.css'
@@ -19,7 +19,7 @@ interface CloseCollectionDialogProps {
 }
 
 export const CloseCollectionDialog = observer(({ collection, onClose }: CloseCollectionDialogProps) => {
-  const navigate = useNavigate()
+  const { t } = useTranslation()
   const collectionStore = useCollectionStore()
   const [loading, setLoading] = useState(false)
 
@@ -39,14 +39,14 @@ export const CloseCollectionDialog = observer(({ collection, onClose }: CloseCol
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Close Collection</h2>
-        <p>Are you sure you want to close "{collection.name}"? This will make it read-only and you won't be able to edit it or add new records.</p>
+        <h2>{t('collections.closeDialog.title')}</h2>
+        <p>{t('collections.closeDialog.message', { name: collection.name })}</p>
         <div className="modal-actions">
           <button onClick={onClose} className="btn btn-secondary" disabled={loading}>
-            Cancel
+            {t('collections.cancel')}
           </button>
           <button onClick={handleConfirm} className="btn btn-primary" disabled={loading}>
-            {loading ? 'Loading...' : 'Close Collection'}
+            {loading ? t('common.loading') : t('collections.closeDialog.confirm')}
           </button>
         </div>
       </div>

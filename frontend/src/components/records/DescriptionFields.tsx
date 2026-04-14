@@ -44,7 +44,7 @@ import { actorFieldHasContent } from '../../lib/actorField'
 import { mergeObjectNameWithImplicitLanguage, objectNameRowHasContent } from '../../lib/identificationTitles'
 import { referenceFieldFi, referenceFieldToPayload, referenceSelectOptions } from '../../lib/referenceField'
 import type { RecordPayload } from '../../types/record'
-import type { ReferenceField } from '../../types/record/common'
+import type { ReferenceField, ReferencePayload } from '../../types/record/common'
 import type { ActorField, Spatial } from '../../types/record/actor'
 import type { ObjectName } from '../../types/record/identification'
 import type {
@@ -57,9 +57,11 @@ import type {
   MaterialComponent,
   Measurement,
   ObjectComponent,
+  PhysicalDescription,
   Translation,
 } from '../../types/record/description'
 import { useTranslation } from 'react-i18next'
+import Select, { type MultiValue } from 'react-select'
 import { useActorStore } from '../../stores/actorStore'
 import { recordActorSlotSummary } from './actorMiniForm'
 import { ActorRefSelect } from './ActorRefSelect'
@@ -110,6 +112,14 @@ function MaterialComponentsFieldset(props: {
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.description.componentsLegend')}</legend>
       <FieldInfoText infoKey="recordForm.info.description.materialComponents" />
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onSetComponents([...comps, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.description.addComponent')}
+      </button>
       {comps.map((comp, cIdx) => (
         <CollapsibleRepeatableRow
           key={cIdx}
@@ -162,14 +172,6 @@ function MaterialComponentsFieldset(props: {
           </div>
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onSetComponents([...comps, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.description.addComponent')}
-      </button>
     </fieldset>
   )
 }
@@ -204,6 +206,14 @@ function InscriptionTranslationsFieldset(props: {
   return (
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.description.inscriptionTranslationsLegend')}</legend>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onSetTranslations([...translations, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.description.addTranslation')}
+      </button>
       {translations.map((tr, trIdx) => (
         <CollapsibleRepeatableRow
           key={trIdx}
@@ -281,14 +291,6 @@ function InscriptionTranslationsFieldset(props: {
           </div>
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onSetTranslations([...translations, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.description.addTranslation')}
-      </button>
     </fieldset>
   )
 }
@@ -306,7 +308,14 @@ function InscriptionInterpretationsFieldset(props: {
   return (
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.description.inscriptionInterpretationsLegend')}</legend>
-      <FieldInfoText infoKey="recordForm.info.description.inscriptionInterpretations" />
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onSetInterpretations([...interpretations, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.description.addInterpretation')}
+      </button>
       {interpretations.map((ip, ipIdx) => (
         <CollapsibleRepeatableRow
           key={ipIdx}
@@ -323,6 +332,7 @@ function InscriptionInterpretationsFieldset(props: {
             <label htmlFor={`rf-desc-ins-int-text-${inscriptionIndex}-${ipIdx}`}>
               {t('recordForm.labels.interpretationText')}
             </label>
+            <FieldInfoText infoKey="recordForm.info.description.interpretationText" />
             <textarea
               id={`rf-desc-ins-int-text-${inscriptionIndex}-${ipIdx}`}
               value={ip.text ?? ''}
@@ -367,16 +377,55 @@ function InscriptionInterpretationsFieldset(props: {
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onSetInterpretations([...interpretations, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.description.addInterpretation')}
-      </button>
     </fieldset>
   )
+}
+
+function physicalColorFiSet(color: PhysicalDescription['color']): Set<string> {
+  const s = new Set<string>()
+  if (color == null) return s
+  if (Array.isArray(color)) {
+    for (const item of color) {
+      const fi = referenceFieldFi(item)
+      if (fi) s.add(fi)
+    }
+  } else {
+    const fi = referenceFieldFi(color)
+    if (fi) s.add(fi)
+  }
+  return s
+}
+
+/** Ordered allowlist first, then any legacy labels not in COLOR_FI. */
+function physicalColorPersistPayload(selected: Set<string>): ReferencePayload[] | undefined {
+  const ordered: ReferencePayload[] = []
+  for (const opt of COLOR_FI) {
+    if (selected.has(opt)) {
+      const ref = referenceFieldToPayload(opt)
+      if (ref) ordered.push(ref)
+    }
+  }
+  for (const label of selected) {
+    if (!COLOR_FI.includes(label)) {
+      const ref = referenceFieldToPayload(label)
+      if (ref) ordered.push(ref)
+    }
+  }
+  return ordered.length ? ordered : undefined
+}
+
+type PhysicalColorOption = { value: string; label: string }
+
+/** Allowlist order first, then legacy extras — matches physicalColorPersistPayload ordering. */
+function orderedPhysicalColorFi(selected: Set<string>): string[] {
+  const ordered: string[] = []
+  for (const opt of COLOR_FI) {
+    if (selected.has(opt)) ordered.push(opt)
+  }
+  for (const label of selected) {
+    if (!COLOR_FI.includes(label)) ordered.push(label)
+  }
+  return ordered
 }
 
 function MeasurementRowEditor(props: {
@@ -592,6 +641,9 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <fieldset className="record-form-repeatable-fieldset">
           <legend>{t('recordForm.description.objectComponentsLegend')}</legend>
           <FieldInfoText infoKey="recordForm.info.description.objectComponents" />
+          <button type="button" className="btn btn-secondary btn-sm" onClick={addObjectComponent} disabled={disabled}>
+            {t('recordForm.description.addObjectComponent')}
+          </button>
           {objectComponents.map((row, index) => (
             <CollapsibleRepeatableRow
               key={index}
@@ -685,9 +737,6 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               </div>
             </CollapsibleRepeatableRow>
           ))}
-          <button type="button" className="btn btn-secondary btn-sm" onClick={addObjectComponent} disabled={disabled}>
-            {t('recordForm.description.addObjectComponent')}
-          </button>
         </fieldset>
         <div className="form-group">
           <label htmlFor="rf-desc-phys-text">{t('recordForm.labels.descriptionText')}</label>
@@ -724,16 +773,46 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
           disabled={disabled}
           emptyLabel="—"
         />
-        <ReferenceSelect
-          id="rf-desc-color"
-          label={t('recordForm.labels.color')}
-          infoKey="recordForm.info.description.color"
-          allowlist={COLOR_FI}
-          valueFi={referenceFieldFi(phys.color)}
-          onChangeFi={(fi) => setPhysRef('color', fi)}
-          disabled={disabled}
-          emptyLabel="—"
-        />
+        <div className="form-group record-form-color-multiselect">
+          <label htmlFor="rf-desc-color-input">{t('recordForm.labels.color')}</label>
+          <FieldInfoText infoKey="recordForm.info.description.color" />
+          {(() => {
+            const selectedFi = physicalColorFiSet(phys.color)
+            const optionList = [...COLOR_FI]
+            for (const fi of selectedFi) {
+              if (!optionList.includes(fi)) optionList.push(fi)
+            }
+            const options: PhysicalColorOption[] = optionList.map((fi) => ({ value: fi, label: fi }))
+            const value: PhysicalColorOption[] = orderedPhysicalColorFi(selectedFi).map((fi) => ({
+              value: fi,
+              label: fi,
+            }))
+            return (
+              <Select<PhysicalColorOption, true>
+                inputId="rf-desc-color-input"
+                instanceId="rf-desc-color"
+                classNamePrefix="record-form-color-multiselect"
+                options={options}
+                value={value}
+                onChange={(next: MultiValue<PhysicalColorOption>) => {
+                  const s = new Set<string>()
+                  for (const o of next) s.add(o.value)
+                  setPhysPatch({
+                    color: physicalColorPersistPayload(s),
+                  } as Partial<typeof phys>)
+                }}
+                isMulti
+                isClearable
+                isSearchable
+                isDisabled={disabled}
+                closeMenuOnSelect={false}
+                hideSelectedOptions
+                placeholder={t('recordForm.description.colorAllowlistSelect.placeholder')}
+                noOptionsMessage={() => t('recordForm.description.colorAllowlistSelect.noOptionsMessage')}
+              />
+            )
+          })()}
+        </div>
         <ReferenceSelect
           id="rf-desc-audio"
           label={t('recordForm.labels.audio')}
@@ -785,6 +864,9 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.labels.materials')}</legend>
         <FieldInfoText infoKey="recordForm.info.description.materials" />
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setMaterials([...materials, {}])} disabled={disabled}>
+          {t('recordForm.description.materialsAdd')}
+        </button>
         {materials.map((row, index) => (
             <CollapsibleRepeatableRow
               key={index}
@@ -851,14 +933,14 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               />
             </CollapsibleRepeatableRow>
         ))}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setMaterials([...materials, {}])} disabled={disabled}>
-          {t('recordForm.description.materialsAdd')}
-        </button>
       </fieldset>
 
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.labels.technicalAttributes')}</legend>
         <FieldInfoText infoKey="recordForm.info.description.technicalAttributes" />
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTech([...tech, {}])} disabled={disabled}>
+          {t('recordForm.description.technicalAdd')}
+        </button>
         {tech.map((row, index) => (
           <CollapsibleRepeatableRow
             key={index}
@@ -891,14 +973,19 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
             />
           </CollapsibleRepeatableRow>
         ))}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setTech([...tech, {}])} disabled={disabled}>
-          {t('recordForm.description.technicalAdd')}
-        </button>
       </fieldset>
 
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.labels.inscriptions')}</legend>
         <FieldInfoText infoKey="recordForm.info.description.inscriptions" />
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setInscriptions([...inscriptions, {}])}
+          disabled={disabled}
+        >
+          {t('recordForm.description.inscriptionsAdd')}
+        </button>
         {inscriptions.map((row, index) => {
           const interp = row.interpretation ?? []
           const translations = row.translation ?? []
@@ -1078,14 +1165,6 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
             </CollapsibleRepeatableRow>
           )
         })}
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => setInscriptions([...inscriptions, {}])}
-          disabled={disabled}
-        >
-          {t('recordForm.description.inscriptionsAdd')}
-        </button>
       </fieldset>
 
       <fieldset className="record-form-repeatable-fieldset">
@@ -1110,6 +1189,18 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         </div>
         <fieldset className="record-form-repeatable-fieldset">
           <legend>{t('recordForm.description.contentActorsLegend')}</legend>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() =>
+              patchContent((c) => {
+                c.actors = [...(c.actors ?? []), {} as ActorField]
+              })
+            }
+            disabled={disabled}
+          >
+            {t('recordForm.description.addContentActor')}
+          </button>
           {contentActors.map((actorRow, aIdx) => (
             <CollapsibleRepeatableRow
               key={aIdx}
@@ -1143,18 +1234,6 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               />
             </CollapsibleRepeatableRow>
           ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() =>
-              patchContent((c) => {
-                c.actors = [...(c.actors ?? []), {} as ActorField]
-              })
-            }
-            disabled={disabled}
-          >
-            {t('recordForm.description.addContentActor')}
-          </button>
         </fieldset>
         <div className="form-group">
           <label htmlFor="rf-desc-content-note">{t('recordForm.labels.noteContent')}</label>
@@ -1176,6 +1255,18 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         <fieldset className="record-form-repeatable-fieldset">
           <legend>{t('recordForm.description.contentDatesLegend')}</legend>
           <p className="record-form-repeatable-hint">{t('recordForm.description.contentDatesHint')}</p>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() =>
+              patchContent((c) => {
+                c.dates = [...(c.dates ?? []), {} as ContentDateEntry]
+              })
+            }
+            disabled={disabled}
+          >
+            {t('recordForm.description.addContentDate')}
+          </button>
           {contentDates.map((row, index) => (
             <CollapsibleRepeatableRow
               key={index}
@@ -1241,22 +1332,22 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               />
             </CollapsibleRepeatableRow>
           ))}
+        </fieldset>
+        <fieldset className="record-form-repeatable-fieldset">
+          <legend>{t('recordForm.description.contentPlacesLegend')}</legend>
+          <p className="record-form-repeatable-hint">{t('recordForm.description.contentPlacesHint')}</p>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
             onClick={() =>
               patchContent((c) => {
-                c.dates = [...(c.dates ?? []), {} as ContentDateEntry]
+                c.places = [...(c.places ?? []), {} as Spatial]
               })
             }
             disabled={disabled}
           >
-            {t('recordForm.description.addContentDate')}
+            {t('recordForm.description.addContentPlace')}
           </button>
-        </fieldset>
-        <fieldset className="record-form-repeatable-fieldset">
-          <legend>{t('recordForm.description.contentPlacesLegend')}</legend>
-          <p className="record-form-repeatable-hint">{t('recordForm.description.contentPlacesHint')}</p>
           {contentPlaces.map((row, index) => (
             <CollapsibleRepeatableRow
               key={index}
@@ -1309,18 +1400,6 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               />
             </CollapsibleRepeatableRow>
           ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() =>
-              patchContent((c) => {
-                c.places = [...(c.places ?? []), {} as Spatial]
-              })
-            }
-            disabled={disabled}
-          >
-            {t('recordForm.description.addContentPlace')}
-          </button>
         </fieldset>
         <YsoConceptReferenceSelect
           id="rf-desc-content-activity"
@@ -1349,6 +1428,18 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         />
         <fieldset className="record-form-repeatable-fieldset">
           <legend>{t('recordForm.description.contentEventsLegend')}</legend>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() =>
+              patchContent((c) => {
+                c.event = [...(c.event ?? []), {}]
+              })
+            }
+            disabled={disabled}
+          >
+            {t('recordForm.description.addContentEvent')}
+          </button>
           {contentEvents.map((ev, evIdx) => (
             <CollapsibleRepeatableRow
               key={evIdx}
@@ -1407,18 +1498,6 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               />
             </CollapsibleRepeatableRow>
           ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() =>
-              patchContent((c) => {
-                c.event = [...(c.event ?? []), {}]
-              })
-            }
-            disabled={disabled}
-          >
-            {t('recordForm.description.addContentEvent')}
-          </button>
         </fieldset>
         <div className="form-group">
           <label htmlFor="rf-desc-content-position">{t('recordForm.labels.contentPosition')}</label>
@@ -1523,6 +1602,18 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
         />
         <fieldset className="record-form-repeatable-fieldset">
           <legend>{t('recordForm.description.stylesLegend')}</legend>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() =>
+              patchContent((c) => {
+                c.style = [...(c.style ?? []), '']
+              })
+            }
+            disabled={disabled}
+          >
+            {t('recordForm.description.addStyle')}
+          </button>
           {contentStyles.map((st, stIdx) => (
             <CollapsibleRepeatableRow
               key={stIdx}
@@ -1566,18 +1657,6 @@ export function DescriptionFields({ data, onChange, disabled }: DescriptionField
               />
             </CollapsibleRepeatableRow>
           ))}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() =>
-              patchContent((c) => {
-                c.style = [...(c.style ?? []), '']
-              })
-            }
-            disabled={disabled}
-          >
-            {t('recordForm.description.addStyle')}
-          </button>
         </fieldset>
       </fieldset>
     </div>

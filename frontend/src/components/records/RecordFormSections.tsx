@@ -23,7 +23,6 @@ import {
   ACCESS_CATEGORY_FI,
   ASSOCIATED_ACTIVITY_TYPE_FI,
   ASSOCIATED_CULTURAL_AFFINITY_FI,
-  ASSOCIATED_EVENT_NAME_FI,
   ASSOCIATED_EVENT_NAME_TYPE_FI,
   ACQUISITION_ACTOR_ROLE_FI,
   AQCUISITION_METHOD_FI,
@@ -268,6 +267,9 @@ export function IdentificationFields({
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.identification.titlesLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.identification.titlesHint')}</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={addTitle} disabled={disabled}>
+          {t('recordForm.identification.addTitle')}
+        </button>
         {titles.map((row, index) => (
           <CollapsibleRepeatableRow
             key={index}
@@ -301,6 +303,7 @@ export function IdentificationFields({
             </div>
             <div className="form-group">
               <label htmlFor={`rf-title-note-${index}`}>{t('recordForm.labels.noteNimeke')}</label>
+              <FieldInfoText infoKey="recordForm.info.identification.noteNimeke" />
               <textarea
                 id={`rf-title-note-${index}`}
                 value={row.note ?? ''}
@@ -315,6 +318,7 @@ export function IdentificationFields({
             <ReferenceSelect
               id={`rf-title-type-${index}`}
               label={t('recordForm.labels.titleType')}
+              infoKey="recordForm.info.identification.titleType"
               allowlist={TITLE_TYPE_FI}
               valueFi={referenceFieldFi(row.type)}
               onChangeFi={(fi) => updateTitle(index, { type: referenceFieldToPayload(fi) })}
@@ -324,6 +328,7 @@ export function IdentificationFields({
             <GroupedReferenceSelect
               id={`rf-title-language-${index}`}
               label={t('recordForm.labels.titleLanguage')}
+              infoKey="recordForm.info.identification.titleLanguage"
               groups={LANGUAGE_GROUPS}
               flatAllowlist={LANGUAGE_FI}
               valueFi={referenceFieldFi(row.language)}
@@ -333,9 +338,6 @@ export function IdentificationFields({
             />
           </CollapsibleRepeatableRow>
         ))}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={addTitle} disabled={disabled}>
-          {t('recordForm.identification.addTitle')}
-        </button>
       </fieldset>
 
       <div className="form-group">
@@ -386,6 +388,9 @@ export function IdentificationFields({
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.identification.objectNamesLegend')}</legend>
         <FieldInfoText infoKey="recordForm.info.identification.objectName" />
+        <button type="button" className="btn btn-secondary btn-sm" onClick={addObjectName} disabled={disabled}>
+          {t('recordForm.identification.addObjectName')}
+        </button>
         {names.map((row, index) => (
           <CollapsibleRepeatableRow
             key={index}
@@ -439,9 +444,6 @@ export function IdentificationFields({
             </div>
           </CollapsibleRepeatableRow>
         ))}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={addObjectName} disabled={disabled}>
-          {t('recordForm.identification.addObjectName')}
-        </button>
       </fieldset>
 
       <ReferenceSelect
@@ -582,6 +584,14 @@ export const AcquisitionFields = observer(function AcquisitionFields({
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.acquisition.dateEntriesLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.acquisition.datesHint')}</p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setDates([...dates, {}])}
+          disabled={disabled}
+        >
+          {t('recordForm.acquisition.addDate')}
+        </button>
         {dates.map((row, index) => (
           <CollapsibleRepeatableRow
             key={index}
@@ -611,14 +621,6 @@ export const AcquisitionFields = observer(function AcquisitionFields({
             />
           </CollapsibleRepeatableRow>
         ))}
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => setDates([...dates, {}])}
-          disabled={disabled}
-        >
-          {t('recordForm.acquisition.addDate')}
-        </button>
       </fieldset>
 
       <ReferenceSelect
@@ -660,6 +662,9 @@ export const AcquisitionFields = observer(function AcquisitionFields({
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.acquisition.placesLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.acquisition.placesHint')}</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPlaces([...places, {}])} disabled={disabled}>
+          {t('recordForm.acquisition.addPlace')}
+        </button>
         {places.map((row, index) => (
           <CollapsibleRepeatableRow
             key={index}
@@ -699,14 +704,14 @@ export const AcquisitionFields = observer(function AcquisitionFields({
             />
           </CollapsibleRepeatableRow>
         ))}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setPlaces([...places, {}])} disabled={disabled}>
-          {t('recordForm.acquisition.addPlace')}
-        </button>
       </fieldset>
 
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.acquisition.actorsLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.acquisition.actorsHint')}</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActors([...actors, {}])} disabled={disabled}>
+          {t('recordForm.acquisition.addActor')}
+        </button>
         {actors.map((actor, index) => (
           <CollapsibleRepeatableRow
             key={index}
@@ -756,9 +761,6 @@ export const AcquisitionFields = observer(function AcquisitionFields({
             />
           </CollapsibleRepeatableRow>
         ))}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActors([...actors, {}])} disabled={disabled}>
-          {t('recordForm.acquisition.addActor')}
-        </button>
       </fieldset>
 
       <div className="form-group">
@@ -969,6 +971,9 @@ export const HistoryFields = observer(function HistoryFields({
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.history.ownerHistoryLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.history.ownerHistoryHint')}</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOwners([...owners, {}])} disabled={disabled}>
+          {t('recordForm.history.addOwnerEntry')}
+        </button>
         {owners.map((row, index) => {
           const owner = row.owner
           const place = row.place ?? {}
@@ -1130,14 +1135,19 @@ export const HistoryFields = observer(function HistoryFields({
             </CollapsibleRepeatableRow>
           )
         })}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOwners([...owners, {}])} disabled={disabled}>
-          {t('recordForm.history.addOwnerEntry')}
-        </button>
       </fieldset>
 
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.history.productionLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.history.productionHint')}</p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setProduction([...production, {}])}
+          disabled={disabled}
+        >
+          {t('recordForm.history.addProductionEntry')}
+        </button>
         {production.map((row, pIndex) => {
           const actors = row.actor ?? []
           const prodDates = row.date ?? []
@@ -1267,19 +1277,14 @@ export const HistoryFields = observer(function HistoryFields({
             </CollapsibleRepeatableRow>
           )
         })}
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => setProduction([...production, {}])}
-          disabled={disabled}
-        >
-          {t('recordForm.history.addProductionEntry')}
-        </button>
       </fieldset>
 
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.history.usageHistoryLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.history.usageHistoryHint')}</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setUsage([...usage, {}])} disabled={disabled}>
+          {t('recordForm.history.addUsageEntry')}
+        </button>
         {usage.map((row, index) => {
           const usageLine = referenceFieldFi(row.usage)
           const noteSnip = row.note?.trim()
@@ -1350,14 +1355,19 @@ export const HistoryFields = observer(function HistoryFields({
             </CollapsibleRepeatableRow>
           )
         })}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setUsage([...usage, {}])} disabled={disabled}>
-          {t('recordForm.history.addUsageEntry')}
-        </button>
       </fieldset>
 
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.history.objectHistoryLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.history.objectHistoryHint')}</p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setObjectHist([...objectHist, {}])}
+          disabled={disabled}
+        >
+          {t('recordForm.history.addObjectHistoryEntry')}
+        </button>
         {objectHist.map((row, index) => {
           const act = row.activity ?? {}
           const ev: AssociatedEvent = row.event ?? {}
@@ -1495,26 +1505,29 @@ export const HistoryFields = observer(function HistoryFields({
               <fieldset className="record-form-nested-fieldset">
                 <legend>{t('recordForm.history.associatedEventLegend')}</legend>
                 <p className="record-form-repeatable-hint">{t('recordForm.history.associatedEventHint')}</p>
-                <ReferenceSelect
-                  id={`rf-objh-ev-name-${index}`}
-                  label={t('recordForm.labels.eventName')}
-                  allowlist={ASSOCIATED_EVENT_NAME_FI}
-                  valueFi={referenceFieldFi(ev.name)}
-                  onChangeFi={(fi) => {
-                    setObjectHist(
-                      objectHist.map((r, i) =>
-                        i === index
-                          ? {
-                              ...r,
-                              event: { ...r.event, name: referenceFieldToPayload(fi) },
-                            }
-                          : r,
-                      ),
-                    )
-                  }}
-                  disabled={disabled}
-                  emptyLabel="—"
-                />
+                <div className="form-group">
+                  <label htmlFor={`rf-objh-ev-name-${index}`}>{t('recordForm.labels.eventName')}</label>
+                  <input
+                    id={`rf-objh-ev-name-${index}`}
+                    type="text"
+                    value={referenceFieldFi(ev.name)}
+                    onChange={(e) => {
+                      const name = referenceFieldToPayload(e.target.value)
+                      setObjectHist(
+                        objectHist.map((r, i) =>
+                          i === index
+                            ? {
+                                ...r,
+                                event: { ...(r.event ?? {}), name },
+                              }
+                            : r,
+                        ),
+                      )
+                    }}
+                    maxLength={1000}
+                    disabled={disabled}
+                  />
+                </div>
                 <ReferenceSelect
                   id={`rf-objh-ev-nt-${index}`}
                   label={t('recordForm.labels.eventNameType')}
@@ -1637,14 +1650,6 @@ export const HistoryFields = observer(function HistoryFields({
             </CollapsibleRepeatableRow>
           )
         })}
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => setObjectHist([...objectHist, {}])}
-          disabled={disabled}
-        >
-          {t('recordForm.history.addObjectHistoryEntry')}
-        </button>
       </fieldset>
     </div>
   )
@@ -1684,6 +1689,14 @@ export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'e
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.rights.entriesLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.rights.hint')}</p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setEntries([...entries, {}])}
+          disabled={disabled}
+        >
+          {t('recordForm.rights.addRightsEntry')}
+        </button>
         {entries.map((r, index) => {
           const holders = r.holder ?? []
           const setHolders = (rows: ActorField[]) => {
@@ -1797,14 +1810,6 @@ export function RightsFields({ data, onChange, disabled }: Omit<SectionProps, 'e
             </CollapsibleRepeatableRow>
           )
         })}
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => setEntries([...entries, {}])}
-          disabled={disabled}
-        >
-          {t('recordForm.rights.addRightsEntry')}
-        </button>
       </fieldset>
     </div>
   )
@@ -2003,6 +2008,14 @@ export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionP
       <fieldset className="record-form-repeatable-fieldset">
         <legend>{t('recordForm.location.entriesLegend')}</legend>
         <p className="record-form-repeatable-hint">{t('recordForm.location.entriesHint')}</p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => setEntries([...entries, {}])}
+          disabled={disabled}
+        >
+          {t('recordForm.location.addLocationEntry')}
+        </button>
         {entries.map((o, index) => {
           const loc = o.location ?? {}
           return (
@@ -2126,14 +2139,6 @@ export function ObjectLocationFields({ data, onChange, disabled }: Omit<SectionP
             </CollapsibleRepeatableRow>
           )
         })}
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => setEntries([...entries, {}])}
-          disabled={disabled}
-        >
-          {t('recordForm.location.addLocationEntry')}
-        </button>
       </fieldset>
     </div>
   )

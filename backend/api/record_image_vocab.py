@@ -26,6 +26,7 @@ RECORD_IMAGE_CONTEXTS: tuple[str, ...] = (
     "archive",
     "documentation",
     "condition",
+    "object_condition_survey",
     "publication",
     "digitalization",
 )

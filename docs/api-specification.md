@@ -770,7 +770,7 @@ Record-level image metadata (the read-only **`images`** array on the record reso
 
 **`role`** — one of: `thumbnail`, `preview`, `preservation_master`, `access_derivative`, `derivative`, `print`, `detail`, `document_scan`.
 
-**`context`** — one of: `portfolio`, `exhibit`, `archive`, `documentation`, `condition`, `publication`, `digitalization`.
+**`context`** — one of: `portfolio`, `exhibit`, `archive`, `documentation`, `condition`, `object_condition_survey`, `publication`, `digitalization`.
 
 Semantics and usage rules: [docs/data/common-models.md](data/common-models.md) (section *Record-attached images: closed `role` and `context`*). Canonical lists in code: `backend/api/record_image_vocab.py`, `frontend/src/types/record/imageVocabulary.ts`.
 

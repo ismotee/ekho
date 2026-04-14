@@ -112,7 +112,9 @@ export const CollectionForm = observer(({ collection: propsCollection, onSave }:
       } else if (isEditMode && collection && id) {
         await collectionStore.updateCollection(Number(id), payload)
       } else {
-        await collectionStore.createCollection(payload)
+        const created = await collectionStore.createCollection(payload)
+        navigate(`/collections/${created.id}`)
+        return
       }
 
       navigate(exitPath)
@@ -160,6 +162,9 @@ export const CollectionForm = observer(({ collection: propsCollection, onSave }:
 
       <div className="form-group">
         <label htmlFor="collection-description">{t('collections.descriptionLabel')}</label>
+        <p className="form-hint form-hint--multiline" id="collection-description-hint">
+          {t('collections.descriptionHelp')}
+        </p>
         <textarea
           id="collection-description"
           value={description}
@@ -168,9 +173,22 @@ export const CollectionForm = observer(({ collection: propsCollection, onSave }:
           disabled={isDisabled}
           rows={4}
           aria-invalid={!!errors.description}
+          aria-describedby="collection-description-hint"
         />
         {errors.description && <span className="field-error">{errors.description}</span>}
       </div>
+
+      <ActorRefSelect
+        id="collection-owning-organization"
+        label={t('collections.owningOrganization')}
+        value={owningOrganization}
+        onChange={(next) => setOwningOrganization(next)}
+        disabled={isDisabled}
+        infoKey="collections.owningOrganizationHelp"
+      />
+      {errors.owning_organization && (
+        <span className="field-error">{errors.owning_organization}</span>
+      )}
 
       <div className="form-group">
         <label htmlFor="collection-responsible-department">{t('collections.responsibleDepartment')}</label>
@@ -191,19 +209,6 @@ export const CollectionForm = observer(({ collection: propsCollection, onSave }:
           <span className="field-error">{errors.responsible_department}</span>
         )}
       </div>
-
-      <ActorRefSelect
-        id="collection-owning-organization"
-        label={t('collections.owningOrganization')}
-        value={owningOrganization}
-        catalogKind="organization"
-        onChange={(next) => setOwningOrganization(next)}
-        disabled={isDisabled}
-        infoKey="collections.owningOrganizationHelp"
-      />
-      {errors.owning_organization && (
-        <span className="field-error">{errors.owning_organization}</span>
-      )}
 
       <div className="form-actions">
         <button type="button" onClick={() => navigate(exitPath)} className="btn btn-secondary">

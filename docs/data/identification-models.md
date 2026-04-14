@@ -15,7 +15,52 @@ valokuva
 äänite
 ```
 
-Reference<ObjectNameValue> — **shape**: **Reference** in [common-models.md](common-models.md). Allowed values: *to be listed (closed set).*
+Reference<ObjectNameValue> — **shape**: **Reference** in [common-models.md](common-models.md). **Allowed values** (Finnish `pref_label.fi`; closed set = leaf concepts under MAO/TAO [taideteokset](http://www.yso.fi/onto/mao/p2990) from Finto; regenerate `frontend/src/data/maoObjectNameValues.ts` via `node scripts/fetch_mao_object_name_values.mjs`):
+
+```
+akvarellit
+alttari-ikonit
+anekuvat
+diptyykit
+fotomontaasit
+freskot
+graffitit
+holvimaalaukset
+ihmishahmoiset idolit
+installaatiot
+kalliomaalaukset (maalaukset)
+kattomaalaukset
+kollaasit
+käyrät savi-idolit
+laatukuvat
+lahjoittajakuvat
+lasimaalaukset
+lasimaalausjäljitelmät
+lintuidolit
+luolamaalaukset
+medaljongit (maalaukset)
+meripihkaidolit
+miniatyyrit (maalaukset)
+monotypiat
+mosaiikit
+muraalit
+omakuvat
+Paimion idolit
+patsaat
+pentatyykit
+pii-idolit
+polyptyykit
+puistoveistokset
+puuveistokset
+rakentajamaalaukset
+reliefit (veistokset)
+tilateokset
+tondot
+triptyykit
+täysplastiset veistokset
+vaivaisukot
+öljymaalaukset
+```
 
 Reference<ObjectNameType> — **shape**: **Reference** in [common-models.md](common-models.md). **Allowed values** (Finnish labels; closed set):
 

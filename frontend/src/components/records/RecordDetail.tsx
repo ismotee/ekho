@@ -15,7 +15,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useCollectionStore } from '../../stores/collectionStore'
 import { useActorStore } from '../../stores/actorStore'
 import { api, ApiError } from '../../services/api'
-import type { RecordDataDomainKey } from '../../types/record'
+import type { RecordDataDomainKey, RecordImage } from '../../types/record'
 import {
   getRecordPrimaryLabel,
   getRecordSecondaryLine,
@@ -60,6 +60,11 @@ function openSectionsForRecord(data: Record<string, unknown>): Record<RecordData
   return o
 }
 
+/** Detail gallery: show only presentation-oriented images (pienkuva / portfolio in UI vocab). */
+function isRecordDetailGalleryImage(img: RecordImage): boolean {
+  return img.role === 'thumbnail' || img.context === 'portfolio'
+}
+
 export const RecordDetail = observer(() => {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
@@ -75,6 +80,8 @@ export const RecordDetail = observer(() => {
   const [openSections, setOpenSections] = useState<Record<RecordDataDomainKey, boolean>>(() =>
     openSectionsForRecord({}),
   )
+  /** Record detail gallery: technical metadata shown after thumbnail click. */
+  const [detailImageId, setDetailImageId] = useState<number | null>(null)
   const prevRouteIdRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
@@ -90,6 +97,10 @@ export const RecordDetail = observer(() => {
   useLayoutEffect(() => {
     if (!record?.id) return
     setOpenSections(openSectionsForRecord((record.data ?? {}) as Record<string, unknown>))
+  }, [record?.id])
+
+  useEffect(() => {
+    setDetailImageId(null)
   }, [record?.id])
 
   useEffect(() => {
@@ -158,6 +169,8 @@ export const RecordDetail = observer(() => {
   const isOwner = authStore.isAuthenticated && collection && authStore.user?.id === collection.owner.id
   const canEdit = isOwner && collection && !collection.is_closed
 
+  const galleryImages = (record.images ?? []).filter(isRecordDetailGalleryImage)
+
   const backTargetName = collection ? collection.name : t('nav.collections')
 
   return (
@@ -218,26 +231,50 @@ export const RecordDetail = observer(() => {
         </div>
       </div>
 
-      {record.images && record.images.length > 0 && (
+      {galleryImages.length > 0 && (
         <section className="record-detail-images" aria-label={t('recordForm.recordImages.galleryHeading')}>
           <h2 className="record-detail-images-heading">{t('recordForm.recordImages.galleryHeading')}</h2>
           <ul className="record-detail-images-grid">
-            {record.images.map((img) => (
-              <li key={img.id} className="record-detail-images-card">
-                <a href={img.url} target="_blank" rel="noreferrer" className="record-detail-images-thumb-wrap">
-                  <img src={img.url} alt="" className="record-detail-images-thumb" loading="lazy" />
-                </a>
-                <div className="record-detail-images-meta">
-                  <p className="record-detail-images-badges">
-                    <span className="record-multi-image-badge">{t(`recordForm.recordImages.vocab.role.${img.role}`)}</span>
-                    <span className="record-multi-image-badge record-multi-image-badge--muted">
-                      {t(`recordForm.recordImages.vocab.context.${img.context}`)}
-                    </span>
-                  </p>
-                  <RecordImageMetadataPanel image={img} />
-                </div>
-              </li>
-            ))}
+            {galleryImages.map((img) => {
+              const detailsOpen = detailImageId === img.id
+              const detailsPanelId = `record-detail-image-details-${img.id}`
+              return (
+                <li key={img.id} className="record-detail-images-card">
+                  <button
+                    type="button"
+                    className="record-detail-images-thumb-wrap"
+                    aria-expanded={detailsOpen}
+                    aria-controls={detailsPanelId}
+                    aria-label={
+                      detailsOpen
+                        ? t('recordForm.recordImages.galleryHideDetails')
+                        : t('recordForm.recordImages.galleryShowDetails')
+                    }
+                    onClick={() => setDetailImageId((prev) => (prev === img.id ? null : img.id))}
+                  >
+                    <img src={img.url} alt="" className="record-detail-images-thumb" loading="lazy" />
+                  </button>
+                  {detailsOpen && (
+                    <div id={detailsPanelId} className="record-detail-images-meta">
+                      <p className="record-detail-images-badges">
+                        <span className="record-multi-image-badge">
+                          {t(`recordForm.recordImages.vocab.role.${img.role}`)}
+                        </span>
+                        <span className="record-multi-image-badge record-multi-image-badge--muted">
+                          {t(`recordForm.recordImages.vocab.context.${img.context}`)}
+                        </span>
+                      </p>
+                      <RecordImageMetadataPanel image={img} />
+                      <p className="record-detail-images-fullsize">
+                        <a href={img.url} target="_blank" rel="noreferrer">
+                          {t('recordForm.recordImages.galleryOpenFullSize')}
+                        </a>
+                      </p>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </section>
       )}

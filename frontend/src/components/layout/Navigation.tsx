@@ -23,7 +23,7 @@ export const Navigation = observer(() => {
     <nav className="navigation">
       <div className="nav-container">
         <div className="nav-left">
-          <Link to="/collections" className="nav-logo">
+          <Link to="/records" className="nav-logo">
             {t('app.brand')}
           </Link>
           <Link to="/collections" className="nav-link">

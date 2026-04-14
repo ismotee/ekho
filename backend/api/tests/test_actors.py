@@ -227,13 +227,14 @@ def test_record_accepts_global_actor(auth_client, collection, global_actor):
     assert r.status_code == status.HTTP_201_CREATED
 
 
-def test_collection_rejects_person_as_owning_organization(auth_client, collection, user_actor):
+def test_collection_accepts_person_as_owning_organization(auth_client, collection, user_actor):
     r = auth_client.patch(
         reverse("collections-detail", kwargs={"pk": collection.id}),
         {"owning_organization": {"id": user_actor.id}},
         format="json",
     )
-    assert r.status_code == status.HTTP_400_BAD_REQUEST
+    assert r.status_code == status.HTTP_200_OK
+    assert r.data["owning_organization"]["id"] == user_actor.id
 
 
 def test_collection_accepts_organization_as_owning_organization(auth_client, collection):

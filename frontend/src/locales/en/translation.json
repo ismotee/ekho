@@ -50,9 +50,13 @@
   },
   "collections": {
     "title": "Collections",
+    "listPageGuide": "On this page you can browse existing collections or start a new one. Click a collection to see more details about it.",
+    "listPageGuideGuest": "On this page you can browse existing collections. Click a collection to see more details about it.",
+    "filterGroupLabel": "expand search",
+    "filtersGuide": "You can broaden the collection search criteria by selecting one or more filter options. Choose show all collections to browse collections created by other users. Choose show closed collections to browse collections that are no longer maintained.",
     "showAll": "Show all collections",
-    "hideClosed": "Hide closed collections",
-    "create": "+ Create Collection",
+    "showClosed": "Show closed collections",
+    "listCreate": "+ Create Collection",
     "createFirst": "Create Your First Collection",
     "empty": "No collections found",
     "importRecord": "Import",
@@ -73,9 +77,26 @@
     "formCreateTitle": "Create Collection",
     "nameLabel": "Name",
     "descriptionLabel": "Description",
+    "descriptionHelp": "Describe the collection. What does it mainly contain?\nHow were most of the collection's images acquired?\nWhat kinds of images are most common in the collection?\nWhat other material formats are included besides individual images?\nWhat original works (e.g. artworks) are part of the collection?\n\nHow have donations shaped the collection's content?\nWhat foreign material appears in the collection?\nWhich languages appear in the images' imprint data and captions, and what does that say about the collection?\n\nHow old are the oldest images in the collection?\nWhich time period does the collection's temporal focus fall on?\nWhat does that temporal emphasis tell you about the collection's nature or purpose?",
     "cancel": "Cancel",
     "update": "Update",
     "create": "Create",
+    "listCardOwner": "Owner: {{username}}",
+    "listCardCreated": "Created: {{date}}",
+    "listCardRecordCount_one": "{{count}} record",
+    "listCardRecordCount_other": "{{count}} records",
+    "closed": "Closed",
+    "detail": {
+      "backToList": "← Back to Collections",
+      "closeCollection": "Close Collection",
+      "addRecord": "+ Add Record",
+      "recordCount": "Records: {{count}}"
+    },
+    "closeDialog": {
+      "title": "Close Collection",
+      "message": "Are you sure you want to close \"{{name}}\"? This collection will become read-only. You won't be able to edit it or add new records.",
+      "confirm": "Close Collection"
+    },
     "loading": "Loading…",
     "validation": {
       "nameRequired": "Name is required",
@@ -101,7 +122,8 @@
     },
     "searchPlaceholder": "Search records…",
     "searchAria": "Search records",
-    "empty": "No records found"
+    "empty": "No records found",
+    "emptyInCollection": "No recordings added yet"
   },
   "actors": {
     "title": "Actors",

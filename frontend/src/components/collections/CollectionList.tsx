@@ -27,7 +27,7 @@ export const CollectionList = observer((props: CollectionListProps) => {
   const collectionStore = useCollectionStore()
   const authStore = useAuthStore()
   const [showAllCollections, setShowAllCollections] = useState(false)
-  const [hideClosedCollections, setHideClosedCollections] = useState(true)
+  const [showClosedCollections, setShowClosedCollections] = useState(false)
   const collections = props.collections ?? collectionStore.collections
   const loading = props.loading ?? collectionStore.loading
   const error = props.error ?? collectionStore.error
@@ -44,12 +44,12 @@ export const CollectionList = observer((props: CollectionListProps) => {
     if (authStore.isAuthenticated && !showAllCollections && authStore.user) {
       params.owner = authStore.user.username
     }
-    if (hideClosedCollections) {
+    if (!showClosedCollections) {
       params.is_closed = false
     }
-    
+
     collectionStore.fetchCollections(params)
-  }, [authStore.isAuthenticated, authStore.user?.username, showAllCollections, hideClosedCollections, props.collections])
+  }, [authStore.isAuthenticated, authStore.user?.username, showAllCollections, showClosedCollections, props.collections])
 
   if (loading) {
     return <div role="status">{t('common.loading')}</div>
@@ -64,30 +64,37 @@ export const CollectionList = observer((props: CollectionListProps) => {
       <div className="collection-list-header">
         <div className="collection-list-title-section">
           <h1>{t('collections.title')}</h1>
-          <div className="collection-filters">
-            {authStore.isAuthenticated && (
+          <p className="collection-list-guide">
+            {t(authStore.isAuthenticated ? 'collections.listPageGuide' : 'collections.listPageGuideGuest')}
+          </p>
+          <div className="collection-filters-panel">
+            <fieldset className="collection-filters">
+              <legend className="collection-filters-label">{t('collections.filterGroupLabel')}</legend>
+              <p className="collection-filters-guide">{t('collections.filtersGuide')}</p>
+              {authStore.isAuthenticated && (
+                <label className="filter-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showAllCollections}
+                    onChange={(e) => setShowAllCollections(e.target.checked)}
+                  />
+                  <span>{t('collections.showAll')}</span>
+                </label>
+              )}
               <label className="filter-toggle">
                 <input
                   type="checkbox"
-                  checked={showAllCollections}
-                  onChange={(e) => setShowAllCollections(e.target.checked)}
+                  checked={showClosedCollections}
+                  onChange={(e) => setShowClosedCollections(e.target.checked)}
                 />
-                <span>{t('collections.showAll')}</span>
+                <span>{t('collections.showClosed')}</span>
               </label>
-            )}
-            <label className="filter-toggle">
-              <input
-                type="checkbox"
-                checked={hideClosedCollections}
-                onChange={(e) => setHideClosedCollections(e.target.checked)}
-              />
-              <span>{t('collections.hideClosed')}</span>
-            </label>
+            </fieldset>
           </div>
         </div>
         {authStore.isAuthenticated && (
-          <Link to="/collections/new" className="btn btn-primary">
-            {t('collections.create')}
+          <Link to="/collections/new" className="btn btn-primary collection-list-create-btn">
+            {t('collections.listCreate')}
           </Link>
         )}
       </div>
@@ -111,9 +118,8 @@ export const CollectionList = observer((props: CollectionListProps) => {
             </div>
           </div>
           
-          {pagination && pagination.count > 0 && (
+          {pagination && (pagination.next || pagination.previous) && (
             <div className="pagination">
-              <span>{t('common.total', { count: pagination.count })}</span>
               {pagination.next && <button type="button">{t('common.next')}</button>}
               {pagination.previous && <button type="button">{t('common.previous')}</button>}
             </div>

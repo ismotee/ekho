@@ -34,6 +34,14 @@ export function ObjectHistoryEventTimeList({
     <fieldset className="record-form-repeatable-fieldset">
       <legend>{t('recordForm.history.eventDatesLegend')}</legend>
       <p className="record-form-repeatable-hint">{t('recordForm.history.eventDatesHint')}</p>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        onClick={() => onChange([...dates, {}])}
+        disabled={disabled}
+      >
+        {t('recordForm.history.addEventTime')}
+      </button>
       {dates.map((row, index) => (
         <CollapsibleRepeatableRow
           key={index}
@@ -93,14 +101,6 @@ export function ObjectHistoryEventTimeList({
           />
         </CollapsibleRepeatableRow>
       ))}
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm"
-        onClick={() => onChange([...dates, {}])}
-        disabled={disabled}
-      >
-        {t('recordForm.history.addEventTime')}
-      </button>
     </fieldset>
   )
 }
