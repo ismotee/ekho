@@ -22,6 +22,26 @@ Project documentation lives in the **`docs/`** directory. Summary:
 
 ---
 
+## Windows One-Shot Full-Stack Setup
+
+If the target machine may not have Python or Node.js installed, use this script from the repository root:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\prep_install_fullstack.ps1
+```
+
+What it does in one run:
+
+- Checks for `python`/`py`; installs Python 3.12 via `winget` if missing.
+- Checks for `node` + `npm`; installs Node.js LTS via `winget` if missing.
+- Refreshes `PATH` in-session after installs.
+- Runs backend setup via `backend/scripts/prep_install.ps1`.
+- Runs frontend dependency install with `npm install` in `frontend/`.
+
+Note: this requires `winget` (App Installer) to be available on Windows.
+
+---
+
 ## Project Structure
 
 ```
