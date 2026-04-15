@@ -15,6 +15,7 @@ Project documentation lives in the **`docs/`** directory. Summary:
 | **[Data & models](docs/data-models.md)** | Data models (User, Collection, Record), relationships, and constraints. See also [schema design](docs/data/schema-design.md), [models](docs/data/models.md), and [query optimization](docs/data/query-optimization.md) in `docs/data/`. |
 | **[Design](docs/design/)** | UI/UX specs: authentication, collection and record management, navigation and layout, and the design system (colors, typography, components). |
 | **[Developer guide](docs/developer-guide.md)** | Prerequisites, project setup, development workflow, code structure, testing, API and frontend development, database management, and troubleshooting. |
+| **[Prep machine install](docs/deployment/prep-install.md)** | Repeatable local Django + SQLite setup for prep laptops (exhibition prep), scripts, optional UI, data locations, and pointers to the curator runbook. |
 | **[Known Bugs](docs/known-bugs.md)** | List of confirmed product/application defects and their status; separate from troubleshooting and security. |
 | **[Customer support guide](docs/customer-support.md)** | Internal guide for helping end users: permissions, records (`data` + representative image), search, common issues, escalation. |
 | **[User stories](docs/user-stories/)** | Product-level user stories and acceptance criteria for authentication, collections, and records. |

@@ -32,6 +32,8 @@ This guide provides comprehensive instructions for setting up, developing, and c
 
 ## Project Setup
 
+For **prep / exhibition laptops** (repeatable local API + SQLite, first-run scripts, optional React UI), use **[Prep machine install](deployment/prep-install.md)** instead of piecing steps together from this section alone.
+
 ### 1. Clone the Repository
 
 ```bash
@@ -481,6 +483,7 @@ cp db.sqlite3 db.sqlite3.backup
 
 ### Project-Specific Documentation
 
+- [Prep machine install](deployment/prep-install.md)
 - [User Stories](docs/user-stories/)
 - [API Specification](docs/api-specification.md)
 - [Data Models](docs/data-models.md)
