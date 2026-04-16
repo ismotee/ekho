@@ -13,6 +13,11 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .settings import *  # noqa: F403, F405
 
+# Railway (and similar) terminate TLS at the edge; Django sees HTTP from the proxy.
+# Without this, SECURE_SSL_REDIRECT makes SecurityMiddleware 301 to HTTPS forever
+# (browser uses HTTPS → edge forwards as HTTP → Django redirects again).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in ("1", "true", "yes")
 
 # In deployment we **require** a strong SECRET_KEY from the environment.

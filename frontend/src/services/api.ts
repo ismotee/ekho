@@ -7,7 +7,28 @@
  * Reference: docs/api-specification.md
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+/**
+ * fetch() treats URLs without a scheme as path-relative to the current page.
+ * A value like `ekho-backend-production.up.railway.app/api` would become
+ * `https://<frontend-host>/ekho-backend-production...` — normalize to https.
+ */
+function normalizeApiBaseUrl(raw: string | undefined): string {
+  const fallback = '/api'
+  if (raw == null || !String(raw).trim()) return fallback
+  let t = String(raw).trim()
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    t = t.slice(1, -1).trim()
+  }
+  if (!t) return fallback
+  if (t.startsWith('/')) return t
+  if (/^https?:\/\//i.test(t)) return t
+  return `https://${t.replace(/^\/+/, '')}`
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL as string | undefined)
 
 export interface ApiError {
   error?: string

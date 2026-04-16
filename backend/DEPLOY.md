@@ -33,4 +33,6 @@ For packages that should not run with `DEBUG=True`, set:
 - `DJANGO_SETTINGS_MODULE=ekho_backend.settings_deployment`
 - Variables from [`.env.example`](.env.example) (`SECRET_KEY`, `ALLOWED_HOSTS`, optional CORS/CSRF for your browser origin).
 
+`settings_deployment` sets `SECURE_PROXY_SSL_HEADER` for reverse proxies (e.g. Railway) so `SECURE_SSL_REDIRECT` does not cause redirect loops.
+
 Curator-facing steps: [docs/curator-runbook.md](../docs/curator-runbook.md).
