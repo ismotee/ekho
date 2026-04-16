@@ -18,4 +18,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
   },
+  preview: {
+    allowedHosts: [
+      "localhost", 
+      "127.0.0.1", 
+      "ekho-frontend-production.up.railway.app",
+    ],
+  },
 })
