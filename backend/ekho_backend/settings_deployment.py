@@ -40,24 +40,15 @@ if _extra_csrf:
         x.strip() for x in _extra_csrf.split(",") if x.strip()
     ]
 
+# Only enable secure cookies / redirects when explicitly requested via env.
 if os.getenv("CSRF_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
     CSRF_COOKIE_SECURE = True
-
+if os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
+    SESSION_COOKIE_SECURE = True
 if os.getenv("SECURE_SSL_REDIRECT", "").lower() in ("1", "true", "yes"):
     SECURE_SSL_REDIRECT = True
-
-# If we're not in DEBUG mode, default to secure HTTPS-only behaviors suitable for production.
-if not DEBUG:
-    # Make session and CSRF cookies transmit over HTTPS only.
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-
-    # Redirect all HTTP requests to HTTPS.
-    SECURE_SSL_REDIRECT = True
-
-    # Enable HTTP Strict Transport Security (HSTS).
-    # Railway terminates TLS at the edge and serves your app over HTTPS,
-    # so it is safe to send HSTS headers from Django.
-    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))  # 1 year by default
+# Optional: HSTS, only when DEBUG is false and explicitly enabled.
+if not DEBUG and os.getenv("SECURE_HSTS", "").lower() in ("1", "true", "yes"):
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = os.getenv("SECURE_HSTS_PRELOAD", "false").lower() in ("1", "true", "yes")
