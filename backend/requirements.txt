@@ -7,3 +7,4 @@ waitress==3.0.2
 pytest==7.4.3
 pytest-django==4.7.0
 pytest-cov==4.1.0
+gunicorn==25.3.0
