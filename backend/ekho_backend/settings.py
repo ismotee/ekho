@@ -117,6 +117,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Where collected static files are stored (for collectstatic).
+# In production (e.g. Railway) this directory will be created by collectstatic.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 # Media files (user uploads)
 # https://docs.djangoproject.com/en/4.2/topics/files/
 
