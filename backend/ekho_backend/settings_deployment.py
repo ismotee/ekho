@@ -13,6 +13,52 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .settings import *  # noqa: F403, F405
 
+# PostgreSQL: prefer DATABASE_URL (Railway / Heroku). Else libpq-style PG* / POSTGRES_* when
+# PGHOST is set (e.g. referenced vars from the Postgres plugin). Otherwise SQLite from settings.py.
+_database_url = os.getenv("DATABASE_URL", "").strip()
+if _database_url:
+    import dj_database_url
+
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=_database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+else:
+    _pg_host = os.getenv("PGHOST", "").strip()
+    if _pg_host:
+        _pg_user = (os.getenv("PGUSER") or os.getenv("POSTGRES_USER") or "").strip()
+        _pg_password = os.getenv("PGPASSWORD") or os.getenv("POSTGRES_PASSWORD") or ""
+        _pg_name = (os.getenv("PGDATABASE") or os.getenv("POSTGRES_DB") or "").strip()
+        if not _pg_name:
+            raise ImproperlyConfigured(
+                "PGDATABASE or POSTGRES_DB must be set when PGHOST is set without DATABASE_URL."
+            )
+        if not _pg_user:
+            raise ImproperlyConfigured(
+                "PGUSER or POSTGRES_USER must be set when PGHOST is set without DATABASE_URL."
+            )
+        _pg_port = (os.getenv("PGPORT") or "5432").strip() or "5432"
+        _pg_opts = {}
+        _sslmode = os.getenv("PGSSLMODE", "").strip()
+        if _sslmode:
+            _pg_opts["sslmode"] = _sslmode
+        _default_db = {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _pg_name,
+            "USER": _pg_user,
+            "PASSWORD": _pg_password,
+            "HOST": _pg_host,
+            "PORT": _pg_port,
+            "CONN_MAX_AGE": 600,
+            "CONN_HEALTH_CHECKS": True,
+        }
+        if _pg_opts:
+            _default_db["OPTIONS"] = _pg_opts
+        DATABASES = {"default": _default_db}
+
 # Railway (and similar) terminate TLS at the edge; Django sees HTTP from the proxy.
 # Without this, SECURE_SSL_REDIRECT makes SecurityMiddleware 301 to HTTPS forever
 # (browser uses HTTPS → edge forwards as HTTP → Django redirects again).
