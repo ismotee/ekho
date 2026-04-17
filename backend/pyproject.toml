@@ -13,7 +13,9 @@ djangorestframework = "^3.14.0"
 django-cors-headers = "^4.3.1"
 python-dotenv = "^1.0.0"
 dj-database-url = "^2.1.0"
-psycopg2-binary = "^2.9.9"
+# psycopg[binary] bundles libpq — avoids libpq.so.5 missing on slim images (e.g. Railway).
+# Do not add psycopg2-binary: Django tries it first and it requires a system libpq.
+psycopg = { extras = ["binary"], version = "^3.3.3" }
 pillow = "^12.1.0"
 waitress = "^3.0.0"
 gunicorn = "^25.3.0"
