@@ -2,7 +2,7 @@
 Deployment-oriented defaults: turn off DEBUG, read hosts and CORS from the environment,
 and enable stricter security settings suitable for HTTPS deployments (e.g. Railway).
 
-Use when distributing pre-exhibition or exhibit builds (still SQLite by default).
+PostgreSQL is required (DATABASE_URL or PGHOST + credentials); there is no SQLite fallback.
 
     set DJANGO_SETTINGS_MODULE=ekho_backend.settings_deployment
 
@@ -13,9 +13,11 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .settings import *  # noqa: F403, F405
 
-# PostgreSQL: prefer DATABASE_URL (Railway / Heroku). Else libpq-style PG* / POSTGRES_* when
-# PGHOST is set (e.g. referenced vars from the Postgres plugin). Otherwise SQLite from settings.py.
+# PostgreSQL only: DATABASE_URL (Railway / Heroku) or libpq-style vars when PGHOST is set.
+# Missing or invalid configuration raises ImproperlyConfigured with explicit env diagnostics.
 _database_url = os.getenv("DATABASE_URL", "").strip()
+_pg_host = os.getenv("PGHOST", "").strip()
+
 if _database_url:
     import dj_database_url
 
@@ -26,38 +28,60 @@ if _database_url:
             conn_health_checks=True,
         )
     }
+elif _pg_host:
+    _pg_name = (os.getenv("PGDATABASE") or os.getenv("POSTGRES_DB") or "").strip()
+    _pg_user = (os.getenv("PGUSER") or os.getenv("POSTGRES_USER") or "").strip()
+    missing = []
+    if not _pg_name:
+        missing.append(
+            "PGDATABASE or POSTGRES_DB (non-empty; required when using PGHOST without DATABASE_URL)"
+        )
+    if not _pg_user:
+        missing.append(
+            "PGUSER or POSTGRES_USER (non-empty; required when using PGHOST without DATABASE_URL)"
+        )
+    if missing:
+        raise ImproperlyConfigured(
+            "ekho_backend.settings_deployment: PostgreSQL via PGHOST is missing environment "
+            "variables: " + "; ".join(missing)
+        )
+    _pg_password = os.getenv("PGPASSWORD") or os.getenv("POSTGRES_PASSWORD") or ""
+    _pg_port = (os.getenv("PGPORT") or "5432").strip() or "5432"
+    _pg_opts = {}
+    _sslmode = os.getenv("PGSSLMODE", "").strip()
+    if _sslmode:
+        _pg_opts["sslmode"] = _sslmode
+    _default_db = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": _pg_name,
+        "USER": _pg_user,
+        "PASSWORD": _pg_password,
+        "HOST": _pg_host,
+        "PORT": _pg_port,
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
+    }
+    if _pg_opts:
+        _default_db["OPTIONS"] = _pg_opts
+    DATABASES = {"default": _default_db}
 else:
-    _pg_host = os.getenv("PGHOST", "").strip()
-    if _pg_host:
-        _pg_user = (os.getenv("PGUSER") or os.getenv("POSTGRES_USER") or "").strip()
-        _pg_password = os.getenv("PGPASSWORD") or os.getenv("POSTGRES_PASSWORD") or ""
-        _pg_name = (os.getenv("PGDATABASE") or os.getenv("POSTGRES_DB") or "").strip()
-        if not _pg_name:
-            raise ImproperlyConfigured(
-                "PGDATABASE or POSTGRES_DB must be set when PGHOST is set without DATABASE_URL."
-            )
-        if not _pg_user:
-            raise ImproperlyConfigured(
-                "PGUSER or POSTGRES_USER must be set when PGHOST is set without DATABASE_URL."
-            )
-        _pg_port = (os.getenv("PGPORT") or "5432").strip() or "5432"
-        _pg_opts = {}
-        _sslmode = os.getenv("PGSSLMODE", "").strip()
-        if _sslmode:
-            _pg_opts["sslmode"] = _sslmode
-        _default_db = {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": _pg_name,
-            "USER": _pg_user,
-            "PASSWORD": _pg_password,
-            "HOST": _pg_host,
-            "PORT": _pg_port,
-            "CONN_MAX_AGE": 600,
-            "CONN_HEALTH_CHECKS": True,
-        }
-        if _pg_opts:
-            _default_db["OPTIONS"] = _pg_opts
-        DATABASES = {"default": _default_db}
+    _diagnostics = []
+    if "DATABASE_URL" in os.environ:
+        if not _database_url:
+            _diagnostics.append("DATABASE_URL is set but empty or whitespace-only")
+    else:
+        _diagnostics.append("DATABASE_URL is not set")
+    if "PGHOST" in os.environ:
+        if not _pg_host:
+            _diagnostics.append("PGHOST is set but empty or whitespace-only")
+    else:
+        _diagnostics.append("PGHOST is not set")
+    raise ImproperlyConfigured(
+        "ekho_backend.settings_deployment: PostgreSQL is required (no SQLite). "
+        + " ".join(_diagnostics)
+        + ". Fix: set a non-empty DATABASE_URL (e.g. reference Railway Postgres), or set PGHOST "
+        "with PGDATABASE or POSTGRES_DB and PGUSER or POSTGRES_USER."
+    )
 
 # Railway (and similar) terminate TLS at the edge; Django sees HTTP from the proxy.
 # Without this, SECURE_SSL_REDIRECT makes SecurityMiddleware 301 to HTTPS forever
