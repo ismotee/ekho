@@ -9,9 +9,13 @@ PostgreSQL is required (DATABASE_URL or PGHOST + credentials); there is no SQLit
 See backend/DEPLOY.md and backend/.env.example.
 """
 
+import logging
+
 from django.core.exceptions import ImproperlyConfigured
 
 from .settings import *  # noqa: F403, F405
+
+_logger = logging.getLogger(__name__)
 
 # PostgreSQL only: DATABASE_URL (Railway / Heroku) or libpq-style vars when PGHOST is set.
 # Missing or invalid configuration raises ImproperlyConfigured with explicit env diagnostics.
@@ -122,3 +126,9 @@ if not DEBUG and os.getenv("SECURE_HSTS", "").lower() in ("1", "true", "yes"):
     SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = os.getenv("SECURE_HSTS_PRELOAD", "false").lower() in ("1", "true", "yes")
+
+_logger.warning(
+    "Ekho: ekho_backend.settings_deployment is active; default DB from %s; ENGINE=%s.",
+    "DATABASE_URL" if _database_url else "PGHOST",
+    DATABASES["default"]["ENGINE"],
+)

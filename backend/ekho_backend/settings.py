@@ -166,3 +166,11 @@ CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token if needed
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_USE_SESSIONS = False  # Use cookie-based CSRF tokens
 CSRF_COOKIE_NAME = 'csrftoken'  # Default cookie name
+
+if os.environ.get("DJANGO_SETTINGS_MODULE") == "ekho_backend.settings":
+    import logging
+
+    logging.getLogger(__name__).warning(
+        "Ekho: ekho_backend.settings is active (not settings_deployment); default DB ENGINE=%s.",
+        DATABASES["default"]["ENGINE"],
+    )
