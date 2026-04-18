@@ -119,6 +119,27 @@ if os.getenv("CSRF_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
     CSRF_COOKIE_SECURE = True
 if os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
     SESSION_COOKIE_SECURE = True
+
+# Session + CSRF cookies on a different host than the API (e.g. two Railway services)
+# require SameSite=None and Secure, or the browser will not attach sessionid on cross-site POST.
+_cross_site = os.getenv("EKHO_CROSS_SITE_SESSION", "").lower() in ("1", "true", "yes")
+if _cross_site:
+    if not _extra_cors:
+        raise ImproperlyConfigured(
+            "EKHO_CROSS_SITE_SESSION is enabled but CORS_ALLOWED_ORIGINS is empty. "
+            "Set it to your frontend origin(s), e.g. "
+            "https://ekho-frontend-production.up.railway.app (comma-separated, no spaces)."
+        )
+    if not _extra_csrf:
+        raise ImproperlyConfigured(
+            "EKHO_CROSS_SITE_SESSION is enabled but CSRF_TRUSTED_ORIGINS is empty. "
+            "Set it to the same frontend origin(s) as CORS_ALLOWED_ORIGINS."
+        )
+    CORS_ALLOW_CREDENTIALS = True
+    SESSION_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 if os.getenv("SECURE_SSL_REDIRECT", "").lower() in ("1", "true", "yes"):
     SECURE_SSL_REDIRECT = True
 # Optional: HSTS, only when DEBUG is false and explicitly enabled.

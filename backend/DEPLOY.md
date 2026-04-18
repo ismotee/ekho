@@ -35,4 +35,6 @@ For packages that should not run with `DEBUG=True`, set:
 
 `settings_deployment` sets `SECURE_PROXY_SSL_HEADER` for reverse proxies (e.g. Railway) so `SECURE_SSL_REDIRECT` does not cause redirect loops.
 
+Railway: which variables belong to which service (Postgres, backend, frontend) — [docs/deployment/railway-environment-variables.md](../docs/deployment/railway-environment-variables.md).
+
 Curator-facing steps: [docs/curator-runbook.md](../docs/curator-runbook.md).
