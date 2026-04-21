@@ -13,22 +13,11 @@
 }
 
 body {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    'Helvetica Neue',
-    Arial,
-    sans-serif;
+  font-family: inherit;
   font-size: 1rem;
   line-height: 1.5;
   color: var(--color-text);
   background-color: var(--color-bg);
-}
-
-#root {
-  min-height: 100vh;
 }
 
 /* Utility classes */
@@ -70,7 +59,7 @@ body {
 
 .btn-primary {
   background-color: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary);
 }
 
 .btn-primary:hover:not(:disabled) {

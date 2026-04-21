@@ -35,6 +35,7 @@ import {
   ConfidentialityFields,
   type RecordFormSectionErrors,
 } from './RecordFormSections'
+import { parseSafeInternalReturnPath } from '../../lib/internalPath'
 import { compactRecordPayloadForSave } from '../../lib/compactRecordPayloadForSave'
 import { referenceFieldFi, referenceFieldToPayload } from '../../lib/referenceField'
 import { normalizeRecordPayloadForForm } from '../../lib/recordPayloadNormalize'
@@ -367,7 +368,13 @@ export const RecordForm = observer(({ collectionId: propsCollectionId, record: p
           }
           setImagesUploading(false)
         }
-        navigate(`/records/${recordId}`)
+        const prevState =
+          location.state && typeof location.state === 'object' ? { ...(location.state as object) } : {}
+        const existingFrom = parseSafeInternalReturnPath((prevState as { from?: string }).from)
+        const fallbackFrom = formCollectionId != null ? `/collections/${formCollectionId}` : '/records'
+        navigate(`/records/${recordId}`, {
+          state: { ...prevState, from: existingFrom ?? fallbackFrom },
+        })
       } else if (formCollectionId != null) {
         const created = await recordStore.createRecord(formCollectionId, {
           data: savePayload.data,

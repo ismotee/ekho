@@ -9,6 +9,7 @@
   margin: 2rem auto;
   padding: 2rem;
   background: var(--color-surface);
+  color: var(--color-text-on-surface);
   border-radius: 0.5rem;
   box-shadow: var(--shadow-sm);
 }
@@ -17,7 +18,7 @@
   margin: 0 0 1.5rem 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-on-surface);
 }
 
 .form-group {
@@ -29,7 +30,7 @@
   margin-bottom: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--color-text-on-surface);
   text-align: left;
 }
 
@@ -93,7 +94,7 @@
 
 .btn-primary {
   background-color: var(--color-primary);
-  color: white;
+  color: var(--color-on-primary);
 }
 
 /* Full-width buttons only in forms */

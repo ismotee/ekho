@@ -14,7 +14,7 @@ function getServerSnapshot(): ThemeMode {
 }
 
 /**
- * Sun/moon control in the nav; keeps `data-theme` and localStorage in sync.
+ * Sun/moon control (if mounted). Theme is forced to light — toggle only re-applies light.
  */
 export function ThemeToggle() {
   const { t } = useTranslation()

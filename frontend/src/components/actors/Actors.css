@@ -1,46 +1,62 @@
-.actors-page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 3rem;
-}
+/* Actor list page — layout matches Records (Tallenteet): record-list-page, record-grid, etc. */
 
-.actors-header {
+.actors-list-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
 }
 
-.actors-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+.actors-list-header .record-list-title {
+  margin: 0 0 1rem 0;
+  flex: 1 1 auto;
+  min-width: min(100%, 12rem);
+}
+
+.actors-intro {
+  margin: 0 0 1.5rem 0;
+  max-width: 52rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text);
 }
 
 .actor-card {
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 8px;
-  padding: 1rem;
-  background: var(--color-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 1.21rem;
+  background: var(--color-text);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.02em;
+  transition: box-shadow 0.15s ease-in-out;
+}
+
+.actor-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .actor-card h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.36125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
 }
 
 .actor-card-meta {
-  font-size: 0.85rem;
-  opacity: 0.85;
   margin-bottom: 0.75rem;
+  font-size: 1.05875rem;
+  color: var(--color-text-secondary);
 }
 
 .actor-card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-top: auto;
 }
 
 .actor-form-page {
@@ -199,6 +215,7 @@
 
 .actor-modal {
   background: var(--color-surface, #fff);
+  color: var(--color-text-on-surface);
   border-radius: 10px;
   padding: 1.25rem;
   max-width: 420px;
@@ -384,17 +401,18 @@
   flex-shrink: 0;
 }
 
-/* Actor detail — match record detail / collection back link */
+/* Actor detail — match record / collection back link */
 .back-link {
   display: block;
   margin-bottom: 1rem;
-  color: var(--color-primary);
+  color: var(--color-text);
   text-decoration: none;
   text-align: left;
   width: 100%;
 }
 
 .back-link:hover {
+  color: var(--color-link-on-dark-bg-hover);
   text-decoration: underline;
 }
 

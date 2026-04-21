@@ -100,6 +100,13 @@ const mockNavigate = vi.fn()
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useParams: () => ({ id: '1' }),
+  useLocation: () => ({
+    pathname: '/collections/1',
+    search: '',
+    hash: '',
+    state: null,
+    key: 'default',
+  }),
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
 }))
 
@@ -200,7 +207,7 @@ describe('RecordCard Component Tests', () => {
     expect(screen.getByRole('heading', { name: 'Blue Period' })).toBeInTheDocument()
   })
 
-  it('displays collection_name when present (US-016 global records list)', () => {
+  it('does not show collection line on card when collection_name is present', () => {
     const recordWithCollection = {
       ...baseRecord,
       data: {
@@ -212,7 +219,7 @@ describe('RecordCard Component Tests', () => {
       collection_owner_username: 'johndoe',
     }
     render(<RecordCard record={recordWithCollection} />)
-    expect(screen.getByText(/Collection: My Collection/)).toBeInTheDocument()
+    expect(screen.queryByText(/Collection: My Collection/)).not.toBeInTheDocument()
   })
 
   it('displays image thumbnail if available', () => {
@@ -475,7 +482,7 @@ describe('RecordDetail Component Tests (US-014)', () => {
     expect(true).toBe(true)
   })
 
-  it('renders domain accordion sections and nested identification fields', () => {
+  it('renders domain button navigation (not details/accordion) and shows subsection value at level 3', async () => {
     const mockRecord = {
       id: 1,
       data: {
@@ -513,14 +520,169 @@ describe('RecordDetail Component Tests (US-014)', () => {
       updateCollection: vi.fn(),
       closeCollection: vi.fn(),
     })
+    const user = userEvent.setup()
     render(<RecordDetail />)
-    const domain = screen.getByRole('region', { name: /record data by domain/i })
-    expect(within(domain).getByText('Identification')).toBeInTheDocument()
-    expect(within(domain).queryByText('Acquisition')).not.toBeInTheDocument()
-    const identificationBlock = screen.getByText('Identification').closest('details')
-    expect(identificationBlock).toBeTruthy()
-    expect(within(identificationBlock!).getByText('Object identification number')).toBeInTheDocument()
-    expect(within(identificationBlock!).getByText('OBJ-99')).toBeInTheDocument()
+    const domainNav = screen.getByRole('navigation', { name: /record data by domain/i })
+    expect(domainNav.querySelectorAll('details')).toHaveLength(0)
+    expect(within(domainNav).getByRole('button', { name: /^Identification$/i })).toBeInTheDocument()
+    expect(within(domainNav).queryByRole('button', { name: /^Acquisition$/i })).not.toBeInTheDocument()
+    await user.click(within(domainNav).getByRole('button', { name: /^Identification$/i }))
+    await waitFor(() => {
+      expect(
+        within(domainNav).getByRole('button', { name: /object identification number/i }),
+      ).toBeInTheDocument()
+    })
+    await user.click(
+      within(domainNav).getByRole('button', { name: /object identification number/i }),
+    )
+    const fieldPanel = domainNav.querySelector('.record-detail-domain-nav__field-panel')
+    expect(fieldPanel).not.toBeNull()
+    await waitFor(() => {
+      expect(fieldPanel).toHaveTextContent('OBJ-99')
+    })
+  })
+
+  it('hides array item title source field from drill tiles when other fields exist', async () => {
+    const mockRecord = {
+      id: 1,
+      data: {
+        identification_details: {
+          object_number: 'OBJ-99',
+          drill_test_keywords: [
+            { pref_label: { fi: 'modaus', en: 'modaus' }, in_scheme: true },
+          ],
+        },
+      },
+      representative_image: null,
+      collection: 1,
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }
+    vi.mocked(useRecordStore).mockReturnValue({
+      records: [],
+      currentRecord: mockRecord,
+      loading: false,
+      error: null,
+      pagination: { count: 0, next: null, previous: null },
+      fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
+      fetchRecord: vi.fn(),
+      createRecord: vi.fn(),
+      updateRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
+    })
+    const user = userEvent.setup()
+    render(<RecordDetail />)
+    const domainNav = screen.getByRole('navigation', { name: /record data by domain/i })
+    await user.click(within(domainNav).getByRole('button', { name: /^Identification$/i }))
+    await waitFor(() => {
+      expect(within(domainNav).getByRole('button', { name: /drill test keywords/i })).toBeInTheDocument()
+    })
+    await user.click(within(domainNav).getByRole('button', { name: /drill test keywords/i }))
+    await waitFor(() => {
+      expect(within(domainNav).getByRole('button', { name: /modaus/i })).toBeInTheDocument()
+    })
+    await user.click(within(domainNav).getByRole('button', { name: /modaus/i }))
+    await waitFor(() => {
+      expect(within(domainNav).getByRole('button', { name: /in scheme/i })).toBeInTheDocument()
+      expect(within(domainNav).queryByRole('button', { name: /^Preferred label$/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows pref_label text in field panel when it is the only key on an array item (no drill step)', async () => {
+    const mockRecord = {
+      id: 1,
+      data: {
+        identification_details: {
+          object_number: 'OBJ-99',
+          drill_test_solo: [{ pref_label: { fi: 'onlyone', en: 'onlyone' } }],
+        },
+      },
+      representative_image: null,
+      collection: 1,
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }
+    vi.mocked(useRecordStore).mockReturnValue({
+      records: [],
+      currentRecord: mockRecord,
+      loading: false,
+      error: null,
+      pagination: { count: 0, next: null, previous: null },
+      fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
+      fetchRecord: vi.fn(),
+      createRecord: vi.fn(),
+      updateRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
+    })
+    const user = userEvent.setup()
+    render(<RecordDetail />)
+    const domainNav = screen.getByRole('navigation', { name: /record data by domain/i })
+    await user.click(within(domainNav).getByRole('button', { name: /^Identification$/i }))
+    await waitFor(() => {
+      expect(within(domainNav).getByRole('button', { name: /drill test solo/i })).toBeInTheDocument()
+    })
+    await user.click(within(domainNav).getByRole('button', { name: /drill test solo/i }))
+    await waitFor(() => {
+      expect(within(domainNav).getByRole('button', { name: /onlyone/i })).toBeInTheDocument()
+    })
+    await user.click(within(domainNav).getByRole('button', { name: /onlyone/i }))
+    await waitFor(() => {
+      const fieldPanel = domainNav.querySelector('.record-detail-domain-nav__field-panel')
+      expect(fieldPanel).not.toBeNull()
+      expect(fieldPanel).toHaveTextContent('onlyone')
+      expect(within(domainNav).queryByRole('button', { name: /^Preferred label$/i })).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows pref_label text in field panel when subsection value is only pref_label (no drill tiles)', async () => {
+    const mockRecord = {
+      id: 1,
+      data: {
+        identification_details: {
+          object_number: 'OBJ-99',
+          pref_only_subsection: { pref_label: { fi: 'valmistaja', en: 'valmistaja' } },
+        },
+      },
+      representative_image: null,
+      collection: 1,
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }
+    vi.mocked(useRecordStore).mockReturnValue({
+      records: [],
+      currentRecord: mockRecord,
+      loading: false,
+      error: null,
+      pagination: { count: 0, next: null, previous: null },
+      fetchRecords: vi.fn(),
+      fetchAllRecords: vi.fn(),
+      fetchRecord: vi.fn(),
+      createRecord: vi.fn(),
+      updateRecord: vi.fn(),
+      deleteRecord: vi.fn(),
+      createRecordImage: vi.fn(),
+      deleteRecordImage: vi.fn(),
+    })
+    const user = userEvent.setup()
+    render(<RecordDetail />)
+    const domainNav = screen.getByRole('navigation', { name: /record data by domain/i })
+    await user.click(within(domainNav).getByRole('button', { name: /^Identification$/i }))
+    await waitFor(() => {
+      expect(within(domainNav).getByRole('button', { name: /pref only subsection/i })).toBeInTheDocument()
+    })
+    await user.click(within(domainNav).getByRole('button', { name: /pref only subsection/i }))
+    await waitFor(() => {
+      const fieldPanel = domainNav.querySelector('.record-detail-domain-nav__field-panel')
+      expect(fieldPanel).not.toBeNull()
+      expect(fieldPanel).toHaveTextContent('valmistaja')
+      expect(within(domainNav).queryByRole('button', { name: /^Preferred label$/i })).not.toBeInTheDocument()
+    })
   })
 
   it('shows delete button to owner when collection not closed', () => {

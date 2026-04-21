@@ -4,7 +4,7 @@
 
 import { FormEvent, useEffect, useState } from 'react'
 import { observer } from 'mobx-react-lite'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Actor } from '../../types/record/actor'
 import {
@@ -22,6 +22,7 @@ export const ActorForm = observer(() => {
   const { t } = useTranslation()
   const { id } = useParams<{ id?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const actorStore = useActorStore()
   const isEdit = Boolean(id)
   const numId = id ? Number(id) : NaN
@@ -161,7 +162,9 @@ export const ActorForm = observer(() => {
             <ul style={{ marginTop: '0.5rem', marginBottom: 0 }}>
               {usageSample.slice(0, 5).map((r) => (
                 <li key={r.id}>
-                  <Link to={`/records/${r.id}`}>{r.label}</Link>
+                  <Link to={`/records/${r.id}`} state={{ from: `${location.pathname}${location.search}` }}>
+                    {r.label}
+                  </Link>
                 </li>
               ))}
             </ul>

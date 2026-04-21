@@ -1,64 +1,210 @@
 /**
- * Global theme tokens — `data-theme` on <html> (light | dark), set by inline script + ThemeToggle.
+ * Global theme tokens — `data-theme` on <html> is forced to light (inline script + theme.ts).
  */
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueUltraLight.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueUltraLightItalic.otf') format('opentype');
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueThin.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueThinItalic.otf') format('opentype');
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueLight.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueLightItalic.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueRoman.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueItalic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueMedium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueMediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueBold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueBoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueHeavy.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueHeavyItalic.otf') format('opentype');
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueBlack.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Helvetica Neue';
+  src: url('../assets/fonts/HelveticaNeueBlackItalic.otf') format('opentype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
 
 :root {
   color-scheme: light;
 
-  --color-bg: #f8fafc;
-  --color-bg-muted: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-elevated: #ffffff;
+  /* Brand palette (source of truth for the light theme) */
+  --color-palette-primary-bg: #1f3a5f;
+  --color-palette-primary-fg: #d8d2c6;
+  --color-palette-secondary-bg: #b0b7c3;
+  --color-palette-border: #a7a7a7;
+  --color-palette-secondary-fg: #a7a7a7;
+  --color-palette-secondary-foreground: #3c3c3c;
+  --color-palette-highlight: #f5f4f1;
 
-  --color-text: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-text-muted: #94a3b8;
-  --color-text-subtle: #334155;
+  --color-bg: var(--color-palette-primary-bg);
+  --color-bg-muted: var(--color-palette-secondary-bg);
+  --color-surface: var(--color-palette-highlight);
+  --color-surface-elevated: color-mix(in srgb, var(--color-palette-highlight) 88%, #ffffff);
+  --color-surface-muted: color-mix(in srgb, var(--color-palette-highlight) 92%, var(--color-palette-primary-bg));
 
-  --color-border: #e2e8f0;
-  --color-border-muted: #f1f5f9;
-  --color-border-strong: #cbd5e1;
-  --color-border-dashed: #cbd5e1;
+  --color-text: var(--color-palette-primary-fg);
+  --color-text-on-surface: var(--color-palette-primary-bg);
+  --color-text-secondary: var(--color-palette-secondary-foreground);
+  --color-text-muted: var(--color-palette-secondary-fg);
+  --color-text-subtle: color-mix(
+    in srgb,
+    var(--color-palette-secondary-foreground) 55%,
+    var(--color-palette-secondary-fg)
+  );
 
-  --color-primary: #2563eb;
-  --color-primary-hover: #1e40af;
-  --color-primary-muted: #3b82f6;
-  --color-primary-ring: rgba(37, 99, 235, 0.1);
-  --color-link-hover: #1d4ed8;
+  --color-border: var(--color-palette-border);
+  --color-border-muted: color-mix(in srgb, var(--color-palette-border) 42%, var(--color-palette-highlight));
+  --color-border-strong: color-mix(in srgb, var(--color-palette-border) 72%, var(--color-palette-primary-bg));
+  --color-border-dashed: var(--color-palette-border);
 
-  --color-input-bg: #ffffff;
-  --color-input-text: #0f172a;
+  --color-primary: var(--color-palette-primary-bg);
+  --color-primary-hover: color-mix(in srgb, var(--color-palette-primary-bg) 82%, #000000);
+  --color-primary-muted: color-mix(in srgb, var(--color-palette-primary-bg) 65%, #ffffff);
+  --color-on-primary: var(--color-palette-primary-fg);
+  --color-primary-ring: rgba(31, 58, 95, 0.22);
+  --color-link-hover: color-mix(in srgb, var(--color-palette-primary-bg) 72%, #ffffff);
+  --color-link-on-dark-bg: var(--color-palette-highlight);
+  --color-link-on-dark-bg-hover: #ffffff;
+
+  --color-input-bg: var(--color-palette-highlight);
+  --color-input-text: var(--color-palette-primary-bg);
 
   --color-danger: #ef4444;
   --color-danger-hover: #dc2626;
   --color-error-bg: #fee2e2;
   --color-error-border: #ef4444;
-  --color-error-text: #ef4444;
+  --color-error-text: #c62828;
   --color-error-summary-bg: #fef2f2;
   --color-error-summary-border: #fecaca;
   --color-error-summary-text: #b91c1c;
 
-  --color-success-text: #15803d;
+  --color-success-text: #166534;
   --color-success-bg: #dcfce7;
 
   --color-badge-danger-bg: #fee2e2;
-  --color-badge-danger-text: #ef4444;
+  --color-badge-danger-text: #c62828;
 
-  --color-wizard-step-bg: #f8fafc;
-  --color-wizard-step-hover-bg: #ffffff;
-  --color-wizard-current-bg: #eff6ff;
-  --color-wizard-current-border: #2563eb;
-  --color-wizard-current-ring: rgba(37, 99, 235, 0.2);
+  --color-wizard-step-bg: var(--color-palette-secondary-bg);
+  --color-wizard-step-hover-bg: var(--color-palette-highlight);
+  --color-wizard-current-bg: color-mix(in srgb, var(--color-palette-highlight) 75%, var(--color-palette-secondary-bg));
+  --color-wizard-current-border: var(--color-palette-primary-bg);
+  --color-wizard-current-ring: rgba(31, 58, 95, 0.18);
 
-  --color-badge-empty-text: #64748b;
-  --color-badge-empty-bg: #f1f5f9;
+  --color-badge-empty-text: var(--color-palette-secondary-fg);
+  --color-badge-empty-bg: color-mix(in srgb, var(--color-palette-highlight) 82%, var(--color-palette-border));
 
-  --color-btn-edit-bg: #eff6ff;
-  --color-btn-edit-text: #1d4ed8;
-  --color-btn-edit-border: #bfdbfe;
-  --color-btn-edit-hover-bg: #dbeafe;
-  --color-btn-edit-hover-text: #1e40af;
-  --color-btn-edit-hover-border: #93c5fd;
+  --color-btn-edit-bg: color-mix(in srgb, var(--color-palette-highlight) 70%, #bfdbfe);
+  --color-btn-edit-text: var(--color-palette-primary-bg);
+  --color-btn-edit-border: var(--color-palette-border);
+  --color-btn-edit-hover-bg: color-mix(in srgb, var(--color-palette-highlight) 55%, #93c5fd);
+  --color-btn-edit-hover-text: color-mix(in srgb, var(--color-palette-primary-bg) 88%, #000000);
+  --color-btn-edit-hover-border: var(--color-palette-border-strong);
 
   --color-btn-remove-bg: #fef2f2;
   --color-btn-remove-text: #b91c1c;
@@ -74,7 +220,7 @@
   --color-btn-ready-hover-text: #166534;
   --color-btn-ready-hover-border: #86efac;
 
-  --color-btn-secondary-hover-bg: #f8fafc;
+  --color-btn-secondary-hover-bg: color-mix(in srgb, var(--color-palette-highlight) 88%, var(--color-palette-secondary-bg));
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -82,13 +228,8 @@
   --overlay-scrim: rgba(0, 0, 0, 0.5);
 
   font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
     'Helvetica Neue',
+    Helvetica,
     Arial,
     sans-serif;
   line-height: 1.5;
@@ -102,29 +243,46 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-    --color-bg: #0f172a;
-    --color-bg-muted: #1e293b;
-    --color-surface: #1e293b;
+    --color-palette-primary-bg: #162d4a;
+    --color-palette-primary-fg: #e8e4dc;
+    --color-palette-secondary-bg: #3d4a5c;
+    --color-palette-border: #8a8f9a;
+    --color-palette-secondary-fg: #a7a7a7;
+    --color-palette-secondary-foreground: #c8c8c8;
+    --color-palette-highlight: #2a3548;
+
+    --color-bg: #111a2b;
+    --color-bg-muted: var(--color-palette-secondary-bg);
+    --color-surface: var(--color-palette-highlight);
     --color-surface-elevated: #334155;
+    --color-surface-muted: color-mix(in srgb, var(--color-palette-highlight) 82%, #000000);
 
-    --color-text: #f1f5f9;
-    --color-text-secondary: #94a3b8;
-    --color-text-muted: #64748b;
-    --color-text-subtle: #cbd5e1;
+    --color-text: var(--color-palette-primary-fg);
+    --color-text-on-surface: var(--color-palette-primary-fg);
+    --color-text-secondary: var(--color-palette-secondary-foreground);
+    --color-text-muted: var(--color-palette-secondary-fg);
+    --color-text-subtle: color-mix(
+      in srgb,
+      var(--color-palette-secondary-foreground) 65%,
+      var(--color-palette-secondary-fg)
+    );
 
-    --color-border: #334155;
-    --color-border-muted: #1e293b;
-    --color-border-strong: #475569;
-    --color-border-dashed: #475569;
+    --color-border: var(--color-palette-border);
+    --color-border-muted: #2f3a4d;
+    --color-border-strong: #5c6575;
+    --color-border-dashed: var(--color-palette-border);
 
-    --color-primary: #3b82f6;
-    --color-primary-hover: #60a5fa;
-    --color-primary-muted: #60a5fa;
-    --color-primary-ring: rgba(59, 130, 246, 0.25);
-    --color-link-hover: #93c5fd;
+    --color-primary: #d8d2c6;
+    --color-primary-hover: #f5f4f1;
+    --color-primary-muted: #b0b7c3;
+    --color-on-primary: var(--color-palette-primary-bg);
+    --color-primary-ring: rgba(216, 210, 198, 0.28);
+    --color-link-hover: #ffffff;
+    --color-link-on-dark-bg: var(--color-palette-primary-fg);
+    --color-link-on-dark-bg-hover: #ffffff;
 
-    --color-input-bg: #0f172a;
-    --color-input-text: #f1f5f9;
+    --color-input-bg: #1a2436;
+    --color-input-text: var(--color-palette-primary-fg);
 
     --color-danger: #f87171;
     --color-danger-hover: #ef4444;
@@ -141,21 +299,21 @@
     --color-badge-danger-bg: rgba(127, 29, 29, 0.45);
     --color-badge-danger-text: #fca5a5;
 
-    --color-wizard-step-bg: #1e293b;
-    --color-wizard-step-hover-bg: #334155;
-    --color-wizard-current-bg: rgba(37, 99, 235, 0.25);
-    --color-wizard-current-border: #3b82f6;
-    --color-wizard-current-ring: rgba(59, 130, 246, 0.45);
+    --color-wizard-step-bg: var(--color-palette-secondary-bg);
+    --color-wizard-step-hover-bg: var(--color-surface-elevated);
+    --color-wizard-current-bg: color-mix(in srgb, var(--color-palette-highlight) 55%, #1e3a5f);
+    --color-wizard-current-border: var(--color-primary);
+    --color-wizard-current-ring: rgba(216, 210, 198, 0.22);
 
     --color-badge-empty-text: #94a3b8;
     --color-badge-empty-bg: #334155;
 
-    --color-btn-edit-bg: rgba(30, 58, 138, 0.5);
-    --color-btn-edit-text: #bfdbfe;
-    --color-btn-edit-border: #3b82f6;
-    --color-btn-edit-hover-bg: rgba(30, 64, 175, 0.55);
-    --color-btn-edit-hover-text: #dbeafe;
-    --color-btn-edit-hover-border: #60a5fa;
+    --color-btn-edit-bg: rgba(216, 210, 198, 0.12);
+    --color-btn-edit-text: var(--color-palette-primary-fg);
+    --color-btn-edit-border: var(--color-border-strong);
+    --color-btn-edit-hover-bg: rgba(216, 210, 198, 0.2);
+    --color-btn-edit-hover-text: #ffffff;
+    --color-btn-edit-hover-border: var(--color-primary-muted);
 
     --color-btn-remove-bg: rgba(127, 29, 29, 0.45);
     --color-btn-remove-text: #fecaca;
@@ -171,7 +329,7 @@
     --color-btn-ready-hover-text: #bbf7d0;
     --color-btn-ready-hover-border: #22c55e;
 
-    --color-btn-secondary-hover-bg: #334155;
+    --color-btn-secondary-hover-bg: var(--color-surface-elevated);
 
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -179,13 +337,23 @@
     --overlay-scrim: rgba(0, 0, 0, 0.65);
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #root {
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }

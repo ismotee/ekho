@@ -2,12 +2,11 @@
  * Generic recursive presentation for record domain JSON (RecordDetail sections).
  */
 
+import type { ReactNode } from 'react'
 import { observer } from 'mobx-react-lite'
-import type { i18n as I18nType } from 'i18next'
-import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
-import { translateRecordFieldKey } from '../../lib/recordFieldLabel'
-import { fintoConceptBrowserUrl } from '../../services/yso'
+import { isLanguageMapObject, pickLanguageMapString } from '../../lib/languageMapDisplay'
+import { recordDomainFieldLabelForKey } from '../../lib/recordFieldLabel'
 import { useActorStore } from '../../stores/actorStore'
 import { recordActorDisplayName } from './actorMiniForm'
 
@@ -51,6 +50,8 @@ interface NestedDomainFieldsProps {
   depth?: number
   /** Parent JSON field key (e.g. `content` vs `object_history`) for disambiguating reused child keys like `activity`. */
   parentFieldKey?: string
+  /** When set (depth 0), used as the root row label instead of `parentFieldKey` (e.g. array element with primitive value). */
+  rootLabelOverride?: string
 }
 
 const MAX_DEPTH = 12
@@ -58,77 +59,75 @@ const MAX_DEPTH = 12
 /**
  * Renders arbitrary JSON-shaped domain data as label + value rows and nested lists.
  */
-function fieldLabelForKey(k: string, parentFieldKey: string | undefined, i18n: I18nType, t: TFunction): string {
-  if (parentFieldKey === 'content' && k === 'activity') {
-    return t('recordForm.labels.contentActivity')
-  }
-  if (parentFieldKey === 'content' && k === 'position') {
-    return t('recordForm.labels.contentPosition')
-  }
-  if (parentFieldKey === 'content' && k === 'script') {
-    return t('recordForm.labels.contentScript')
-  }
-  if (parentFieldKey === 'content' && k === 'language') {
-    return t('recordForm.labels.contentLanguage')
-  }
-  if (parentFieldKey === 'content_event_row' && k === 'name') {
-    return t('recordForm.labels.contentSubEventName')
-  }
-  if (parentFieldKey === 'content_event_row' && k === 'name_type') {
-    return t('recordForm.labels.contentSubEventNameType')
-  }
-  return translateRecordFieldKey(k, i18n, t)
-}
-
-function NestedDomainFieldsInner({ value, depth = 0, parentFieldKey }: NestedDomainFieldsProps) {
+function NestedDomainFieldsInner({
+  value,
+  depth = 0,
+  parentFieldKey,
+  rootLabelOverride,
+}: NestedDomainFieldsProps) {
   const { t, i18n } = useTranslation()
   const actorStore = useActorStore()
 
+  /** RecordDetail leaf panel: scalars need a field label row (or explicit root override). */
+  const wrapRootFieldPanelRow = (node: ReactNode): ReactNode => {
+    if (depth !== 0) return node
+    const label =
+      rootLabelOverride?.trim() ||
+      (parentFieldKey != null && parentFieldKey !== ''
+        ? recordDomainFieldLabelForKey(parentFieldKey, undefined, i18n, t)
+        : '')
+    if (!label) return node
+    return (
+      <dl className="record-nested-dl">
+        <div className="record-field-row">
+          <dt className="record-field-label">{label}</dt>
+          <dd className="record-field-value">{node}</dd>
+        </div>
+      </dl>
+    )
+  }
+
   if (depth > MAX_DEPTH) {
-    return <span className="record-field-truncated">{t('recordForm.detail.truncated')}</span>
+    return wrapRootFieldPanelRow(<span className="record-field-truncated">{t('recordForm.detail.truncated')}</span>)
   }
 
   if (value === null || value === undefined) {
-    return <span className="record-field-empty">{t('recordForm.detail.noData')}</span>
+    return wrapRootFieldPanelRow(<span className="record-field-empty">{t('recordForm.detail.noData')}</span>)
   }
 
   if (typeof value === 'boolean') {
-    return <span>{value ? t('recordForm.detail.yes') : t('recordForm.detail.no')}</span>
+    return wrapRootFieldPanelRow(<span>{value ? t('recordForm.detail.yes') : t('recordForm.detail.no')}</span>)
   }
 
   if (typeof value === 'number') {
     const em = t('recordForm.detail.emDash')
-    return <span>{Number.isFinite(value) ? String(value) : em}</span>
+    return wrapRootFieldPanelRow(<span>{Number.isFinite(value) ? String(value) : em}</span>)
   }
 
   if (typeof value === 'string') {
     const trimmed = value.trim()
     const em = t('recordForm.detail.emDash')
-    if (!trimmed) return <span className="record-field-empty">{em}</span>
+    if (!trimmed) return wrapRootFieldPanelRow(<span className="record-field-empty">{em}</span>)
     if (/^https?:\/\//i.test(trimmed)) {
-      return (
-        <a href={trimmed} className="record-field-link" target="_blank" rel="noopener noreferrer">
-          {trimmed}
-        </a>
-      )
+      return wrapRootFieldPanelRow(<span className="record-field-text">{trimmed}</span>)
     }
-    return <span className="record-field-text">{value}</span>
+    return wrapRootFieldPanelRow(<span className="record-field-text">{value}</span>)
   }
 
   if (Array.isArray(value)) {
     const em = t('recordForm.detail.emDash')
     if (value.length === 0) {
-      return <span className="record-field-empty">{em}</span>
+      return wrapRootFieldPanelRow(<span className="record-field-empty">{em}</span>)
     }
     const itemParentKey = parentFieldKey === 'event' ? 'content_event_row' : parentFieldKey
-    return (
+    return wrapRootFieldPanelRow(
       <ul className="record-nested-list">
         {value.map((item, index) => (
           <li key={index} className="record-nested-list-item">
             <NestedDomainFieldsInner value={item} depth={depth + 1} parentFieldKey={itemParentKey} />
           </li>
         ))}
-      </ul>
+      </ul>,
     )
   }
 
@@ -144,17 +143,29 @@ function NestedDomainFieldsInner({ value, depth = 0, parentFieldKey }: NestedDom
       const aid = idOnly.id
       const catalog = actorStore.actorById(aid)
       const label = catalog ? recordActorDisplayName(catalog.data ?? {}).trim() : ''
-      return (
+      return wrapRootFieldPanelRow(
         <span className="record-field-text">
           {label || t('recordForm.summaries.actorNumber', { id: aid })}
-        </span>
+        </span>,
+      )
+    }
+
+    if (isLanguageMapObject(idOnly)) {
+      const picked = pickLanguageMapString(idOnly, i18n.language)
+      const em = t('recordForm.detail.emDash')
+      return wrapRootFieldPanelRow(
+        picked ? (
+          <span className="record-field-text">{picked}</span>
+        ) : (
+          <span className="record-field-empty">{em}</span>
+        ),
       )
     }
 
     const entries = Object.entries(value).filter(([, v]) => v !== undefined)
     const em = t('recordForm.detail.emDash')
     if (entries.length === 0) {
-      return <span className="record-field-empty">{em}</span>
+      return wrapRootFieldPanelRow(<span className="record-field-empty">{em}</span>)
     }
 
     const onlyRefKeys = Object.keys(value).every((k) => k === 'pref_label' || k === 'in_scheme')
@@ -162,35 +173,15 @@ function NestedDomainFieldsInner({ value, depth = 0, parentFieldKey }: NestedDom
       const refText = referencePrefLabelPreview(value)
       const schemeRaw = value.in_scheme
       const scheme = typeof schemeRaw === 'string' ? schemeRaw.trim() : ''
-      const conceptPage = scheme ? fintoConceptBrowserUrl(scheme) : undefined
-      const fintoLinkLabel = /\/koko\//i.test(scheme)
-        ? 'KOKO'
-        : /\/yso\//i.test(scheme)
-          ? 'YSO'
-          : /\/onto\/(?:mao|tao)\//i.test(scheme)
-            ? 'MAO'
-            : 'Finto'
-      if (refText || conceptPage) {
-        return (
-          <span className="record-field-text">
-            {refText || scheme}
-            {conceptPage ? (
-              <>
-                {' '}
-                <a className="record-field-link" href={conceptPage} target="_blank" rel="noopener noreferrer">
-                  {fintoLinkLabel}
-                </a>
-              </>
-            ) : null}
-          </span>
-        )
+      if (refText || scheme) {
+        return wrapRootFieldPanelRow(<span className="record-field-text">{refText || scheme}</span>)
       }
     }
 
     if (isReferenceLikeObject(value)) {
       const preview = referenceLikePreview(value)
       if (preview != null) {
-        return <span className="record-field-text">{preview}</span>
+        return wrapRootFieldPanelRow(<span className="record-field-text">{preview}</span>)
       }
     }
 
@@ -198,7 +189,7 @@ function NestedDomainFieldsInner({ value, depth = 0, parentFieldKey }: NestedDom
       <dl className="record-nested-dl">
         {entries.map(([k, v]) => (
           <div key={k} className="record-field-row">
-            <dt className="record-field-label">{fieldLabelForKey(k, parentFieldKey, i18n, t)}</dt>
+            <dt className="record-field-label">{recordDomainFieldLabelForKey(k, parentFieldKey, i18n, t)}</dt>
             <dd className="record-field-value">
               <NestedDomainFieldsInner value={v} depth={depth + 1} parentFieldKey={k} />
             </dd>
@@ -208,7 +199,7 @@ function NestedDomainFieldsInner({ value, depth = 0, parentFieldKey }: NestedDom
     )
   }
 
-  return <span className="record-field-empty">{t('recordForm.detail.emDash')}</span>
+  return wrapRootFieldPanelRow(<span className="record-field-empty">{t('recordForm.detail.emDash')}</span>)
 }
 
 export const NestedDomainFields = observer(NestedDomainFieldsInner)

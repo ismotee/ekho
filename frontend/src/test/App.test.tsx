@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import App, { AppContent } from '../App'
+import { AppContent } from '../App'
 
 // Mock stores
 vi.mock('../stores/authStore', () => ({
@@ -81,25 +81,40 @@ describe('App', () => {
   })
 
   it('renders the application', () => {
-    render(<App />)
-    // App should render navigation - check for Ekho logo or Collections link
-    const ekhoLink = screen.getByText(/ekho/i)
-    const collectionsLink = screen.getByRole('link', { name: /collections/i })
-    expect(ekhoLink).toBeInTheDocument()
-    expect(collectionsLink).toBeInTheDocument()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AppContent />
+      </MemoryRouter>
+    )
+    expect(screen.getByRole('navigation')).toBeInTheDocument()
+    expect(screen.getByRole('main')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /^Laukkanen Collection$/i })
+    ).toHaveAttribute('href', '/')
+    const toRecords = screen.getByRole('link', { name: /go to collection/i })
+    expect(toRecords).toHaveAttribute('href', '/records')
   })
 
   it('renders navigation', () => {
-    render(<App />)
-    // Navigation should be present - check for nav element
+    render(
+      <MemoryRouter initialEntries={['/collections']}>
+        <AppContent />
+      </MemoryRouter>
+    )
     const nav = screen.getByRole('navigation')
     expect(nav).toBeInTheDocument()
-    expect(screen.getByText(/ekho/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /^Ekho$/i })).toHaveAttribute('href', '/records')
+    expect(
+      screen.getByRole('link', { name: /^Laukkanen Collection$/i })
+    ).toHaveAttribute('href', '/')
   })
 
   it('renders Records link in navigation (US-016)', () => {
-    render(<App />)
+    render(
+      <MemoryRouter initialEntries={['/collections']}>
+        <AppContent />
+      </MemoryRouter>
+    )
     const recordsLink = screen.getByRole('link', { name: /records/i })
     expect(recordsLink).toBeInTheDocument()
     expect(recordsLink).toHaveAttribute('href', '/records')
@@ -111,6 +126,6 @@ describe('App', () => {
         <AppContent />
       </MemoryRouter>
     )
-    expect(screen.getByRole('heading', { name: /records/i })).toBeInTheDocument()
+    expect(screen.getByText('No records found')).toBeInTheDocument()
   })
 })

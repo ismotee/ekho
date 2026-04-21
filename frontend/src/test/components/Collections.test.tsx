@@ -40,6 +40,13 @@ let mockUseParamsValue: { id?: string } = { id: '1' }
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useParams: () => mockUseParamsValue,
+  useLocation: () => ({
+    pathname: '/collections/1',
+    search: '',
+    hash: '',
+    state: null,
+    key: 'default',
+  }),
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
 }))
 

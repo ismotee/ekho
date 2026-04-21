@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "command": "node .cursor/hooks/frontend-wcag.mjs",
+        "matcher": "Write|StrReplace"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node .cursor/hooks/frontend-wcag.mjs",
+        "matcher": "Write|StrReplace",
+        "timeout": 120
+      }
+    ],
+    "afterTabFileEdit": [
+      {
+        "command": "node .cursor/hooks/frontend-wcag.mjs",
+        "matcher": "TabWrite",
+        "timeout": 120
+      }
+    ]
+  }
+}

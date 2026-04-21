@@ -2,34 +2,29 @@ export const THEME_STORAGE_KEY = 'ekho-theme'
 
 export type ThemeMode = 'light' | 'dark'
 
-export function getStoredTheme(): ThemeMode | null {
-  try {
-    const v = localStorage.getItem(THEME_STORAGE_KEY)
-    if (v === 'light' || v === 'dark') return v
-  } catch {
-    /* ignore */
-  }
-  return null
+/** App is forced to light mode; stored/system dark preferences are ignored. */
+export function getStoredTheme(): ThemeMode {
+  return 'light'
 }
 
 export function getSystemTheme(): ThemeMode {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'light'
 }
 
 export function resolveInitialTheme(): ThemeMode {
-  return getStoredTheme() ?? getSystemTheme()
+  return 'light'
 }
 
-/** Persists and sets `data-theme` on `<html>`. */
-export function applyTheme(mode: ThemeMode): void {
-  document.documentElement.dataset.theme = mode
+/** Persists and sets `data-theme` on `<html>` (always light). */
+export function applyTheme(_mode: ThemeMode): void {
+  document.documentElement.dataset.theme = 'light'
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, mode)
+    localStorage.setItem(THEME_STORAGE_KEY, 'light')
   } catch {
     /* ignore */
   }
 }
 
 export function readThemeFromDocument(): ThemeMode {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
+  return 'light'
 }

@@ -5,13 +5,16 @@
  */
 
 .main-layout {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .navigation {
   background: var(--color-surface);
+  color: var(--color-text-on-surface);
   border-bottom: 1px solid var(--color-border);
   padding: 0;
   position: sticky;
@@ -23,7 +26,7 @@
 .nav-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem 2rem;
+  padding: 3.3rem 5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -31,15 +34,18 @@
 
 .nav-left {
   display: flex;
-  align-items: center;
-  gap: 2rem;
+  align-items: baseline;
+  gap: 10rem;
 }
 
 .nav-logo {
-  font-size: 1.5rem;
+  font-size: 3.875rem;
   font-weight: 700;
+  line-height: 1;
   color: var(--color-primary);
   text-decoration: none;
+  flex-shrink: 0;
+  text-align: left;
 }
 
 .nav-logo:hover {
@@ -47,7 +53,9 @@
 }
 
 .nav-link {
-  color: var(--color-text);
+  font-size: 2.25rem;
+  line-height: 1;
+  color: var(--color-text-on-surface);
   text-decoration: none;
   font-weight: 500;
   transition: color 0.15s ease-in-out;
@@ -60,17 +68,17 @@
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 2.5rem;
 }
 
 .nav-language-select {
-  min-width: 7rem;
-  padding: 0.375rem 0.5rem;
-  font-size: 0.875rem;
+  min-width: 15.5rem;
+  padding: 1rem 1.25rem;
+  font-size: 2rem;
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   background: var(--color-surface);
-  color: var(--color-text);
+  color: var(--color-text-on-surface);
   cursor: pointer;
 }
 
@@ -78,13 +86,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 5.5rem;
+  height: 5.5rem;
   padding: 0;
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   background: var(--color-surface);
-  color: var(--color-text);
+  color: var(--color-text-on-surface);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -104,17 +112,27 @@
 }
 
 .nav-theme-toggle__icon {
-  font-size: 1.125rem;
+  font-size: 2.75rem;
   line-height: 1;
 }
 
 .nav-username {
+  font-size: 2.25rem;
   color: var(--color-text-secondary);
   font-weight: 500;
 }
 
+.navigation .btn {
+  padding: 1.875rem 3.5rem;
+  font-size: 2.25rem;
+}
+
 .main-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
@@ -122,13 +140,54 @@
   text-align: left;
 }
 
+@media (min-width: 1600px) {
+  .main-content {
+    max-width: min(100%, 1800px);
+  }
+}
+
+/* Record detail (and similar full-page views): allow vertical scroll inside main; body/html stay overflow:hidden */
+.main-content:has(.record-detail) {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 1280px) {
+  .nav-container {
+    max-width: none;
+  }
+
+  .nav-logo {
+    white-space: nowrap;
+  }
+}
+
+/* ~1920px class displays (viewport often slightly < 1920 with scrollbar) */
+@media (min-width: 1900px) {
+  .nav-container {
+    padding-left: 2rem;
+    padding-right: 5rem;
+  }
+}
+
+/* Record detail on wide + limited height (e.g. 1920×1200): a little top air; no bottom padding so content fits */
+@media (min-width: 1760px) and (max-height: 1240px) {
+  .main-content:has(.record-detail) {
+    padding-top: 1.45rem;
+    padding-bottom: 0;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
 @media (max-width: 768px) {
   .nav-container {
-    padding: 1rem;
+    padding: 2.7rem 3rem;
   }
 
   .nav-left {
-    gap: 1rem;
+    gap: 4.5rem;
   }
 
   .main-content {

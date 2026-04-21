@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { observer } from 'mobx-react-lite'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useCollectionStore } from '../../stores/collectionStore'
 import { useRecordStore } from '../../stores/recordStore'
@@ -40,6 +40,7 @@ export const CollectionDetail = observer(() => {
   const locale = i18n.resolvedLanguage ?? i18n.language
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const collectionStore = useCollectionStore()
   const recordStore = useRecordStore()
   const authStore = useAuthStore()
@@ -137,7 +138,9 @@ export const CollectionDetail = observer(() => {
       closeImportModal()
       if (ids?.length) {
         const targetId = mode === 'deposition' && ids.length >= 2 ? ids[1] : ids[0]
-        navigate(`/records/${targetId}`)
+        navigate(`/records/${targetId}`, {
+          state: { from: `${location.pathname}${location.search}` },
+        })
       }
     } catch (err) {
       const e = err as ApiError

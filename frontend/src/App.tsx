@@ -7,7 +7,7 @@
  */
 
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { MainLayout } from './components/layout/MainLayout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
@@ -22,6 +22,7 @@ import { RecordsListPage } from './components/records/RecordsListPage'
 import { ActorListPage } from './components/actors/ActorListPage'
 import { ActorDetailPage } from './components/actors/ActorDetailPage'
 import { ActorForm } from './components/actors/ActorForm'
+import { LandingPage } from './components/LandingPage'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from './stores/authStore'
 import './App.css'
@@ -43,7 +44,7 @@ export const AppContent = observer(() => {
     <MainLayout>
       <Routes>
           {/* Public routes */}
-          <Route path="/" element={<Navigate to="/collections" replace />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/collections" element={<CollectionList />} />
           <Route path="/collections/:id" element={<CollectionDetail />} />
           <Route path="/records" element={<RecordsListPage />} />

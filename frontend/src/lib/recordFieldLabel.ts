@@ -107,3 +107,34 @@ export function translateRecordFieldKey(key: string, i18n: I18nType, t: TFunctio
   }
   return formatDomainKeyLabel(key)
 }
+
+/**
+ * Label for a JSON field key in record domain detail view, including parent-key disambiguation
+ * (same rules as the record edit form / NestedDomainFields).
+ */
+export function recordDomainFieldLabelForKey(
+  k: string,
+  parentFieldKey: string | undefined,
+  i18n: I18nType,
+  t: TFunction,
+): string {
+  if (parentFieldKey === 'content' && k === 'activity') {
+    return t('recordForm.labels.contentActivity')
+  }
+  if (parentFieldKey === 'content' && k === 'position') {
+    return t('recordForm.labels.contentPosition')
+  }
+  if (parentFieldKey === 'content' && k === 'script') {
+    return t('recordForm.labels.contentScript')
+  }
+  if (parentFieldKey === 'content' && k === 'language') {
+    return t('recordForm.labels.contentLanguage')
+  }
+  if (parentFieldKey === 'content_event_row' && k === 'name') {
+    return t('recordForm.labels.contentSubEventName')
+  }
+  if (parentFieldKey === 'content_event_row' && k === 'name_type') {
+    return t('recordForm.labels.contentSubEventNameType')
+  }
+  return translateRecordFieldKey(k, i18n, t)
+}

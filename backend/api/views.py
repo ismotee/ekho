@@ -230,7 +230,7 @@ def health_check(request):
     """
     return Response({
         'status': 'healthy',
-        'message': 'Ekho backend is running'
+        'message': 'Laukkanen Collection backend is running'
     }, status=status.HTTP_200_OK)
 
 

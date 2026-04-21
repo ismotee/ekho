@@ -83,6 +83,7 @@
   padding: 0.625rem 0.75rem;
   border-radius: 0.5rem;
   background-color: var(--color-surface);
+  color: var(--color-text-on-surface);
 }
 
 .filter-toggle {
@@ -104,7 +105,7 @@
 }
 
 .filter-toggle:hover {
-  color: var(--color-text);
+  color: var(--color-text-on-surface);
 }
 
 .collection-list {
@@ -126,7 +127,7 @@
   border-radius: 0.5rem;
   box-shadow: var(--shadow-sm);
   text-decoration: none;
-  color: inherit;
+  color: var(--color-text-on-surface);
   transition: box-shadow 0.15s ease-in-out;
 }
 
@@ -138,7 +139,7 @@
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-on-surface);
 }
 
 .collection-card-count {
@@ -186,13 +187,14 @@
 .back-link {
   display: block;
   margin-bottom: 1rem;
-  color: var(--color-primary);
+  color: var(--color-text);
   text-decoration: none;
   text-align: left;
   width: 100%;
 }
 
 .back-link:hover {
+  color: var(--color-link-on-dark-bg-hover);
   text-decoration: underline;
 }
 
@@ -254,6 +256,7 @@
   margin: 2rem auto;
   padding: 2rem;
   background: var(--color-surface);
+  color: var(--color-text-on-surface);
   border-radius: 0.5rem;
   box-shadow: var(--shadow-sm);
 }
@@ -293,7 +296,7 @@
 
 .modal-content {
   background: var(--color-surface);
-  color: var(--color-text);
+  color: var(--color-text-on-surface);
   padding: 2rem;
   border-radius: 0.5rem;
   max-width: 500px;
