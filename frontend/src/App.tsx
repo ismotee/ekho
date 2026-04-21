@@ -23,6 +23,7 @@ import { ActorListPage } from './components/actors/ActorListPage'
 import { ActorDetailPage } from './components/actors/ActorDetailPage'
 import { ActorForm } from './components/actors/ActorForm'
 import { LandingPage } from './components/LandingPage'
+import { KioskFullscreenGate } from './components/kiosk/KioskFullscreenGate'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from './stores/authStore'
 import './App.css'
@@ -116,6 +117,7 @@ export const AppContent = observer(() => {
 const App = () => {
   return (
     <BrowserRouter>
+      <KioskFullscreenGate />
       <AppContent />
     </BrowserRouter>
   )

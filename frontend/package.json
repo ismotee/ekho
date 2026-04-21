@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:kiosk": "vite build --mode kiosk",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",

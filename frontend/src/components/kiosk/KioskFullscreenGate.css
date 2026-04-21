@@ -1,0 +1,23 @@
+.kiosk-fullscreen-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+  background: rgba(26, 26, 26, 0.92);
+  color: #fafafa;
+  cursor: pointer;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kiosk-fullscreen-gate__text {
+  font-size: clamp(1.125rem, 3vw, 1.5rem);
+  font-weight: 500;
+  line-height: 1.4;
+  max-width: 22rem;
+  margin: 0;
+}

@@ -2,7 +2,8 @@
   "app": {
     "brand": "Laukkanen Collection",
     "goToRecords": "Siirry kokoelmaan",
-    "notFound": "404 - Sivua ei löytynyt"
+    "notFound": "404 - Sivua ei löytynyt",
+    "kioskTapToEnter": "Napauta missä tahansa koko näytön tilaa varten"
   },
   "landing": {
     "introParagraph1": "Laukkanen Collection on kokoelma. Kuvataiteilijat Miska Allonen, Juho Järvi ja Susa Walve ovat tallettaneet teoksia kokoelmaan väliaikaisesti. Kokoelmanhallintaohjelman on valmistanut ohjelmistonkehittäjä Ismo Torvinen. Kokoelmanhallintaohjelma perustuu Museoiden luettelointioppaaseen, jonka ovat laatineet Museovirasto, Suomen museoliitto ja Kansallisgalleria.",

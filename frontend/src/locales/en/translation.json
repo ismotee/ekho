@@ -2,7 +2,8 @@
   "app": {
     "brand": "Laukkanen Collection",
     "goToRecords": "Go to collection",
-    "notFound": "404 - Page Not Found"
+    "notFound": "404 - Page Not Found",
+    "kioskTapToEnter": "Tap anywhere to enter fullscreen"
   },
   "landing": {
     "introParagraph1": "Laukkanen Collection is a collection. Visual artists Miska Allonen, Juho Järvi and Susa Walve have deposited works into the collection on a temporary basis. The collection management application was built by software developer Ismo Torvinen. The collection management application is based on the Museums' Cataloguing Manual, prepared by the Finnish Heritage Agency, the Finnish Museums Association and the Finnish National Gallery.",
