@@ -168,7 +168,9 @@ def decode_import_representative_image(rec_block: dict) -> tuple[bytes, str] | N
     except Exception:
         raise ValueError("record.representative_image.base64 is not valid base64.") from None
     if len(raw) > MAX_IMAGE_BYTES:
-        raise ValueError("Image file size cannot exceed 10MB")
+        raise ValueError(
+            f"Image file size cannot exceed {MAX_IMAGE_BYTES // (1024 * 1024)}MB"
+        )
     filename = p.get("filename") or "import.jpg"
     if not isinstance(filename, str):
         filename = "import.jpg"
@@ -253,7 +255,9 @@ def decode_import_nested_images(
                 f"record.images[{i}].image.base64 is not valid base64."
             ) from None
         if len(raw) > MAX_IMAGE_BYTES:
-            raise ValueError("Image file size cannot exceed 10MB")
+            raise ValueError(
+                f"Image file size cannot exceed {MAX_IMAGE_BYTES // (1024 * 1024)}MB"
+            )
         filename = img_block.get("filename") or "import.jpg"
         if not isinstance(filename, str):
             filename = "import.jpg"

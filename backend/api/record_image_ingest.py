@@ -3,7 +3,7 @@ Compute byte size, checksum, dimensions, and format/MIME for record image upload
 
 Used by RecordImage serializers and by data migrations. Validation matches
 RecordSerializer.validate_representative_image (policy in
-``record_image_format_map``, 10MB max).
+``record_image_format_map``, 25MB max).
 
 Format tag: ImageMagick-style identifier (``magick_format`` on ``RecordImage``),
 resolved from Pillow when possible, otherwise from filename extension via
@@ -31,7 +31,7 @@ from .record_image_format_map import (
     normalized_image_mime,
 )
 
-MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_BYTES = 25 * 1024 * 1024
 
 
 def magick_tag_from_pillow(pil_format: str | None) -> str | None:
@@ -102,7 +102,9 @@ def analyze_image_bytes(
     Raises ValueError on policy violations or unreadable image.
     """
     if len(data) > MAX_IMAGE_BYTES:
-        raise ValueError("Image file size cannot exceed 10MB")
+        raise ValueError(
+            f"Image file size cannot exceed {MAX_IMAGE_BYTES // (1024 * 1024)}MB"
+        )
 
     checksum_sha256 = hashlib.sha256(data).hexdigest()
     buf = io.BytesIO(data)

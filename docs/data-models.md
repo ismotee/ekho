@@ -196,7 +196,7 @@ class Record(models.Model):
 - `dimensions`: Optional, max 100 characters
 - `description`: Optional, max 2000 characters
 - `condition`: Optional, max 200 characters
-- `image`: Optional, image file, max 10MB
+- `image`: Optional, image file, max 25MB
 - `collection`: Required, cannot be null
 
 ### Indexes
@@ -208,7 +208,7 @@ class Record(models.Model):
 
 - **Upload Path**: `records/` directory within media root
 - **File Types**: JPEG, PNG, GIF
-- **Max Size**: 10MB (enforced in validation)
+- **Max Size**: 25MB (enforced in validation)
 - **Storage**: Local filesystem (development), configurable (production)
 - **URL**: Served at `/media/records/{filename}`
 
@@ -229,7 +229,7 @@ class Record(models.Model):
 - `dimensions`: Optional, max 100 characters if provided
 - `description`: Optional, max 2000 characters if provided
 - `condition`: Optional, max 200 characters if provided
-- `image`: Optional, if provided must be valid image file (JPEG, PNG, GIF), max 10MB
+- `image`: Optional, if provided must be valid image file (JPEG, PNG, GIF), max 25MB
 
 ## Database Schema
 

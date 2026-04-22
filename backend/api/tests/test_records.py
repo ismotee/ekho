@@ -607,12 +607,12 @@ class TestCreateRecord:
             response = authenticated_client.post(url, data, format="multipart")
             assert response.status_code == status.HTTP_201_CREATED
 
-    def test_image_upload_file_size_limit_10mb(self, authenticated_client, collection):
+    def test_image_upload_file_size_limit_25mb(self, authenticated_client, collection):
         if collection:
             url = reverse("records-list")
             large_file = SimpleUploadedFile(
                 "large.jpg",
-                b"x" * (11 * 1024 * 1024),
+                b"x" * (26 * 1024 * 1024),
                 content_type="image/jpeg",
             )
             cid = collection["id"]
@@ -1018,11 +1018,11 @@ class TestImageUpload:
             response = authenticated_client.post(reverse("records-list"), data, format="multipart")
             assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_file_size_validation_10mb_limit(self, authenticated_client, collection):
+    def test_file_size_validation_25mb_limit(self, authenticated_client, collection):
         if collection:
             large_file = SimpleUploadedFile(
                 "large.jpg",
-                b"x" * (11 * 1024 * 1024),
+                b"x" * (26 * 1024 * 1024),
                 content_type="image/jpeg",
             )
             cid = collection["id"]
@@ -2224,7 +2224,7 @@ class TestRecordImages:
         )
         assert r2.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_create_record_image_over_10mb(self, authenticated_client, collection):
+    def test_create_record_image_over_25mb(self, authenticated_client, collection):
         if not collection:
             return
         rid = authenticated_client.post(
@@ -2234,7 +2234,7 @@ class TestRecordImages:
         ).data["id"]
         huge = SimpleUploadedFile(
             "big.jpg",
-            b"x" * (10 * 1024 * 1024 + 1),
+            b"x" * (25 * 1024 * 1024 + 1),
             content_type="image/jpeg",
         )
         r2 = authenticated_client.post(

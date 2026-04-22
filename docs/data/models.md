@@ -169,7 +169,7 @@ class Record(models.Model):
 ### Representative image
 
 - **Upload path**: `records/` under `MEDIA_ROOT`
-- **Validation** (API): JPEG, PNG, GIF; max 10MB
+- **Validation** (API): JPEG, PNG, GIF; max 25MB
 - **Deletion**: Removing a record should remove the stored file when applicable
 
 ### Business rules

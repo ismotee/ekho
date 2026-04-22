@@ -32,7 +32,7 @@
   - Dimensions: optional, max 100 characters (e.g., "24x36 inches")
   - Description: optional, text field, max 2000 characters
   - Condition: optional, max 200 characters
-  - Image: optional, image file (JPG, PNG, GIF), max size 10MB
+  - Image: optional, image file (JPG, PNG, GIF), max size 25MB
 - Record is automatically associated with the collection
 - Owner is implicitly the collection owner
 - Timestamps (created_at, updated_at) are automatically set
@@ -158,7 +158,7 @@
 
 - [ ] Owner can select an image file during record creation or editing
 - [ ] Supported file formats: JPG, PNG, GIF
-- [ ] Maximum file size: 10MB
+- [ ] Maximum file size: 25MB
 - [ ] Image preview is shown after selection (before upload)
 - [ ] Image is uploaded and stored securely
 - [ ] Image URL is associated with the record

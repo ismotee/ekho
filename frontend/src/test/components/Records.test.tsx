@@ -347,7 +347,7 @@ describe('RecordForm Component Tests (US-010, US-011, US-015)', () => {
     expect(true).toBe(true)
   })
 
-  it('rejects files too large (10MB limit)', () => {
+  it('rejects files too large (25MB limit)', () => {
     expect(true).toBe(true)
   })
 
@@ -668,7 +668,7 @@ describe('ImageUpload Component Tests (US-015)', () => {
     expect(true).toBe(true)
   })
 
-  it('validates file size (10MB max)', () => {
+  it('validates file size (25MB max)', () => {
     expect(true).toBe(true)
   })
 
