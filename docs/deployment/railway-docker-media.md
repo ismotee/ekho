@@ -56,6 +56,24 @@ docker run --rm -p 8080:8080 \
 
 Then open `http://127.0.0.1:8080/api/` (or your health check) and verify an image upload returns a URL that loads from `/media/…`.
 
-## 5. Migrating from ephemeral storage
+## 5. Troubleshooting: `poetry` could not be found
+
+Railway’s **Start Command** [replaces the Dockerfile `ENTRYPOINT`](https://docs.railway.com/guides/start-command) when set. An old value such as `poetry run …` or `poetry run python -m waitress …` runs inside the image **without** Poetry installed, so the container exits immediately. Remove that command for the Docker layout: migrations run in **`docker-entrypoint.sh`**, **`collectstatic`** runs at image build time, and **nginx + Gunicorn** replace Waitress.
+
+**Fix:**
+
+1. Commit **`backend/railway.toml`** (in this repo) so deploy uses `startCommand = "/app/deploy/docker-entrypoint.sh"` and **`builder = "DOCKERFILE"`**.
+2. In the backend service on Railway: **Settings → Deploy → Start Command** — clear it (empty) or leave it; config-as-code overrides stale values when merged.
+3. If the service **root directory** is the **repo root** (not `backend`), set **Config file** to `backend/railway.toml` (see [Using config as code](https://docs.railway.com/guides/config-as-code)), or set **Root Directory** to `backend` so `railway.toml` and `Dockerfile` are at the service root.
+
+---
+
+## 6. Migrating from ephemeral storage
 
 If you already have rows pointing at `/media/records/…` but files lived only on the old container disk, you must **re-upload** or restore files into the new volume under the same relative paths (`records/…`).
+
+---
+
+## 7. Reference
+
+- `backend/railway.toml` — builder + start command for this Docker layout.

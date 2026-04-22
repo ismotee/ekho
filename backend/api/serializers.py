@@ -339,7 +339,8 @@ class RecordSerializer(serializers.ModelSerializer):
         if payload is not None and isinstance(payload, dict):
             request = self.context.get("request")
             user = getattr(request, "user", None) if request else None
-            validate_actor_refs_for_user(payload, user)
+            existing = self.instance.data if self.instance is not None else None
+            validate_actor_refs_for_user(payload, user, existing_record_data=existing)
         new_collection = attrs.get("collection")
         if new_collection is not None and self.instance is not None:
             request = self.context.get("request")

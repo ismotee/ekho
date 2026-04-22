@@ -86,7 +86,7 @@ Yhden replikan Railway-backendille repossa on **`backend/Dockerfile`**: nginx ku
 3. Aseta muuttuja **`EKHO_MEDIA_ROOT`** (esim. `/data/media`), jos et käytä oletuspolkua.
 4. Varmista muut backend-muuttujat kuten yllä (`DJANGO_SETTINGS_MODULE`, `DATABASE_URL`, jne.).
 
-Yksityiskohtaisempi englanninkielinen ohje: [railway-docker-media.md](railway-docker-media.md).
+Yksityiskohtaisempi englanninkielinen ohje: [railway-docker-media.md](railway-docker-media.md). Jos käynnistys epäonnistuu viestiin **«poetry could not be found»**, Railwayn **Start Command** yliajaa Dockerin `ENTRYPOINT`in — korjaus: `backend/railway.toml` (tai tyhjä Start Command) ja kohdan 5 vianmääritys **railway-docker-media.md**:ssä.
 
 ---
 
