@@ -74,7 +74,7 @@ The application implements multiple layers of security to protect user data, pre
 ### Image Upload Validation
 
 - **File Type Validation**: Only JPEG, PNG, GIF allowed
-- **File Size Limits**: Maximum 10MB per file
+- **File Size Limits**: Maximum 25MB per file
 - **MIME Type Checking**: Validate actual file type, not just extension
 - **File Naming**: Use secure file naming (UUID or timestamp-based)
 

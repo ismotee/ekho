@@ -50,8 +50,8 @@ export const ImageUpload = ({
       return
     }
 
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Validate file size (25MB)
+    if (file.size > 25 * 1024 * 1024) {
       alert(t('recordForm.imageUpload.imageMaxSize'))
       return
     }

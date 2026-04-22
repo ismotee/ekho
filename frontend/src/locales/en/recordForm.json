@@ -51,7 +51,7 @@
   "imageUpload": {
     "defaultLabel": "Image",
     "selectImageFile": "Please select an image file",
-    "imageMaxSize": "Image must be less than 10MB",
+    "imageMaxSize": "Image must be less than 25MB",
     "previewAlt": "Preview",
     "remove": "Remove"
   },

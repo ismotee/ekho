@@ -143,7 +143,7 @@ Show the **same primary summary line** as the card (not a hard-coded “title by
 
 - **Shell**: Large modal or full-page form by breakpoint
 - **Navigation**: Stepper or left nav covering **Identification**, **Acquisition**, **Description**, **History**, **Rights**, **Access**, **Object location**, **Confidentiality**, optional **Review**
-- **Representative image**: First-class control; labeled as thumbnail for lists/detail hero; same file rules as **Image Upload Component** (JPG/PNG/GIF, 10MB)
+- **Representative image**: First-class control; labeled as thumbnail for lists/detail hero; same file rules as **Image Upload Component** (JPG/PNG/GIF, 25MB)
 - **Fields**: Driven by domain types in `docs/data/*-models.md`; use progressive disclosure for repeating structures
 - **Validation**: Align required fields with API/backend; section-level errors + short summary at top
 - **Buttons**:
@@ -250,7 +250,7 @@ Same shell as **Create Record Form** (stepper / section nav + representative ima
 - **Button**: "Choose File" or "Browse" button
 - **File Input**: Hidden, triggered by button
 - **Accepted Types**: .jpg, .jpeg, .png, .gif
-- **Max Size**: 10MB
+- **Max Size**: 25MB
 
 ### Image Preview
 

@@ -106,5 +106,5 @@ def test_resolve_magick_tag_prefers_pillow_over_wrong_extension():
 
 
 def test_analyze_rejects_oversize():
-    with pytest.raises(ValueError, match="10MB"):
-        analyze_image_bytes(b"x" * (10 * 1024 * 1024 + 1), original_name="huge.jpg")
+    with pytest.raises(ValueError, match="25MB"):
+        analyze_image_bytes(b"x" * (25 * 1024 * 1024 + 1), original_name="huge.jpg")

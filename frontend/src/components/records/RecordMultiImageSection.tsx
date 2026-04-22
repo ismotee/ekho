@@ -100,7 +100,7 @@ export function RecordMultiImageSection({
       window.alert(t('recordForm.imageUpload.selectImageFile'))
       return false
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 25 * 1024 * 1024) {
       window.alert(t('recordForm.imageUpload.imageMaxSize'))
       return false
     }

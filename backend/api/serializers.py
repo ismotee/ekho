@@ -18,7 +18,7 @@ from .record_image_vocab import (
     RECORD_IMAGE_ROLE_SET,
     RECORD_IMAGE_STATUS_SET,
 )
-from .record_image_ingest import analyze_uploaded_file
+from .record_image_ingest import MAX_IMAGE_BYTES, analyze_uploaded_file
 from .record_image_format_map import (
     ALLOWED_MIME_TYPES,
     IMAGE_UPLOAD_POLICY_SHORT_TEXT,
@@ -361,10 +361,9 @@ class RecordSerializer(serializers.ModelSerializer):
 
     def validate_representative_image(self, value):
         if value:
-            max_size = 10 * 1024 * 1024
-            if value.size > max_size:
+            if value.size > MAX_IMAGE_BYTES:
                 raise serializers.ValidationError(
-                    "Image file size cannot exceed 10MB"
+                    f"Image file size cannot exceed {MAX_IMAGE_BYTES // (1024 * 1024)}MB"
                 )
             ct = normalized_image_mime(value.content_type)
             if ct not in ALLOWED_MIME_TYPES:

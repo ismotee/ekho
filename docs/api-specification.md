@@ -685,7 +685,7 @@ Permanently deletes a record and **all** stored **`images`** files plus any lega
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `image` | Yes | Binary upload. Same allowlist as `representative_image`: **JPEG**, **PNG**, **GIF**; max **10MB**. |
+| `image` | Yes | Binary upload. Same allowlist as `representative_image`: **JPEG**, **PNG**, **GIF**; max **25MB**. |
 | `role` | Yes | Closed enum — see [Record image `role` and `context`](#record-image-role-and-context-closed-vocabularies). |
 | `context` | Yes | Closed enum — same section. |
 | `sort_order` | No | Integer; default `0`. |
@@ -782,7 +782,7 @@ Semantics and usage rules: [docs/data/common-models.md](data/common-models.md) (
 
 ### File Size Limits
 
-- Maximum file size: 10MB
+- Maximum file size: 25MB
 - Recommended: < 5MB for optimal performance
 
 ### Image Storage

@@ -51,7 +51,7 @@
   "imageUpload": {
     "defaultLabel": "Kuva",
     "selectImageFile": "Valitse kuvatiedosto",
-    "imageMaxSize": "Kuvan on oltava alle 10 Mt",
+    "imageMaxSize": "Kuvan on oltava alle 25 Mt",
     "previewAlt": "Esikatselu",
     "remove": "Poista"
   },
