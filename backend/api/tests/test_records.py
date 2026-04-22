@@ -16,10 +16,11 @@ from PIL import Image
 from django.contrib.auth.models import User
 
 from api.models import Actor, Collection, Record, RecordImage
-from api.record_actor_refs import collect_actor_ids
+from api.record_actor_refs import collect_actor_ids, validate_actor_refs_for_user
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.test import APIClient
 
 
@@ -127,6 +128,49 @@ def test_collect_actor_ids_includes_object_location_list():
 def test_collect_actor_ids_includes_object_location_legacy_dict():
     data = {"object_location": {"location": {"owner": {"id": 88}}}}
     assert collect_actor_ids(data) == {88}
+
+
+@pytest.mark.django_db
+def test_validate_actor_refs_rejects_foreign_actor_without_prior_record_refs(user, other_user):
+    foreign = Actor.objects.create(
+        owner=other_user,
+        data={"person": {"first_name": [{"name": "Foreign"}]}},
+    )
+    data = {"description": {"content": {"actors": [{"id": foreign.id}]}}}
+    with pytest.raises(DRFValidationError):
+        validate_actor_refs_for_user(data, user)
+
+
+@pytest.mark.django_db
+def test_validate_actor_refs_allows_foreign_actor_when_already_on_record(user, other_user):
+    foreign = Actor.objects.create(
+        owner=other_user,
+        data={"person": {"first_name": [{"name": "Foreign"}]}},
+    )
+    prior = {"description": {"content": {"actors": [{"id": foreign.id}]}}}
+    data = {
+        "description": {"content": {"actors": [{"id": foreign.id}]}},
+        "identification_details": {"object_number": "X", "title": [{"value": "Edited"}]},
+    }
+    validate_actor_refs_for_user(data, user, existing_record_data=prior)
+
+
+@pytest.mark.django_db
+def test_validate_actor_refs_rejects_new_foreign_actor_even_with_some_prior_refs(
+    user, other_user
+):
+    foreign = Actor.objects.create(
+        owner=other_user,
+        data={"person": {"first_name": [{"name": "A"}]}},
+    )
+    other_foreign = Actor.objects.create(
+        owner=other_user,
+        data={"person": {"first_name": [{"name": "B"}]}},
+    )
+    prior = {"description": {"content": {"actors": [{"id": foreign.id}]}}}
+    data = {"description": {"content": {"actors": [{"id": foreign.id}, {"id": other_foreign.id}]}}}
+    with pytest.raises(DRFValidationError):
+        validate_actor_refs_for_user(data, user, existing_record_data=prior)
 
 
 @pytest.fixture

@@ -537,13 +537,27 @@ def remap_actor_ids_for_import(data: dict, id_map: dict[int, int]) -> dict:
     return out
 
 
-def validate_actor_refs_for_user(data: dict, user: Any) -> None:
-    """Ensure every actor ref in `data` exists and is global or owned by `user`."""
+def validate_actor_refs_for_user(
+    data: dict,
+    user: Any,
+    *,
+    existing_record_data: Any = None,
+) -> None:
+    """Ensure every actor ref in `data` exists and is global, owned by `user`, or unchanged.
+
+    On record updates, ``existing_record_data`` is the previous ``Record.data`` payload.
+    Actor ids that already appeared on the record may remain referenced even when owned
+    by another user (e.g. imported provenance), but new references to others' private
+    actors are rejected.
+    """
     if user is None or isinstance(user, AnonymousUser) or not user.is_authenticated:
         raise DRFValidationError({"data": ["Authentication required for actor references."]})
     ids = collect_actor_ids(data)
     if not ids:
         return
+    previous_ids: Set[int] = set()
+    if isinstance(existing_record_data, dict):
+        previous_ids = collect_actor_ids(existing_record_data)
     from .models import Actor
 
     for aid in ids:
@@ -555,10 +569,13 @@ def validate_actor_refs_for_user(data: dict, user: Any) -> None:
             )
         if act.owner_id is None:
             continue
-        if act.owner_id != user.id:
-            raise DRFValidationError(
-                {"data": [f"Actor id {aid} is not available (not global or yours)."]}
-            )
+        if act.owner_id == user.id:
+            continue
+        if aid in previous_ids:
+            continue
+        raise DRFValidationError(
+            {"data": [f"Actor id {aid} is not available (not global or yours)."]}
+        )
 
 
 def record_label_from_data(data: dict) -> str:
