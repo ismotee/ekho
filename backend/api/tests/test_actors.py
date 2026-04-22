@@ -147,9 +147,10 @@ def test_create_actor(auth_client):
     assert r.data["data"]["organization"]["name"][0]["name"]["fi"] == "My Org"
 
 
-def test_cannot_see_other_user_actor_detail(other_client, user_actor):
+def test_can_see_other_user_actor_detail_read_only(other_client, user_actor):
     r = other_client.get(reverse("actors-detail", kwargs={"pk": user_actor.pk}))
-    assert r.status_code == status.HTTP_404_NOT_FOUND
+    assert r.status_code == status.HTTP_200_OK
+    assert r.data["id"] == user_actor.id
 
 
 def test_usage_endpoint(auth_client, collection, user_actor):

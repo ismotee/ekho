@@ -176,11 +176,10 @@ def _resolve_or_upsert_import_actors(user, actors_payload: list[dict]) -> dict[i
                 import_id=import_uid,
             )
         else:
-            # Reuse existing actor across owners in same database.
-            # Only update payload when actor is global or owned by importing user.
-            if actor.owner_id is None or actor.owner_id == user.id:
-                actor.data = validated_data
-                actor.save(update_fields=["data", "updated_at"])
+            # Reuse existing actor across owners in same database and
+            # always refresh payload from the import source.
+            actor.data = validated_data
+            actor.save(update_fields=["data", "updated_at"])
         id_map[src_id] = actor.pk
     return id_map
 
@@ -583,7 +582,8 @@ class ActorViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:
-            return qs.filter(Q(owner__isnull=True) | Q(owner=user))
+            # Authenticated users can read all actors (read-only for non-owned rows).
+            return qs
         return qs.filter(owner__isnull=True)
 
     def perform_create(self, serializer):

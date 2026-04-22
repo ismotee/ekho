@@ -1764,8 +1764,8 @@ class TestRecordImport:
         assert collect_actor_ids(rec.data) == {foreign_actor.id}
         assert Actor.objects.filter(import_id=shared_import_id).count() == 1
         foreign_actor.refresh_from_db()
-        # Actor owned by someone else is reused as-is (not overwritten).
-        assert foreign_actor.data["person"]["first_name"][0]["name"] == "Foreign Owner Actor"
+        # Actor owned by someone else is reused and refreshed from import payload.
+        assert foreign_actor.data["person"]["first_name"][0]["name"] == "Updated by import"
 
     def test_import_deposition_creates_unlisted_original_and_duplicate(
         self, authenticated_client, collection
