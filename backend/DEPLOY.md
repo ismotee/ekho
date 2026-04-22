@@ -37,4 +37,6 @@ For packages that should not run with `DEBUG=True`, set:
 
 Railway: which variables belong to which service (Postgres, backend, frontend) — [docs/deployment/railway-environment-variables.md](../docs/deployment/railway-environment-variables.md).
 
+Railway **Docker** backend (nginx + Gunicorn, persistent **`/media/`** via volume): [docs/deployment/railway-docker-media.md](../docs/deployment/railway-docker-media.md).
+
 Curator-facing steps: [docs/curator-runbook.md](../docs/curator-runbook.md).

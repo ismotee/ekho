@@ -61,10 +61,11 @@ AWS_STORAGE_BUCKET_NAME = 'ekho-media'
 
 ### Implementation Notes
 
-1. **File Organization**: Store images in `media/records/` directory
-2. **File Naming**: Use Django's default file naming (UUID or timestamp-based)
-3. **File Validation**: Validate file type and size in serializer
-4. **File Cleanup**: Delete image files when records are deleted
+1. **Single-replica production (Railway)**: Optional **volume + nginx** in front of Gunicorn serves `/media/` from disk while Django uses the same path via `EKHO_MEDIA_ROOT` — see [docs/deployment/railway-docker-media.md](../../deployment/railway-docker-media.md).
+2. **File Organization**: Store images in `media/records/` directory
+3. **File Naming**: Use Django's default file naming (UUID or timestamp-based)
+4. **File Validation**: Validate file type and size in serializer
+5. **File Cleanup**: Delete image files when records are deleted
 
 ### Migration to Cloud Storage
 

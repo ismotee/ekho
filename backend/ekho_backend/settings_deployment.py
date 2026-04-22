@@ -17,6 +17,12 @@ from .settings import *  # noqa: F403, F405
 
 _logger = logging.getLogger(__name__)
 
+# Optional: absolute path for user uploads (Railway volume + nginx /media/ alias).
+# When unset, inherits MEDIA_ROOT from settings (typically BASE_DIR / "media").
+_ekho_media_root = os.getenv("EKHO_MEDIA_ROOT", "").strip()
+if _ekho_media_root:
+    MEDIA_ROOT = Path(_ekho_media_root)
+
 # PostgreSQL only: DATABASE_URL (Railway / Heroku) or libpq-style vars when PGHOST is set.
 # Missing or invalid configuration raises ImproperlyConfigured with explicit env diagnostics.
 _database_url = os.getenv("DATABASE_URL", "").strip()
@@ -153,3 +159,5 @@ _logger.warning(
     "DATABASE_URL" if _database_url else "PGHOST",
     DATABASES["default"]["ENGINE"],
 )
+if _ekho_media_root:
+    _logger.warning("Ekho: EKHO_MEDIA_ROOT set; MEDIA_ROOT=%s", MEDIA_ROOT)

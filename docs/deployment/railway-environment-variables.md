@@ -37,6 +37,8 @@ Aseta nämä **backend**-servicen **Variables** -näkymässä (ei Postgresissa e
 | `SECURE_HSTS` | `true` HSTS:lle (vain kun ymmärrät vaikutukset). |
 | `CSRF_COOKIE_SECURE` / `SESSION_COOKIE_SECURE` | `true` HTTPS:ssä; **jos** `EKHO_CROSS_SITE_SESSION=1`, nämä pakotetaan `true`:ksi koodissa. |
 | `PGSSLMODE` | Vain **PGHOST**-ketjussa (ei `DATABASE_URL` + `dj_database_url` -polussa). Arvo esim. `require`, jos libpq-yhteys vaatii SSL:n erikseen. |
+| `EKHO_MEDIA_ROOT` | Suositeltava **Docker + volume** -asennuksessa | Absoluuttinen polku tallennushakemistoon (sama kuin volumen mount + nginx `alias`). Esim. `/data/media`. Ilman tätä Django käyttää oletuksena `BASE_DIR / "media"` (kontainerin epäkestävä levy). |
+| `EKHO_RUN_MIGRATIONS` | Valinnainen | Oletus `1`: `docker-entrypoint.sh` ajaa `migrate --noinput` käynnistyksessä. Aseta `0` jos migraatiot ajetaan erikseen. |
 
 **Älä aseta backendissä:** frontin `VITE_*` -muuttujia — ne kuuluvat frontend-buildiin.
 
@@ -73,8 +75,24 @@ Jos jokin näistä puuttuu, tyypillisiä oireita ovat **401** `Authentication re
 
 ---
 
-## 5. Viitteet
+## 5. Backend Docker: kuvat (volume + nginx)
 
-- `backend/ekho_backend/settings_deployment.py` — tietokanta, CORS/CSRF, `EKHO_CROSS_SITE_SESSION`.
+Yhden replikan Railway-backendille repossa on **`backend/Dockerfile`**: nginx kuuntelee Railwayn **`PORT`**-muuttujaa, välittää API-pyynnöt gunicornille (127.0.0.1:8001) ja palvelee **`/media/`** suoraan levyltä (`EKHO_MEDIA_ROOT`, oletus `/data/media`). Django `MEDIA_ROOT` on oltava sama polku (`settings_deployment` lukee `EKHO_MEDIA_ROOT`).
+
+**Railwayssa (tiivistelmä):**
+
+1. Backend-palvelu: **Root Directory** = `backend`, build **Dockerfile** (tai repo juuri + Dockerfile-polku `backend/Dockerfile`).
+2. Lisää **Volume**: mount esim. polkuun `/data` tai suoraan `/data/media` (tärkeää: sama kuin `EKHO_MEDIA_ROOT`).
+3. Aseta muuttuja **`EKHO_MEDIA_ROOT`** (esim. `/data/media`), jos et käytä oletuspolkua.
+4. Varmista muut backend-muuttujat kuten yllä (`DJANGO_SETTINGS_MODULE`, `DATABASE_URL`, jne.).
+
+Yksityiskohtaisempi englanninkielinen ohje: [railway-docker-media.md](railway-docker-media.md).
+
+---
+
+## 6. Viitteet
+
+- `backend/ekho_backend/settings_deployment.py` — tietokanta, CORS/CSRF, `EKHO_CROSS_SITE_SESSION`, `EKHO_MEDIA_ROOT`.
 - `backend/.env.example` — lyhyet kommentit paikalliseen `.env`:iin.
 - `backend/DEPLOY.md` — yleiset julkaisumuistiot.
+- `backend/deploy/` — nginx-malli, supervisord, `docker-entrypoint.sh`.
