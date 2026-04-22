@@ -146,7 +146,14 @@
       "notFound": "Actor not found.",
       "dataHeading": "Actor data",
       "dataBySectionAria": "Actor data by section",
-      "ownerLine": "Owner: {{username}}"
+      "ownerLine": "Owner: {{username}}",
+      "allDomains": "All sections",
+      "breadcrumbNavAria": "Actor breadcrumb navigation",
+      "paginationPrevious": "Previous",
+      "paginationNext": "Next",
+      "domainNavPageStatus": "Page {{current}} / {{total}}",
+      "subsectionNavPageStatus": "Page {{current}} / {{total}}",
+      "drillNavPageStatus": "Page {{current}} / {{total}}"
     },
     "form": {
       "backToActors": "← Actors",

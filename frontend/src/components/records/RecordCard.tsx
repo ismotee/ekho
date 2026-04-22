@@ -23,7 +23,6 @@ export const RecordCard = ({ record }: RecordCardProps) => {
   const {
     primaryLabel,
     secondaryLine,
-    yearLine,
     thumbnailUrl,
   } = getRecordCardSummary(record)
   const translatedPrimaryLabel =
@@ -39,7 +38,6 @@ export const RecordCard = ({ record }: RecordCardProps) => {
       <div className="record-info">
         <h3>{translatedPrimaryLabel}</h3>
         {secondaryLine && <p className="record-card-secondary">{secondaryLine}</p>}
-        {yearLine && <p className="record-card-year">{t('records.card.year')}: {yearLine}</p>}
       </div>
     </Link>
   )

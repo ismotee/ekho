@@ -270,7 +270,7 @@ describe('RecordCard Component Tests', () => {
     expect(screen.queryByText('D-2')).not.toBeInTheDocument()
   })
 
-  it('displays year when derivable from description or acquisition', () => {
+  it('does not display year on card even when derivable', () => {
     const { rerender } = render(
       <RecordCard
         record={{
@@ -283,7 +283,7 @@ describe('RecordCard Component Tests', () => {
         }}
       />
     )
-    expect(screen.getByText('Year: 1888')).toBeInTheDocument()
+    expect(screen.queryByText('Year: 1888')).not.toBeInTheDocument()
 
     rerender(
       <RecordCard
@@ -297,7 +297,7 @@ describe('RecordCard Component Tests', () => {
         }}
       />
     )
-    expect(screen.getByText('Year: 1950')).toBeInTheDocument()
+    expect(screen.queryByText('Year: 1950')).not.toBeInTheDocument()
   })
 
   it('navigates to detail on click', () => {

@@ -341,6 +341,8 @@ function PersonNameListEditor({
 }) {
   const { t } = useTranslation()
   const nameRowsCol = useRepeatableCollapsedRows(rows, personNameRowHasIdentity)
+  const commitRows = (nextRows: PersonName[]) =>
+    onChangeRows(nextRows.map((r) => ({ ...r, in_use: true })))
 
   return (
     <fieldset className="record-form-repeatable-fieldset">
@@ -352,7 +354,7 @@ function PersonNameListEditor({
           id={`${idPrefix}-row-${i}`}
           collapsed={nameRowsCol.isCollapsed(i)}
           onToggleCollapse={() => nameRowsCol.toggle(i)}
-          onRemove={() => onChangeRows(rows.filter((_, j) => j !== i))}
+          onRemove={() => commitRows(rows.filter((_, j) => j !== i))}
           disabled={disabled}
           saveItemNoun={t('actors.form.saveNameDetailNoun')}
           summary={personNameRowSummary(row, t('actors.form.emptyNameDetail'))}
@@ -366,28 +368,10 @@ function PersonNameListEditor({
               value={row.name ?? ''}
               onChange={(e) => {
                 const v = e.target.value
-                onChangeRows(rows.map((x, j) => (j === i ? { ...x, name: v || undefined } : x)))
+                commitRows(rows.map((x, j) => (j === i ? { ...x, name: v || undefined } : x)))
               }}
               disabled={disabled}
             />
-          </div>
-          <div className="form-group actor-form-in-use-checkbox">
-            <label htmlFor={`${idPrefix}-inuse-${i}`} className="actor-form-in-use-label">
-              <input
-                id={`${idPrefix}-inuse-${i}`}
-                type="checkbox"
-                checked={row.in_use !== false}
-                onChange={(e) =>
-                  onChangeRows(
-                    rows.map((x, j) =>
-                      j === i ? { ...x, in_use: e.target.checked ? true : false } : x,
-                    ),
-                  )
-                }
-                disabled={disabled}
-              />
-              <span>{t('actors.form.fields.inUseInActorSelects')}</span>
-            </label>
           </div>
           <ReferenceSelect
             id={`${idPrefix}-t-${i}`}
@@ -395,7 +379,7 @@ function PersonNameListEditor({
             allowlist={ACTOR_PERSON_NAME_TYPE_FI}
             valueFi={typeof row.name_type === 'string' ? row.name_type : referenceFieldFi(row.name_type as never)}
             onChangeFi={(fi) =>
-              onChangeRows(rows.map((x, j) => (j === i ? { ...x, name_type: fi.trim() ? fi : undefined } : x)))
+              commitRows(rows.map((x, j) => (j === i ? { ...x, name_type: fi.trim() ? fi : undefined } : x)))
             }
             disabled={disabled}
             emptyLabel="—"
@@ -404,7 +388,7 @@ function PersonNameListEditor({
             idPrefix={`${idPrefix}-d-${i}`}
             legend={t('actors.form.fields.nameDate')}
             value={row.date}
-            onChange={(d) => onChangeRows(rows.map((x, j) => (j === i ? { ...x, date: d } : x)))}
+            onChange={(d) => commitRows(rows.map((x, j) => (j === i ? { ...x, date: d } : x)))}
             disabled={disabled}
             temporalMetadataFields
           />
@@ -413,7 +397,7 @@ function PersonNameListEditor({
       <button
         type="button"
         className="btn btn-secondary btn-sm"
-        onClick={() => onChangeRows([...rows, { in_use: true }])}
+        onClick={() => commitRows([...rows, { in_use: true }])}
         disabled={disabled}
       >
         {t('actors.form.addNameDetail')}
@@ -703,6 +687,8 @@ function NameDetailListEditor({
 }) {
   const { t } = useTranslation()
   const nameRowsCol = useRepeatableCollapsedRows(rows, organizationNameDetailRowHasContent)
+  const commitRows = (nextRows: NameDetail[]) =>
+    onChangeRows(nextRows.map((r) => ({ ...r, in_use: true })))
 
   return (
     <fieldset className="record-form-repeatable-fieldset">
@@ -714,7 +700,7 @@ function NameDetailListEditor({
           id={`${idPrefix}-row-${i}`}
           collapsed={nameRowsCol.isCollapsed(i)}
           onToggleCollapse={() => nameRowsCol.toggle(i)}
-          onRemove={() => onChangeRows(rows.filter((_, j) => j !== i))}
+          onRemove={() => commitRows(rows.filter((_, j) => j !== i))}
           disabled={disabled}
           saveItemNoun={t('actors.form.saveNameDetailNoun')}
           summary={organizationNameDetailSummary(row, t('actors.form.emptyNameDetail'))}
@@ -726,7 +712,7 @@ function NameDetailListEditor({
             allowlist={ACTOR_ORGANIZATION_NAME_TYPE_FI}
             valueFi={referenceFieldFi(row.name_type)}
             onChangeFi={(fi) =>
-              onChangeRows(
+              commitRows(
                 rows.map((x, j) =>
                   j === i ? { ...x, name_type: referenceFieldToPayload(fi) } : x,
                 ),
@@ -735,30 +721,12 @@ function NameDetailListEditor({
             disabled={disabled}
             emptyLabel="—"
           />
-          <div className="form-group actor-form-in-use-checkbox">
-            <label htmlFor={`${idPrefix}-inuse-${i}`} className="actor-form-in-use-label">
-              <input
-                id={`${idPrefix}-inuse-${i}`}
-                type="checkbox"
-                checked={row.in_use !== false}
-                onChange={(e) =>
-                  onChangeRows(
-                    rows.map((x, j) =>
-                      j === i ? { ...x, in_use: e.target.checked ? true : false } : x,
-                    ),
-                  )
-                }
-                disabled={disabled}
-              />
-              <span>{t('actors.form.fields.inUseInActorSelects')}</span>
-            </label>
-          </div>
           <MultilingualLabelInputs
             idPrefix={`${idPrefix}-nm-${i}`}
             finnishLabel={t('actors.form.fields.nameInFinnish')}
             englishLabel={t('actors.form.fields.nameInEnglish')}
             value={row.name}
-            onChange={(l) => onChangeRows(rows.map((x, j) => (j === i ? { ...x, name: l } : x)))}
+            onChange={(l) => commitRows(rows.map((x, j) => (j === i ? { ...x, name: l } : x)))}
             disabled={disabled}
             includeUndefinedLanguage={includeUndefinedLanguage}
           />
@@ -773,7 +741,7 @@ function NameDetailListEditor({
               type="text"
               value={row.addition_to_name ?? ''}
               onChange={(e) =>
-                onChangeRows(
+                commitRows(
                   rows.map((x, j) =>
                     j === i ? { ...x, addition_to_name: e.target.value || undefined } : x,
                   ),
@@ -787,7 +755,7 @@ function NameDetailListEditor({
             legend={t('recordForm.temporal.earliest')}
             value={row.earliest}
             onChange={(next) =>
-              onChangeRows(rows.map((x, j) => (j === i ? { ...x, earliest: next } : x)))
+              commitRows(rows.map((x, j) => (j === i ? { ...x, earliest: next } : x)))
             }
             disabled={disabled}
           />
@@ -796,7 +764,7 @@ function NameDetailListEditor({
             legend={t('recordForm.temporal.latest')}
             value={row.latest}
             onChange={(next) =>
-              onChangeRows(rows.map((x, j) => (j === i ? { ...x, latest: next } : x)))
+              commitRows(rows.map((x, j) => (j === i ? { ...x, latest: next } : x)))
             }
             disabled={disabled}
           />
@@ -805,7 +773,7 @@ function NameDetailListEditor({
       <button
         type="button"
         className="btn btn-secondary btn-sm"
-        onClick={() => onChangeRows([...rows, { in_use: true }])}
+        onClick={() => commitRows([...rows, { in_use: true }])}
         disabled={disabled}
       >
         {t('actors.form.addNameDetail')}

@@ -13,7 +13,7 @@
 }
 
 .navigation {
-  background: var(--color-surface);
+  background: var(--color-text);
   color: var(--color-text-on-surface);
   border-bottom: 1px solid var(--color-border);
   padding: 0;
@@ -151,6 +151,28 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Tallenteet (/records): use almost full width, keep ~5% side margins. */
+.main-content:has(.records-list-page) {
+  max-width: none;
+  padding-left: 5vw;
+  padding-right: 5vw;
+}
+
+/* Toimijat (/actors): use full content width on very wide screens (e.g. 2560x1600). */
+@media (min-width: 2400px) and (min-height: 1500px) {
+  .main-content:has(.actors-list-page) {
+    max-width: none;
+    padding-left: 2.5vw;
+    padding-right: 2.5vw;
+  }
+
+  .main-content:has(.actor-detail-page) {
+    max-width: none;
+    padding-left: 2.5vw;
+    padding-right: 2.5vw;
+  }
 }
 
 /* Record detail: use horizontal space closer to viewport edges (target 2000×1200 landscape) */

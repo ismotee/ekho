@@ -14,7 +14,7 @@ This file defines the **sub-agent roles** for the Ekho project. Use it to invoke
 
 ### Target device (UI)
 
-Ekho is deployed on **Samsung 11" tablets at 2000×1200**. Layout, touch targets, and accessibility must follow **`.cursor/rules/device-samsung-tablet-2000x1200.mdc`** (always applied with frontend and design paths).
+Ekho is deployed on **Samsung 11" tablets at 2560x1600**. Layout, touch targets, and accessibility must follow **`.cursor/rules/device-samsung-tablet-2560x1600.mdc`** (always applied with frontend and design paths).
 
 ---
 

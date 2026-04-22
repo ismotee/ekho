@@ -6,7 +6,7 @@
  * hidden for this deployment. They remain in other git branches.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -18,10 +18,24 @@ import './Actors.css'
 export const ActorListPage = observer(() => {
   const { t } = useTranslation()
   const actorStore = useActorStore()
+  const [page, setPage] = useState(1)
+  const pageSize = 12
 
   useEffect(() => {
     actorStore.fetchActors({ page_size: 100, force: true }).catch(() => {})
   }, [actorStore])
+
+  const totalPages = Math.max(1, Math.ceil(actorStore.actors.length / pageSize))
+  const pagedActors = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return actorStore.actors.slice(start, start + pageSize)
+  }, [actorStore.actors, page])
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [page, totalPages])
 
   const renderContent = () => {
     if (actorStore.loading && actorStore.actors.length === 0) {
@@ -43,28 +57,38 @@ export const ActorListPage = observer(() => {
     return (
       <div className="record-list" role="list">
         <div className="record-grid">
-          {actorStore.actors.map((a) => {
+          {pagedActors.map((a) => {
             const label = recordActorDisplayName(a.data ?? {})
-            const isGlobal = a.owner == null
             return (
-              <article key={a.id} className="actor-card">
+              <Link key={a.id} to={`/actors/${a.id}`} className="actor-card actor-card-link">
                 <h2>{label.trim() || t('actors.actorNumber', { id: a.id })}</h2>
-                <div className="actor-card-meta">
-                  {isGlobal ? (
-                    <span>{t('actors.catalogShared')}</span>
-                  ) : (
-                    <span>{t('actors.addedBy', { username: a.owner?.username ?? t('actors.addedByUser') })}</span>
-                  )}
-                </div>
-                <div className="actor-card-actions">
-                  <Link to={`/actors/${a.id}`} className="btn btn-secondary btn-sm">
-                    {t('common.view')}
-                  </Link>
-                </div>
-              </article>
+              </Link>
             )
           })}
         </div>
+        {totalPages > 1 && (
+          <div className="pagination actors-pagination" role="navigation" aria-label={t('common.pagination')}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={page === 1}
+            >
+              {t('common.previous')}
+            </button>
+            <span className="actors-pagination__status">
+              {page} / {totalPages}
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={page === totalPages}
+            >
+              {t('common.next')}
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -72,10 +96,6 @@ export const ActorListPage = observer(() => {
   return (
     <div className="record-list-page actors-list-page">
       <div className="record-list-main">
-        <div className="actors-list-header">
-          <h1 className="record-list-title">{t('actors.title')}</h1>
-        </div>
-        <p className="actors-intro">{t('actors.intro')}</p>
         {renderContent()}
       </div>
     </div>

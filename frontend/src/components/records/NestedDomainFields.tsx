@@ -52,6 +52,8 @@ interface NestedDomainFieldsProps {
   parentFieldKey?: string
   /** When set (depth 0), used as the root row label instead of `parentFieldKey` (e.g. array element with primitive value). */
   rootLabelOverride?: string
+  /** Optional field-label resolver, used by actor detail to localize field names with actor-specific i18n keys. */
+  fieldLabelForKey?: (key: string, parentKey?: string) => string
 }
 
 const MAX_DEPTH = 12
@@ -123,9 +125,12 @@ function NestedDomainFieldsInner({
   depth = 0,
   parentFieldKey,
   rootLabelOverride,
+  fieldLabelForKey,
 }: NestedDomainFieldsProps) {
   const { t, i18n } = useTranslation()
   const actorStore = useActorStore()
+  const resolveFieldLabel = (key: string, parentKey?: string) =>
+    fieldLabelForKey?.(key, parentKey) ?? recordDomainFieldLabelForKey(key, parentKey, i18n, t)
 
   /** RecordDetail leaf panel: scalars need a field label row (or explicit root override). */
   const wrapRootFieldPanelRow = (node: ReactNode): ReactNode => {
@@ -133,7 +138,7 @@ function NestedDomainFieldsInner({
     const label =
       rootLabelOverride?.trim() ||
       (parentFieldKey != null && parentFieldKey !== ''
-        ? recordDomainFieldLabelForKey(parentFieldKey, undefined, i18n, t)
+        ? resolveFieldLabel(parentFieldKey, undefined)
         : '')
     if (!label) return node
     return (
@@ -248,9 +253,14 @@ function NestedDomainFieldsInner({
       <dl className="record-nested-dl">
         {entries.map(([k, v]) => (
           <div key={k} className="record-field-row">
-            <dt className="record-field-label">{recordDomainFieldLabelForKey(k, parentFieldKey, i18n, t)}</dt>
+            <dt className="record-field-label">{resolveFieldLabel(k, parentFieldKey)}</dt>
             <dd className="record-field-value">
-              <NestedDomainFieldsInner value={v} depth={depth + 1} parentFieldKey={k} />
+              <NestedDomainFieldsInner
+                value={v}
+                depth={depth + 1}
+                parentFieldKey={k}
+                fieldLabelForKey={fieldLabelForKey}
+              />
             </dd>
           </div>
         ))}
