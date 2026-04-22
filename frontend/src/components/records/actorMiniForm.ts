@@ -8,6 +8,7 @@ import { isActorRef } from '../../lib/actorField'
 import { referenceFieldFi } from '../../lib/referenceField'
 import type { AcquisitionActorListItem } from '../../types/record/aqcuisition'
 import type { Actor, ActorField, RoledActor } from '../../types/record/actor'
+import type { ObjectProductInformation } from '../../types/record/history'
 
 export function recordActorLabelHasText(l?: { fi?: string; en?: string; und?: string }): boolean {
   if (!l) return false
@@ -69,6 +70,44 @@ export function recordRoledActorRowSummary(
   if (name) return name
   if (assoc) return assoc
   return i18n.t('recordForm.summaries.emptyActor')
+}
+
+/** Closed list term for production: prefer this role when building a short “valmistaja” line. */
+const PRODUCTION_ACTOR_ROLE_MANUFACTURER_FI = 'valmistaja'
+
+function roledActorIsManufacturer(a: RoledActor): boolean {
+  return referenceFieldFi(a.association as never).trim().toLowerCase() === PRODUCTION_ACTOR_ROLE_MANUFACTURER_FI
+}
+
+function oneObjectProductionBlockManufacturerLabel(
+  row: ObjectProductInformation,
+  resolveCatalog?: (id: number) => Actor | undefined,
+): string {
+  const actors = row.actor ?? []
+  const manufacturer = actors.find((a) => roledActorIsManufacturer(a) && !isActorSlotEmpty(a.actor))
+  if (manufacturer) {
+    return recordActorSlotSummary(manufacturer.actor, resolveCatalog).trim()
+  }
+  const first = actors[0]
+  if (first && !isActorSlotEmpty(first.actor)) {
+    return recordActorSlotSummary(first.actor, resolveCatalog).trim()
+  }
+  return ''
+}
+
+/**
+ * List/detail title card: one-line manufacturer from `history.object_production_information[]` —
+ * first block with a "valmistaja" roled actor, else that block’s first filled actor, first matching block.
+ */
+export function objectProductionManufacturerForDisplay(
+  rows: ObjectProductInformation[] | undefined,
+  resolveCatalog?: (id: number) => Actor | undefined,
+): string {
+  for (const row of rows ?? []) {
+    const s = oneObjectProductionBlockManufacturerLabel(row, resolveCatalog)
+    if (s) return s
+  }
+  return ''
 }
 
 export function recordActorSlotSummary(

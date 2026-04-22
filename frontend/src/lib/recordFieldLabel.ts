@@ -4,7 +4,8 @@
  * History domain paths (see `types/record/history.ts`):
  * - owner_history[]: owner, date, place, exchange
  * - exchange: method, price, denomination, note
- * - object_production_information[]: actor, date[], place[], techniques[], reason, note
+ * - object_production_information[]: per-item labels use recordForm.detail.arraySegmentLabel
+ *   (e.g. “Objektin valmistustiedot 1”), not per-field summaries.
  * - usage_history[]: usage, note, usage_instructions
  * - object_history[]: activity, cultural_affinity, actor, date, place, event, note, comments, relevance
  * - activity: type, note

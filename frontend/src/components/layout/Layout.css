@@ -153,6 +153,15 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Record detail: use horizontal space closer to viewport edges (target 2000×1200 landscape) */
+@media (min-width: 64rem) {
+  .main-content:has(.record-detail) {
+    max-width: min(100%, calc(100vw - 2.5rem));
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+}
+
 @media (min-width: 1280px) {
   .nav-container {
     max-width: none;
@@ -176,8 +185,8 @@
   .main-content:has(.record-detail) {
     padding-top: 1.45rem;
     padding-bottom: 0;
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 }
 

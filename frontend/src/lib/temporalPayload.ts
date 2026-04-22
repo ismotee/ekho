@@ -3,6 +3,7 @@
  */
 
 import type { DateDetailWithTemporalMeta, Temporal } from '../types/record/common'
+import type { ObjectProductInformation } from '../types/record/history'
 import { referenceFieldFi } from './referenceField'
 
 /** True when a DateDetail value should be kept on save — includes optional temporal metadata on the same object (note, association, period). */
@@ -71,4 +72,18 @@ export function temporalHasPersistableContent(t: Temporal): boolean {
   if (referenceFieldFi(t.period)) return true
   if (dateDetailHasPersistableContent(t.earliest) || dateDetailHasPersistableContent(t.latest)) return true
   return false
+}
+
+/**
+ * Title card: first non-empty one-line summary from `object_production_information[].date[]`
+ * (same ordering as form: first OPI block, first date row with displayable content).
+ */
+export function objectProductionTimeForTitleCard(rows: ObjectProductInformation[] | undefined): string {
+  for (const row of rows ?? []) {
+    for (const d of row.date ?? []) {
+      const line = dateDetailSummaryLine(d as DateDetailWithTemporalMeta).trim()
+      if (line) return line
+    }
+  }
+  return ''
 }

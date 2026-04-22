@@ -2,7 +2,8 @@
   "summaries": {
     "emptyActor": "Tyhjä toimija",
     "actorNumber": "Toimija nro {{id}}",
-    "legacyActor": "Vanha toimija"
+    "legacyActor": "Vanha toimija",
+    "manufacturerUnknown": "Tuntematon"
   },
   "actorRef": {
     "catalogSelectHelp": "Valitse toimija listasta. Jos listalta ei löydy oikeaa toimijaa, voi käydä luomassa uusia toimijoita \"Toimijat\"-työkalussa. Luodut toimijat ilmestyvät toimijavalintaan."
@@ -103,6 +104,8 @@
       "suppressed": "Piilotettu"
     },
     "fields": {
+      "role": "Kuvan rooli",
+      "context": "Kuvan konteksti",
       "dimensions": "Mitat",
       "byte_size": "Tiedostokoko",
       "mime_type": "MIME-tyyppi",
@@ -357,6 +360,8 @@
   "detail": {
     "backPrevious": "← Takaisin",
     "backTo": "← Takaisin: {{name}}",
+    "titleCardManufacturerLine": "Valmistaja: {{name}}",
+    "titleCardProductionTimeLine": "Valmistusaika: {{time}}",
     "noImage": "Ei kuvaa",
     "created": "Luotu:",
     "updated": "Päivitetty:",

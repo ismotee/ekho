@@ -65,6 +65,10 @@ export class RecordStore {
     makeAutoObservable(this)
   }
 
+  clearCurrentRecord() {
+    this.currentRecord = null
+  }
+
   async fetchRecords(collectionId: number, params?: {
     page?: number
     page_size?: number

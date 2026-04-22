@@ -37,6 +37,8 @@ import { RecordImageMetadataPanel } from './RecordImageMetadataPanel'
 import { parseSafeInternalReturnPath } from '../../lib/internalPath'
 import { isLanguageMapObject, pickLanguageMapString } from '../../lib/languageMapDisplay'
 import { recordDomainFieldLabelForKey } from '../../lib/recordFieldLabel'
+import { objectProductionTimeForTitleCard } from '../../lib/temporalPayload'
+import { objectProductionManufacturerForDisplay } from './actorMiniForm'
 import './Records.css'
 
 const DOMAIN_NAV_GRID_PAGE_SIZE = 8
@@ -97,6 +99,17 @@ function arrayItemTileLabel(
   const trunc = (s: string) => (s.length > ARRAY_TILE_LABEL_MAX ? `${s.slice(0, ARRAY_TILE_LABEL_MAX)}…` : s)
   if (isPlainObject(item)) {
     const o = item as Record<string, unknown>
+    if (arrayFieldKey === 'object_production_information') {
+      return t('recordForm.detail.arraySegmentLabel', {
+        field: recordDomainFieldLabelForKey(
+          'object_production_information',
+          arrayFieldParentKey,
+          i18n,
+          t,
+        ),
+        n: index + 1,
+      })
+    }
     for (const k of ['name', 'title', 'label', 'value', 'type'] as const) {
       const text = displayTextFromScalarOrPrefLabelObject(o[k], i18n.language)
       if (text) return trunc(text)
@@ -161,7 +174,14 @@ function breadcrumbLabelForPathPrefix(
     arrayFieldKeyForCrumb ??
     (pathPrefix.length === 1 && domainJsonKeyForRootArray ? domainJsonKeyForRootArray : undefined)
   if (Array.isArray(arr) && arr[idx] !== undefined) {
-    return arrayItemTileLabel(arr[idx], idx, t, i18n, arrayKeyForItem, arrayFieldParentForCrumb)
+    return arrayItemTileLabel(
+      arr[idx],
+      idx,
+      t,
+      i18n,
+      arrayKeyForItem,
+      arrayFieldParentForCrumb,
+    )
   }
   if (arrayKeyForItem) {
     return t('recordForm.detail.arraySegmentLabel', {
@@ -275,7 +295,7 @@ export const RecordDetail = observer(() => {
     if (!id) return
     const recordId = Number(id)
     if (recordStore.currentRecord?.id !== recordId) {
-      recordStore.currentRecord = null
+      recordStore.clearCurrentRecord()
     }
     recordStore.fetchRecord(recordId)
     prevRouteIdRef.current = id
@@ -321,6 +341,25 @@ export const RecordDetail = observer(() => {
   useEffect(() => {
     actorStore.fetchActors({ page_size: 200 }).catch(() => {})
   }, [actorStore])
+
+  const resolveActorCatalog = useCallback(
+    (actorId: number) => actorStore.actorById(actorId)?.data,
+    [actorStore],
+  )
+
+  const manufacturerLine = useMemo(
+    () =>
+      objectProductionManufacturerForDisplay(
+        record?.data?.history?.object_production_information,
+        resolveActorCatalog,
+      ),
+    [record?.data?.history?.object_production_information, resolveActorCatalog, record?.id],
+  )
+
+  const productionTimeLine = useMemo(
+    () => objectProductionTimeForTitleCard(record?.data?.history?.object_production_information),
+    [record?.data?.history?.object_production_information, record?.id],
+  )
 
   const sortedCarouselImages = useMemo(
     () => carouselDisplayImages(record?.images),
@@ -517,7 +556,14 @@ export const RecordDetail = observer(() => {
       return v.map((item, index) => ({
         kind: 'index' as const,
         index,
-        label: arrayItemTileLabel(item, index, t, i18n, arrayFieldKey, arrayFieldParentKey),
+        label: arrayItemTileLabel(
+          item,
+          index,
+          t,
+          i18n,
+          arrayFieldKey,
+          arrayFieldParentKey,
+        ),
       }))
     }
     return []
@@ -760,20 +806,22 @@ export const RecordDetail = observer(() => {
             </Link>
             <div className="record-info-section record-detail-title-card">
               <h1>{primary}</h1>
+              {manufacturerLine.trim() !== '' && (
+                <p className="record-detail-subline record-detail-title-card__manufacturer">
+                  {t('recordForm.detail.titleCardManufacturerLine', { name: manufacturerLine.trim() })}
+                </p>
+              )}
+              {productionTimeLine.trim() !== '' && (
+                <p className="record-detail-subline record-detail-title-card__production-time">
+                  {t('recordForm.detail.titleCardProductionTimeLine', { time: productionTimeLine.trim() })}
+                </p>
+              )}
               {secondaryLine != null && secondaryLine !== '' && (
                 <p className="record-detail-subline">{secondaryLine}</p>
               )}
               {yearLine != null && yearLine !== '' && (
                 <p className="record-detail-year-line">{yearLine}</p>
               )}
-
-              <div className="record-meta">
-                <small>
-                  <strong>{t('recordForm.detail.created')}</strong> {new Date(record.created_at).toLocaleDateString()}
-                  {' · '}
-                  <strong>{t('recordForm.detail.updated')}</strong> {new Date(record.updated_at).toLocaleDateString()}
-                </small>
-              </div>
 
               {canEdit && (
                 <div className="record-actions">
@@ -813,6 +861,62 @@ export const RecordDetail = observer(() => {
                 tabIndex={0}
                 onKeyDown={handleCarouselKeyDown}
               >
+                <div className="record-detail-hero-carousel-footer">
+                  <button
+                    type="button"
+                    className="record-detail-hero-carousel-details-toggle"
+                    aria-expanded={heroDetailsOpen}
+                    aria-controls={heroDetailsPanelId}
+                    onClick={() => setHeroDetailsOpen((o) => !o)}
+                  >
+                    {heroDetailsOpen
+                      ? t('recordForm.recordImages.galleryHideDetails')
+                      : t('recordForm.recordImages.galleryShowDetails')}
+                  </button>
+                </div>
+                <div
+                  className={
+                    heroDetailsOpen
+                      ? 'record-detail-hero-carousel-main record-detail-hero-carousel-main--details'
+                      : 'record-detail-hero-carousel-main'
+                  }
+                >
+                  {heroDetailsOpen ? (
+                    <div
+                      id={heroDetailsPanelId}
+                      className="record-detail-hero-carousel-details"
+                      role="region"
+                    >
+                      <RecordImageMetadataPanel image={currentCarouselImage} />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="record-detail-hero-carousel-main-zoom"
+                      onClick={() =>
+                        setImageLightbox({
+                          src: currentCarouselImage.url,
+                          alt: t('recordForm.recordImages.detailCarouselImageAlt', {
+                            title: primary,
+                            current: safeCarouselIndex + 1,
+                            total: nCarousel,
+                          }),
+                        })
+                      }
+                    >
+                      <img
+                        src={currentCarouselImage.url}
+                        alt={t('recordForm.recordImages.detailCarouselImageAlt', {
+                          title: primary,
+                          current: safeCarouselIndex + 1,
+                          total: nCarousel,
+                        })}
+                        className="record-detail-hero-carousel-img"
+                        loading={safeCarouselIndex === 0 ? 'eager' : 'lazy'}
+                      />
+                    </button>
+                  )}
+                </div>
                 {nCarousel > 1 ? (
                   <div
                     className="record-detail-hero-carousel-thumbs"
@@ -838,64 +942,6 @@ export const RecordDetail = observer(() => {
                         <img src={img.url} alt="" className="record-detail-hero-carousel-thumb-img" loading="lazy" />
                       </button>
                     ))}
-                  </div>
-                ) : null}
-                <div className="record-detail-hero-carousel-main">
-                  <button
-                    type="button"
-                    className="record-detail-hero-carousel-main-zoom"
-                    onClick={() =>
-                      setImageLightbox({
-                        src: currentCarouselImage.url,
-                        alt: t('recordForm.recordImages.detailCarouselImageAlt', {
-                          title: primary,
-                          current: safeCarouselIndex + 1,
-                          total: nCarousel,
-                        }),
-                      })
-                    }
-                  >
-                    <img
-                      src={currentCarouselImage.url}
-                      alt={t('recordForm.recordImages.detailCarouselImageAlt', {
-                        title: primary,
-                        current: safeCarouselIndex + 1,
-                        total: nCarousel,
-                      })}
-                      className="record-detail-hero-carousel-img"
-                      loading={safeCarouselIndex === 0 ? 'eager' : 'lazy'}
-                    />
-                  </button>
-                </div>
-                <p className="record-detail-hero-carousel-badges">
-                  <span className="record-multi-image-badge">
-                    {t(`recordForm.recordImages.vocab.role.${currentCarouselImage.role}`)}
-                  </span>
-                  <span className="record-multi-image-badge record-multi-image-badge--muted">
-                    {t(`recordForm.recordImages.vocab.context.${currentCarouselImage.context}`)}
-                  </span>
-                  {currentCarouselImage.is_primary ? (
-                    <span className="record-multi-image-badge record-multi-image-badge--muted">
-                      {t('recordForm.recordImages.primaryShort')}
-                    </span>
-                  ) : null}
-                </p>
-                <div className="record-detail-hero-carousel-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    aria-expanded={heroDetailsOpen}
-                    aria-controls={heroDetailsPanelId}
-                    onClick={() => setHeroDetailsOpen((o) => !o)}
-                  >
-                    {heroDetailsOpen
-                      ? t('recordForm.recordImages.galleryHideDetails')
-                      : t('recordForm.recordImages.galleryShowDetails')}
-                  </button>
-                </div>
-                {heroDetailsOpen ? (
-                  <div id={heroDetailsPanelId} className="record-detail-hero-carousel-details">
-                    <RecordImageMetadataPanel image={currentCarouselImage} />
                   </div>
                 ) : null}
               </div>
@@ -1126,20 +1172,22 @@ export const RecordDetail = observer(() => {
         </Link>
         <div className="record-info-section record-detail-title-card">
           <h1>{primary}</h1>
+          {manufacturerLine.trim() !== '' && (
+            <p className="record-detail-subline record-detail-title-card__manufacturer">
+              {t('recordForm.detail.titleCardManufacturerLine', { name: manufacturerLine.trim() })}
+            </p>
+          )}
+          {productionTimeLine.trim() !== '' && (
+            <p className="record-detail-subline record-detail-title-card__production-time">
+              {t('recordForm.detail.titleCardProductionTimeLine', { time: productionTimeLine.trim() })}
+            </p>
+          )}
           {secondaryLine != null && secondaryLine !== '' && (
             <p className="record-detail-subline">{secondaryLine}</p>
           )}
           {yearLine != null && yearLine !== '' && (
             <p className="record-detail-year-line">{yearLine}</p>
           )}
-
-          <div className="record-meta">
-            <small>
-              <strong>{t('recordForm.detail.created')}</strong> {new Date(record.created_at).toLocaleDateString()}
-              {' · '}
-              <strong>{t('recordForm.detail.updated')}</strong> {new Date(record.updated_at).toLocaleDateString()}
-            </small>
-          </div>
 
           {canEdit && (
             <div className="record-actions">
@@ -1179,6 +1227,62 @@ export const RecordDetail = observer(() => {
               tabIndex={0}
               onKeyDown={handleCarouselKeyDown}
             >
+              <div className="record-detail-hero-carousel-footer">
+                <button
+                  type="button"
+                  className="record-detail-hero-carousel-details-toggle"
+                  aria-expanded={heroDetailsOpen}
+                  aria-controls={heroDetailsPanelId}
+                  onClick={() => setHeroDetailsOpen((o) => !o)}
+                >
+                  {heroDetailsOpen
+                    ? t('recordForm.recordImages.galleryHideDetails')
+                    : t('recordForm.recordImages.galleryShowDetails')}
+                </button>
+              </div>
+              <div
+                className={
+                  heroDetailsOpen
+                    ? 'record-detail-hero-carousel-main record-detail-hero-carousel-main--details'
+                    : 'record-detail-hero-carousel-main'
+                }
+              >
+                {heroDetailsOpen ? (
+                  <div
+                    id={heroDetailsPanelId}
+                    className="record-detail-hero-carousel-details"
+                    role="region"
+                  >
+                    <RecordImageMetadataPanel image={currentCarouselImage} />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="record-detail-hero-carousel-main-zoom"
+                    onClick={() =>
+                      setImageLightbox({
+                        src: currentCarouselImage.url,
+                        alt: t('recordForm.recordImages.detailCarouselImageAlt', {
+                          title: primary,
+                          current: safeCarouselIndex + 1,
+                          total: nCarousel,
+                        }),
+                      })
+                    }
+                  >
+                    <img
+                      src={currentCarouselImage.url}
+                      alt={t('recordForm.recordImages.detailCarouselImageAlt', {
+                        title: primary,
+                        current: safeCarouselIndex + 1,
+                        total: nCarousel,
+                      })}
+                      className="record-detail-hero-carousel-img"
+                      loading={safeCarouselIndex === 0 ? 'eager' : 'lazy'}
+                    />
+                  </button>
+                )}
+              </div>
               {nCarousel > 1 ? (
                 <div
                   className="record-detail-hero-carousel-thumbs"
@@ -1204,64 +1308,6 @@ export const RecordDetail = observer(() => {
                       <img src={img.url} alt="" className="record-detail-hero-carousel-thumb-img" loading="lazy" />
                     </button>
                   ))}
-                </div>
-              ) : null}
-              <div className="record-detail-hero-carousel-main">
-                <button
-                  type="button"
-                  className="record-detail-hero-carousel-main-zoom"
-                  onClick={() =>
-                    setImageLightbox({
-                      src: currentCarouselImage.url,
-                      alt: t('recordForm.recordImages.detailCarouselImageAlt', {
-                        title: primary,
-                        current: safeCarouselIndex + 1,
-                        total: nCarousel,
-                      }),
-                    })
-                  }
-                >
-                  <img
-                    src={currentCarouselImage.url}
-                    alt={t('recordForm.recordImages.detailCarouselImageAlt', {
-                      title: primary,
-                      current: safeCarouselIndex + 1,
-                      total: nCarousel,
-                    })}
-                    className="record-detail-hero-carousel-img"
-                    loading={safeCarouselIndex === 0 ? 'eager' : 'lazy'}
-                  />
-                </button>
-              </div>
-              <p className="record-detail-hero-carousel-badges">
-                <span className="record-multi-image-badge">
-                  {t(`recordForm.recordImages.vocab.role.${currentCarouselImage.role}`)}
-                </span>
-                <span className="record-multi-image-badge record-multi-image-badge--muted">
-                  {t(`recordForm.recordImages.vocab.context.${currentCarouselImage.context}`)}
-                </span>
-                {currentCarouselImage.is_primary ? (
-                  <span className="record-multi-image-badge record-multi-image-badge--muted">
-                    {t('recordForm.recordImages.primaryShort')}
-                  </span>
-                ) : null}
-              </p>
-              <div className="record-detail-hero-carousel-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  aria-expanded={heroDetailsOpen}
-                  aria-controls={heroDetailsPanelId}
-                  onClick={() => setHeroDetailsOpen((o) => !o)}
-                >
-                  {heroDetailsOpen
-                    ? t('recordForm.recordImages.galleryHideDetails')
-                    : t('recordForm.recordImages.galleryShowDetails')}
-                </button>
-              </div>
-              {heroDetailsOpen ? (
-                <div id={heroDetailsPanelId} className="record-detail-hero-carousel-details">
-                  <RecordImageMetadataPanel image={currentCarouselImage} />
                 </div>
               ) : null}
             </div>

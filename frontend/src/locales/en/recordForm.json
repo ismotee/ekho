@@ -2,7 +2,8 @@
   "summaries": {
     "emptyActor": "Empty actor",
     "actorNumber": "Actor #{{id}}",
-    "legacyActor": "Legacy actor"
+    "legacyActor": "Legacy actor",
+    "manufacturerUnknown": "Unknown"
   },
   "actorRef": {
     "catalogSelectHelp": "Choose an actor from the list. If the right actor is not listed, you can create new actors in the \"Actors\" tool. Created actors will appear in this picker."
@@ -103,6 +104,8 @@
       "suppressed": "Suppressed"
     },
     "fields": {
+      "role": "Image role",
+      "context": "Image context",
       "dimensions": "Dimensions",
       "byte_size": "File size",
       "mime_type": "MIME type",
@@ -357,6 +360,8 @@
   "detail": {
     "backPrevious": "← Back",
     "backTo": "← Back to {{name}}",
+    "titleCardManufacturerLine": "Maker: {{name}}",
+    "titleCardProductionTimeLine": "Production: {{time}}",
     "noImage": "No Image",
     "created": "Created:",
     "updated": "Updated:",

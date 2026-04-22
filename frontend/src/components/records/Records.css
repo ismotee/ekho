@@ -177,7 +177,7 @@
 }
 
 .record-detail {
-  max-width: min(100%, calc(1200px + 10rem));
+  max-width: 100%;
   width: 100%;
   margin: 0 auto;
   text-align: left;
@@ -185,7 +185,7 @@
 
 @media (min-width: 1600px) {
   .record-detail {
-    max-width: min(100%, 1760px);
+    max-width: 100%;
   }
 }
 
@@ -194,11 +194,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  max-width: 28rem;
-  width: min(100%, 28rem);
+  max-width: 100%;
+  width: 100%;
   margin-bottom: 0;
-  padding: 0.75rem 1.05rem;
-  font-size: 1.5rem;
+  min-height: calc(3.5rem * 1.1);
+  padding: calc(1rem * 1.1) 1.15rem;
+  font-size: 1.875rem;
   font-weight: 600;
   line-height: 1.3;
   color: var(--color-primary);
@@ -283,13 +284,13 @@
 
 .record-detail-hero-layout--has-domains {
   display: grid;
-  /* Wider leading column on large canvases; domain column uses remaining width */
-  grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+  /* Left: back + title + image ≈ one third; right: domain nav + fields ≈ two thirds */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   /* Single row: left column is title+image only; right column stacks nav + field panel.
    * align-items: start prevents the tall field panel from stretching the left column’s
    * grid area (subgrid used to tie row heights and pushed the image down). */
   grid-template-rows: auto;
-  gap: 2rem;
+  gap: 1.5rem 2.25rem;
   justify-items: stretch;
   align-items: start;
   width: 100%;
@@ -306,7 +307,7 @@
   position: sticky;
   top: 2rem;
   align-self: start;
-  max-width: 28rem;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -346,24 +347,30 @@
   }
 
   .record-detail-back-link {
-    padding: 0.55rem 0.85rem;
-    font-size: 1.35rem;
+    min-height: calc(3.1rem * 1.1);
+    padding: calc(0.7rem * 1.1) 0.9rem;
+    font-size: 1.6rem;
   }
 
   .record-detail-title-card {
-    padding: 0.75rem 1rem 0.85rem;
+    padding: 1.05rem 1.3rem 1.2rem;
   }
 
-  .record-detail-hero-carousel-main {
-    max-height: min(34.5vh, 19.25rem);
+  .record-info-section.record-detail-title-card h1 {
+    font-size: 2.75rem;
   }
 
-  .record-detail-hero-carousel-img {
-    max-height: min(34.5vh, 19.25rem);
+  .record-info-section.record-detail-title-card .record-detail-subline,
+  .record-info-section.record-detail-title-card .record-detail-year-line {
+    font-size: 1.4rem;
   }
 
-  .record-detail-hero-carousel-badges {
-    padding: 0.45rem 0.85rem 0.65rem;
+  .record-info-section.record-detail-title-card .record-detail-year-line {
+    font-size: 1.3rem;
+  }
+
+  .record-detail-hero-carousel {
+    --record-detail-hero-image-slot: min(34.5vh, 19.25rem);
   }
 
   .record-detail-hero-carousel-thumbs {
@@ -372,6 +379,12 @@
 
   .record-detail-hero-carousel-footer {
     padding: 0.65rem 1rem 0.35rem;
+  }
+
+  .record-detail-hero-carousel-details-toggle {
+    min-height: 3.1rem;
+    padding: 0.7rem 0.9rem;
+    font-size: 1.6rem;
   }
 
   .record-detail-domain-nav--split-root {
@@ -384,6 +397,8 @@
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
+  width: 100%;
+  align-self: stretch;
 }
 
 .record-detail-domain-nav__sync {
@@ -434,11 +449,6 @@
   .record-detail-domain-nav__grid--sync-fill {
     flex: 0 0 auto;
   }
-
-  .record-detail-domain-nav__sync .record-detail-domain-nav__tile {
-    height: auto;
-    min-height: 3.25rem;
-  }
 }
 
 .record-detail-hero-leading {
@@ -465,12 +475,24 @@
 
 .record-detail-domain-nav__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.85rem;
+  /* Top-level domains: four tiles in a 3-column grid (row 1: 3, row 2: 1). */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
   width: 100%;
   min-width: 0;
   /* Pagination markup precedes the grid in DOM; visually show pager under the tile grid (plan). */
   order: 1;
+}
+
+/* Subsection tiles: keep four columns (denser than the top-level row). */
+.record-detail-domain-nav__grid--subsections {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Top-level domain row in split layout: use full right-column width with slightly wider spacing */
+.record-detail-domain-nav--split-root
+  .record-detail-domain-nav__grid--sync-fill:not(.record-detail-domain-nav__grid--subsections) {
+  gap: 1rem 1.4rem;
 }
 
 .record-detail-domain-nav__grid--sync-fill {
@@ -494,10 +516,10 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: 3.25rem;
-  padding: 0.75rem 1.05rem;
+  min-height: calc(4.25rem * 1.21);
+  padding: calc(0.95rem * 1.1) calc(1.35rem * 1.1);
   text-align: center;
-  font-size: 1.5rem;
+  font-size: calc(1.65rem * 1.1);
   font-weight: 600;
   line-height: 1.3;
   color: var(--color-text-on-surface);
@@ -549,9 +571,13 @@
   overflow: hidden;
 }
 
-/* Match top row height to the title card: grid row stretches; tiles fill the cell */
+/*
+ * Match top row height to the title card: grid row stretches; tiles fill the cell.
+ * Use a real min-height here — not 0 — or it overrides .record-detail-domain-nav__tile
+ * and the domain buttons never get taller.
+ */
 .record-detail-domain-nav__sync .record-detail-domain-nav__tile {
-  min-height: 0;
+  min-height: calc(4.25rem * 1.21);
   height: 100%;
   align-self: stretch;
 }
@@ -559,8 +585,15 @@
 /* Level-2 subsection tiles use the same tile styling as top-level domain buttons; only layout differs. */
 .record-detail-domain-nav__sync .record-detail-domain-nav__grid--subsections .record-detail-domain-nav__tile {
   height: auto;
-  min-height: 3.25rem;
+  min-height: calc(4.25rem * 1.21);
   align-self: auto;
+}
+
+@media (max-width: 52rem) {
+  .record-detail-domain-nav__sync .record-detail-domain-nav__tile {
+    height: auto;
+    min-height: calc(4rem * 1.21);
+  }
 }
 
 .record-detail-domain-nav__breadcrumb {
@@ -737,22 +770,14 @@
   color: var(--color-text-secondary);
 }
 
-/* Title / meta / actions: same card shell as accordions + image tiles */
+/* Title / meta / actions: same card shell as accordions + image tiles (larger in-card type) */
 .record-detail-title-card {
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   overflow: hidden;
   background: var(--color-surface);
   color: var(--color-text-on-surface);
-  padding: 1rem 1.25rem 1.25rem;
-}
-
-.record-detail-title-card h1 {
-  color: var(--color-text-on-surface);
-}
-
-.record-detail-title-card .record-meta {
-  border-top-color: var(--color-border-muted);
+  padding: 1.35rem 1.65rem 1.65rem;
 }
 
 .record-image-section {
@@ -768,6 +793,7 @@
 
 /* Record detail hero: browse all attached images */
 .record-detail-hero-carousel {
+  --record-detail-hero-image-slot: min(52vh, 28rem);
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   overflow: hidden;
@@ -781,33 +807,32 @@
   outline-offset: 2px;
 }
 
+/* Fixed “viewport” for the main image: same size for every image; letterboxing uses card/surface color */
 .record-detail-hero-carousel-main {
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 8rem;
-  max-height: min(52vh, 28rem);
-}
-
-/* Separator when thumbnail strip sits above the main image */
-.record-detail-hero-carousel:has(.record-detail-hero-carousel-thumbs) .record-detail-hero-carousel-main {
-  border-top: 1px solid var(--color-border-muted);
-}
-
-.record-detail-hero-carousel-img {
+  box-sizing: border-box;
   width: 100%;
-  max-height: min(52vh, 28rem);
+  min-height: var(--record-detail-hero-image-slot);
+  height: var(--record-detail-hero-image-slot);
+  max-height: var(--record-detail-hero-image-slot);
+  background: var(--color-surface-muted);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+/* Separator between main image and thumb strip (thumbs sit below the main image) */
+.record-detail-hero-carousel:has(.record-detail-hero-carousel-thumbs) .record-detail-hero-carousel-main {
+  border-bottom: 1px solid var(--color-border-muted);
+}
+
+/* Scale image as large as possible inside the fixed slot; aspect ratio preserved (contain) */
+.record-detail-hero-carousel-main .record-detail-hero-carousel-img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   vertical-align: middle;
-}
-
-.record-detail-hero-carousel-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.5rem;
-  margin: 0;
-  padding: 0.65rem 1rem 1.1rem;
 }
 
 .record-detail-hero-carousel-thumbs {
@@ -853,13 +878,105 @@
   align-items: center;
   gap: 0.75rem 1rem;
   padding: 0.85rem 1rem 0.75rem;
-  border-top: 1px solid var(--color-border-muted);
+  border-top: none;
+  border-bottom: 1px solid var(--color-border-muted);
 }
 
-.record-detail-hero-carousel-details {
-  padding: 0 1rem 1rem;
-  border-top: 1px solid var(--color-border-muted);
-  font-size: 0.9375rem;
+/* Match .record-detail-back-link (pill, shadow, hover) — not .btn */
+.record-detail-hero-carousel-details-toggle {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  min-height: 3.5rem;
+  padding: 1rem 1.15rem;
+  font: inherit;
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--color-primary);
+  background-color: var(--color-surface-muted);
+  border: 2px solid var(--color-border);
+  border-radius: 1.25rem;
+  cursor: pointer;
+  box-shadow:
+    var(--shadow-md),
+    0 10px 30px rgba(0, 0, 0, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.11);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.record-detail-hero-carousel-details-toggle:hover {
+  background-color: var(--color-btn-secondary-hover-bg);
+  border-color: var(--color-border-strong);
+  color: var(--color-primary);
+  box-shadow:
+    var(--shadow-md),
+    0 16px 40px rgba(0, 0, 0, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.13);
+  transform: translateY(-3px);
+}
+
+.record-detail-hero-carousel-details-toggle:active {
+  transform: translateY(0);
+}
+
+.record-detail-hero-carousel-details-toggle:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--shadow-md),
+    0 10px 30px rgba(0, 0, 0, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.11),
+    0 0 0 4px var(--color-primary-ring);
+}
+
+/* Image metadata: same fixed slot as the hero image (replaces it when open) */
+.record-detail-hero-carousel-main--details {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.record-detail-hero-carousel-main--details .record-detail-hero-carousel-details {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+  border: none;
+  /* Scale with viewport within the fixed slot; scroll if many rows */
+  font-size: clamp(1.05rem, 0.5rem + 1.1vmin, 1.5rem);
+  line-height: 1.4;
+  text-align: left;
+  -webkit-overflow-scrolling: touch;
+}
+
+.record-detail-hero-carousel-main--details .record-image-metadata {
+  font-size: 1em;
+  gap: 0.5em 1em;
+  line-height: inherit;
+  align-content: start;
+}
+
+.record-detail-hero-carousel-main--details .record-image-metadata dt {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.record-detail-hero-carousel-main--details .record-image-metadata dd {
+  color: #000;
+  font-weight: 500;
 }
 
 .record-info-section h1 {
@@ -915,6 +1032,29 @@
 
 .record-detail-year-line {
   font-size: 0.9375rem;
+}
+
+/* Detail hero title card (wins over .record-info-section h1 above) */
+.record-info-section.record-detail-title-card h1 {
+  margin: 0 0 0.625rem 0;
+  font-size: 3rem;
+  line-height: 1.2;
+  color: var(--color-text-on-surface);
+}
+
+.record-info-section.record-detail-title-card .record-detail-subline,
+.record-info-section.record-detail-title-card .record-detail-year-line {
+  font-size: 1.5rem;
+  line-height: 1.35;
+}
+
+.record-info-section.record-detail-title-card .record-detail-year-line {
+  font-size: 1.375rem;
+}
+
+.record-info-section.record-detail-title-card .record-actions {
+  margin-top: 1.875rem;
+  gap: 1.25rem;
 }
 
 /* Domain accordion (RecordDetail) */
@@ -1732,8 +1872,9 @@
 }
 
 .btn-sm {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  min-height: 2.75rem;
 }
 
 .modal-overlay {
@@ -1775,7 +1916,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   width: 100%;
+  height: 100%;
+  min-height: 0;
   max-width: 100%;
   margin: 0;
   padding: 0;
@@ -1789,10 +1933,6 @@
 .record-detail-hero-carousel-main-zoom:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: 2px;
-}
-
-.record-detail-hero-carousel-main-zoom .record-detail-hero-carousel-img {
-  vertical-align: middle;
 }
 
 .record-image-zoom-trigger {
@@ -2271,8 +2411,8 @@
   text-decoration: underline;
 }
 
-/* /records @ ~1920×1200: always 3 columns so 1–3 cards share the same width; 3 still fit the row. */
-@media (min-width: 1900px) and (max-width: 1920px) and (min-height: 900px) and (max-height: 1320px) {
+/* /records @ ~1920×1200 / ~2000×1200: 3 columns; flex column + scroll so cards do not spill past the viewport. */
+@media (min-width: 1900px) and (max-width: 2020px) and (min-height: 900px) and (max-height: 1320px) {
   .main-content:has(.records-list-page) {
     max-width: min(1840px, calc(100vw - 3rem));
   }
@@ -2300,6 +2440,9 @@
     flex-direction: column;
     margin-top: 1rem;
     margin-bottom: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .records-list-page .record-grid {

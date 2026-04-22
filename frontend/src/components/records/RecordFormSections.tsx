@@ -72,11 +72,7 @@ import {
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { objectLocationHasPersistableContent } from '../../lib/objectLocationPayload'
-import {
-  isActorSlotEmpty,
-  recordAcquisitionActorRowSummary,
-  recordActorSlotSummary,
-} from './actorMiniForm'
+import { isActorSlotEmpty, recordAcquisitionActorRowSummary, recordActorSlotSummary } from './actorMiniForm'
 import { ActorRefSelect } from './ActorRefSelect'
 import { SpatialFields } from './SpatialFields'
 import { CollapsibleRepeatableRow } from './CollapsibleRepeatableRow'
@@ -1153,19 +1149,6 @@ export const HistoryFields = observer(function HistoryFields({
           const prodDates = row.date ?? []
           const prodPlaces = row.place ?? []
           const techniques = row.techniques ?? []
-          const firstActorSummary = actors[0]
-            ? recordActorSlotSummary(actors[0].actor, resolveActorCatalog)
-            : ''
-          const prodDateSummary =
-            prodDates.map((d) => dateDetailSummaryLine(d)).find((s) => s.trim()) ?? ''
-          const placeSummaryLine =
-            prodPlaces.map((p) => p.name?.fi?.trim()).find((s) => s) ||
-            prodPlaces.map((p) => p.note?.trim()).find((s) => s) ||
-            ''
-          const techniqueSummaryLine =
-            techniques.map((tr) => referenceFieldFi(tr.name)?.trim()).find((s) => s) ||
-            techniques.map((tr) => referenceFieldFi(tr.type)?.trim()).find((s) => s) ||
-            ''
           return (
             <CollapsibleRepeatableRow
               key={pIndex}
@@ -1175,19 +1158,10 @@ export const HistoryFields = observer(function HistoryFields({
               onRemove={() => setProduction(production.filter((_, i) => i !== pIndex))}
               disabled={disabled}
               saveItemNoun={t('recordForm.repeatable.saveItemLabels.production')}
-              summary={
-                actors[0] && !isActorSlotEmpty(actors[0].actor)
-                  ? firstActorSummary
-                  : techniqueSummaryLine
-                    ? techniqueSummaryLine
-                    : prodDateSummary
-                      ? prodDateSummary
-                      : placeSummaryLine
-                        ? placeSummaryLine
-                        : row.note?.trim() ||
-                          referenceFieldFi(prodPlaces[0]?.name_type) ||
-                          t('recordForm.history.emptyProductionEntry')
-              }
+              summary={t('recordForm.detail.arraySegmentLabel', {
+                field: t('recordForm.history.productionLegend'),
+                n: pIndex + 1,
+              })}
               removeLabel={t('recordForm.history.removeProductionEntry')}
             >
               <fieldset className="record-form-nested-fieldset">

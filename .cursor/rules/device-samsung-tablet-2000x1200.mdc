@@ -1,0 +1,36 @@
+---
+description: >-
+  Ekho UI target device — Samsung 11" tablet, 2000×1200: layout, touch, and
+  accessibility constraints (always consider for frontend and design work).
+globs: frontend/**/*,docs/design/**/*
+alwaysApply: true
+---
+
+# Kohdelaite: Samsung-tabletti 11", 2000×1200
+
+Ekho **pyörii vain** tässä ympäristössä (ei yleistä “desktop-first” tai useita breakpointteja ensisijaisena lähtökohtana). Kaikki UI-työ, saavutettavuus ja sijoittelu **tulee arvioida** tällä näytöllä ja **kosketuskäytöllä**.
+
+## Näyttö ja asettelu
+
+- **Resoluutio**: 2000×1200 (kiinteä lähtökohta; CSS:ssä käytetyt ~1900–2020 px / ~1200 px korkeus -vyöhykkeet vastaavat tätä).
+- **Laite**: noin **11 tuuman** Samsung-tabletti — käyttäjä voi pitää laitetta kädessä tai kiinnitettynä (kiosk); **landscape** on todennäköinen pääsuunta, ellei tuotannossa toisin määritellä.
+- **Sijoittelu**: vältä sisältöä kiinni näytön reunoihin; jätä **hengitystilaa** (padding/margin) navigaation, järjestelmäpalkkien ja peukalon kantaman huomioon.
+- Älä luota siihen, että käyttäjä näkee “loputtoman” pystysuoran tilan ilman vieritystä — **kiinnitä pitkät listat** selkeään vieritysalueeseen (flex + `min-height: 0` + `overflow-y: auto`), jotta kortit eivät leikkaudu näkymättömiin.
+
+## Kosketusnäyttö
+
+- **Osuma-alueet**: interaktiivisten elementtien (linkit, painikkeet, valitsimet) **vähintään noin 44×44 CSS px** (WCAG 2.5.5 / käytännöllinen kosketusmukavuus). Pienet klikkikohteet tai tiheät rivit ovat riski.
+- **Välit**: riittävä **gap** vierekkäisiin painikkeisiin, jotta ei vahinkopainalluksia.
+- **Hover ei riitä**: älä tee toiminnoista riippuvaisia pelkästä `:hover`-tilasta; kosketuslaitteella hover puuttuu tai käyttäytyy eri tavalla.
+- **Scroll & gestures**: vältä pieniä, vaikeasti osoitettavia vieritysalueita; isommat kosketettavat alueet ensisijaisia.
+
+## Teksti ja näkyvyys (saavutettavuus)
+
+- **Tekstin koko**: typografia tulee olla **luettavaa käyttöetäisyydeltä** (tabletti/kiosk, ei vain läppärin näköetäisyys). Älä pienennä olennaista tekstiä alle käyttöliittymän vakiotasoa ilman hyvää syytä.
+- **Kontrasti**: noudata projektin WCAG-tavoitteita (esim. AA); erityisesti **teksti tummalla/vaalealla taustalla** ja painikkeiden reunat.
+- **Fokus ja näppäimistö**: vaikka pääkäyttö on kosketus, säilytä **näkyvä focus** ja looginen tab-järjestys (kioskissa voi olla rajallinen, mutta älä riko sitä tahallaan).
+
+## Yhteistyö muiden sääntöjen kanssa
+
+- Toteutus: **`agent-frontend-developer.mdc`**, visuaalinen ja UX-sisältö: **`agent-ui-ux-designer.mdc`**, testit ja a11y: **`agent-frontend-tester.mdc`**.
+- Uusia näkymiä tai komponentteja ei suunnitella “geneeriselle responsiiviselle verkkosivulle” ensin — **validoi 2000×1200 + kosketus** ensisijaisesti.

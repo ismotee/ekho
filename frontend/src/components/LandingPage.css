@@ -42,7 +42,7 @@
 
 .landing-page__collection-btn {
   box-sizing: border-box;
-  width: min(26rem, min(82vw, 82vh));
+  width: min(27rem, min(82vw, 82vh));
   aspect-ratio: 1;
   display: inline-flex;
   align-items: center;
@@ -107,8 +107,8 @@
   height: auto;
 }
 
-/* ~1920×1200 viewport: partner logo fixed to bottom-right (width band covers inner width with scrollbar). */
-@media (min-width: 1900px) and (max-width: 1920px) and (min-height: 1185px) and (max-height: 1215px) {
+/* ~1920×1200 and ~2000×1200 viewport: partner logo fixed to bottom-right (width band covers inner width with scrollbar). */
+@media (min-width: 1900px) and (max-width: 2020px) and (min-height: 1185px) and (max-height: 1215px) {
   .landing-page__partner-logo-wrap {
     position: fixed;
     z-index: 20;

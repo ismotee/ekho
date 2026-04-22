@@ -1,20 +1,19 @@
 /**
  * Navigation Component
- * 
+ *
  * Main navigation bar for the application.
- * 
+ *
  * Reference: docs/design/04-navigation-layout.md
+ *
+ * NOTE: Auth-related UI (login, logout, username) is intentionally omitted
+ * for this deployment (read-only kiosk view). Auth features remain in other git branches.
  */
 
-import { observer } from 'mobx-react-lite'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '../../stores/authStore'
-import { LogoutButton } from '../auth/LogoutButton'
 import './Layout.css'
 
-export const Navigation = observer(() => {
-  const authStore = useAuthStore()
+export const Navigation = () => {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const hideSectionLinks = pathname === '/'
@@ -37,16 +36,9 @@ export const Navigation = observer(() => {
             </>
           ) : null}
         </div>
-        
-        {authStore.isAuthenticated ? (
-          <div className="nav-right">
-            <span className="nav-username">{authStore.user?.username}</span>
-            <LogoutButton />
-          </div>
-        ) : null}
       </div>
     </nav>
   )
-})
+}
 
 Navigation.displayName = 'Navigation'

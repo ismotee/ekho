@@ -20,6 +20,8 @@ export function RecordImageMetadataPanel({ image, showChecksum = true }: RecordI
   const { t } = useTranslation()
 
   const rows: { key: string; value: string }[] = [
+    { key: 'role', value: t(`recordForm.recordImages.vocab.role.${image.role}`) },
+    { key: 'context', value: t(`recordForm.recordImages.vocab.context.${image.context}`) },
     { key: 'dimensions', value: `${image.width} × ${image.height}` },
     { key: 'byte_size', value: formatBytes(image.byte_size) },
     { key: 'mime_type', value: image.mime_type || '—' },
