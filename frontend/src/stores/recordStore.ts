@@ -35,6 +35,7 @@ export interface UpdateRecordOptions {
   representative_image?: File
   /** REST `collection` FK — not part of `data`. */
   collection?: number
+  is_listed?: boolean
 }
 
 export interface CreateRecordImageOptions {
@@ -238,9 +239,10 @@ export class RecordStore {
         }
         response = await api.patch<Record>(`/records/${id}/`, formData, true)
       } else {
-        const body: { data?: RecordPayload; collection?: number } = {}
+        const body: { data?: RecordPayload; collection?: number; is_listed?: boolean } = {}
         if (data !== undefined) body.data = data
         if (collection !== undefined) body.collection = collection
+        if (options.is_listed !== undefined) body.is_listed = options.is_listed
         if (Object.keys(body).length === 0) {
           response = await api.patch<Record>(`/records/${id}/`, {})
         } else {

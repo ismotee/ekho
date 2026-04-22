@@ -15,7 +15,7 @@ import pytest
 from PIL import Image
 from django.contrib.auth.models import User
 
-from api.models import Collection, Record, RecordImage
+from api.models import Actor, Collection, Record, RecordImage
 from api.record_actor_refs import collect_actor_ids
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
@@ -1230,6 +1230,63 @@ class TestRecordIsListedVisibility:
             == status.HTTP_404_NOT_FOUND
         )
 
+    def test_anonymous_cannot_list_or_retrieve_hidden_record_in_listed_collection(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Hidden record", object_number="HREC-1"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        assert (
+            authenticated_client.patch(
+                reverse("records-detail", kwargs={"pk": rid}),
+                {"is_listed": False},
+                format="json",
+            ).status_code
+            == status.HTTP_200_OK
+        )
+
+        anon = APIClient()
+        listed = anon.get(reverse("records-list"), {"collection": cid})
+        assert listed.status_code == status.HTTP_200_OK
+        assert rid not in [row["id"] for row in listed.data["results"]]
+        detail = anon.get(reverse("records-detail", kwargs={"pk": rid}))
+        assert detail.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_owner_can_see_hidden_record_in_own_collection(
+        self, authenticated_client, collection
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(cid, title="Owner hidden", object_number="HREC-2"),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        assert (
+            authenticated_client.patch(
+                reverse("records-detail", kwargs={"pk": rid}),
+                {"is_listed": False},
+                format="json",
+            ).status_code
+            == status.HTTP_200_OK
+        )
+        own_list = authenticated_client.get(reverse("records-list"), {"collection": cid})
+        assert own_list.status_code == status.HTTP_200_OK
+        assert rid in [row["id"] for row in own_list.data["results"]]
+        own_detail = authenticated_client.get(reverse("records-detail", kwargs={"pk": rid}))
+        assert own_detail.status_code == status.HTTP_200_OK
+        assert own_detail.data["is_listed"] is False
+
 
 @pytest.mark.django_db
 class TestRecordExport:
@@ -1266,6 +1323,7 @@ class TestRecordExport:
         assert col["is_listed"] is True
         assert col["is_closed"] is False
         assert body["record"]["data"]["identification_details"]["object_number"] == "EXP-1"
+        assert body["actors"] == []
 
     def test_export_anonymous_succeeds_for_listed_collection(self, authenticated_client, collection):
         if not collection:
@@ -1388,6 +1446,69 @@ class TestRecordExport:
         assert imgs[0]["labels"] == {"en": "detail"}
         assert imgs[0]["derived_from_index"] is None
         assert "base64" in imgs[0]["image"]
+
+    def test_export_includes_referenced_actors_with_import_ids(
+        self, authenticated_client, user, collection
+    ):
+        if not collection:
+            return
+        actor = Actor.objects.create(
+            owner=user,
+            import_id=uuid.uuid4(),
+            data={"person": {"first_name": [{"name": "Ada"}]}},
+        )
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(
+                cid,
+                title="Export Actors",
+                object_number="EXP-ACT-1",
+                aquisition_details={"actor": [{"id": actor.id}]},
+            ),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        r = authenticated_client.get(reverse("records-export", kwargs={"pk": rid}))
+        assert r.status_code == status.HTTP_200_OK
+        actors = r.json()["actors"]
+        assert len(actors) == 1
+        assert actors[0]["source_id"] == actor.id
+        assert actors[0]["import_id"] == str(actor.import_id)
+        assert actors[0]["data"]["person"]["first_name"][0]["name"] == "Ada"
+
+    def test_export_generates_import_id_for_actor_missing_it(
+        self, authenticated_client, user, collection
+    ):
+        if not collection:
+            return
+        actor = Actor.objects.create(
+            owner=user,
+            data={"person": {"first_name": [{"name": "NoImportId"}]}},
+        )
+        cid = collection["id"]
+        cr = authenticated_client.post(
+            reverse("records-list"),
+            record_payload(
+                cid,
+                title="Export Generates ImportId",
+                object_number="EXP-ACT-2",
+                aquisition_details={"actor": [{"id": actor.id}]},
+            ),
+            format="json",
+        )
+        assert cr.status_code == status.HTTP_201_CREATED
+        rid = cr.data["id"]
+        r = authenticated_client.get(reverse("records-export", kwargs={"pk": rid}))
+        assert r.status_code == status.HTTP_200_OK
+        actors = r.json()["actors"]
+        assert len(actors) == 1
+        assert isinstance(actors[0]["import_id"], str)
+        assert len(actors[0]["import_id"]) == 36
+        actor.refresh_from_db()
+        assert actor.import_id is not None
+        assert str(actor.import_id) == actors[0]["import_id"]
 
     def test_export_unlisted_anonymous_returns_404(self, authenticated_client, collection):
         if not collection:
@@ -1563,6 +1684,88 @@ class TestRecordImport:
         rec = Record.objects.get(pk=rid)
         assert 999999 not in collect_actor_ids(rec.data)
         assert rec.data.get("aquisition_details", {}).get("actor") in (None, [])
+
+    def test_import_upserts_actor_and_remaps_record_refs(self, authenticated_client, collection):
+        if not collection:
+            return
+        cid = collection["id"]
+        import_id = uuid.uuid4()
+        data = {
+            "identification_details": {
+                "object_number": "IMP-ACT-UPSERT",
+                "title": [{"value": "Actor Upsert"}],
+            },
+            "aquisition_details": {"actor": [{"id": 101}]},
+        }
+        payload = _export_payload_for_import(
+            cid, data, mode="acquisition", current_collection_id=cid
+        )
+        payload["actors"] = [
+            {
+                "source_id": 101,
+                "import_id": str(import_id),
+                "data": {"person": {"first_name": [{"name": "Initial"}]}},
+            }
+        ]
+        r1 = authenticated_client.post(reverse("records-import"), payload, format="json")
+        assert r1.status_code == status.HTTP_201_CREATED
+        created_actor = Actor.objects.get(import_id=import_id)
+        rid1 = r1.data["record_ids"][0]
+        rec1 = Record.objects.get(pk=rid1)
+        assert collect_actor_ids(rec1.data) == {created_actor.id}
+        assert created_actor.data["person"]["first_name"][0]["name"] == "Initial"
+
+        payload["record"]["data"]["identification_details"]["object_number"] = "IMP-ACT-UPSERT-2"
+        payload["actors"][0]["data"] = {"person": {"first_name": [{"name": "Updated"}]}}
+        r2 = authenticated_client.post(reverse("records-import"), payload, format="json")
+        assert r2.status_code == status.HTTP_201_CREATED
+        assert Actor.objects.filter(import_id=import_id).count() == 1
+        created_actor.refresh_from_db()
+        assert created_actor.data["person"]["first_name"][0]["name"] == "Updated"
+        rid2 = r2.data["record_ids"][0]
+        rec2 = Record.objects.get(pk=rid2)
+        assert collect_actor_ids(rec2.data) == {created_actor.id}
+
+    def test_import_reuses_existing_actor_owned_by_other_user(
+        self, authenticated_client, collection, other_user
+    ):
+        if not collection:
+            return
+        cid = collection["id"]
+        shared_import_id = uuid.uuid4()
+        foreign_actor = Actor.objects.create(
+            owner=other_user,
+            import_id=shared_import_id,
+            data={"person": {"first_name": [{"name": "Foreign Owner Actor"}]}},
+        )
+        payload = _export_payload_for_import(
+            cid,
+            {
+                "identification_details": {
+                    "object_number": "IMP-FOREIGN-ACTOR",
+                    "title": [{"value": "Reuse foreign actor"}],
+                },
+                "aquisition_details": {"actor": [{"id": 444}]},
+            },
+            mode="acquisition",
+            current_collection_id=cid,
+        )
+        payload["actors"] = [
+            {
+                "source_id": 444,
+                "import_id": str(shared_import_id),
+                "data": {"person": {"first_name": [{"name": "Updated by import"}]}},
+            }
+        ]
+        r = authenticated_client.post(reverse("records-import"), payload, format="json")
+        assert r.status_code == status.HTTP_201_CREATED
+        rid = r.data["record_ids"][0]
+        rec = Record.objects.get(pk=rid)
+        assert collect_actor_ids(rec.data) == {foreign_actor.id}
+        assert Actor.objects.filter(import_id=shared_import_id).count() == 1
+        foreign_actor.refresh_from_db()
+        # Actor owned by someone else is reused as-is (not overwritten).
+        assert foreign_actor.data["person"]["first_name"][0]["name"] == "Foreign Owner Actor"
 
     def test_import_deposition_creates_unlisted_original_and_duplicate(
         self, authenticated_client, collection

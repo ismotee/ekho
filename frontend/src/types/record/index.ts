@@ -92,6 +92,7 @@ export interface Record {
   /** Present on normal API list/detail responses; may be omitted in local stubs. */
   images?: RecordImage[]
   collection: number
+  is_listed: boolean
   collection_name?: string
   collection_owner_username?: string
   created_at: string

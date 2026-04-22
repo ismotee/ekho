@@ -77,6 +77,8 @@ export const RecordDetail = observer(() => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [visibilitySaving, setVisibilitySaving] = useState(false)
+  const [visibilityError, setVisibilityError] = useState<string | null>(null)
   const [openSections, setOpenSections] = useState<Record<RecordDataDomainKey, boolean>>(() =>
     openSectionsForRecord({}),
   )
@@ -150,6 +152,20 @@ export const RecordDetail = observer(() => {
     }
   }
 
+  const handleToggleVisibility = async () => {
+    if (!record) return
+    setVisibilitySaving(true)
+    setVisibilityError(null)
+    try {
+      await recordStore.updateRecord(record.id, { is_listed: !record.is_listed })
+    } catch (error) {
+      const e = error as ApiError
+      setVisibilityError(e.error || e.detail || t('records.visibility.toggleError'))
+    } finally {
+      setVisibilitySaving(false)
+    }
+  }
+
   if (recordStore.loading) {
     return <div>{t('common.loading')}</div>
   }
@@ -190,6 +206,11 @@ export const RecordDetail = observer(() => {
 
         <div className="record-info-section">
           <h1>{primary}</h1>
+          {!record.is_listed && (
+            <p className="record-visibility-status" role="status">
+              {t('records.visibility.hiddenOwnerNotice')}
+            </p>
+          )}
           {secondaryLine != null && secondaryLine !== '' && (
             <p className="record-detail-subline">{secondaryLine}</p>
           )}
@@ -218,6 +239,18 @@ export const RecordDetail = observer(() => {
               >
                 {exporting ? t('recordForm.detail.exporting') : t('recordForm.detail.export')}
               </button>
+              <button
+                type="button"
+                onClick={handleToggleVisibility}
+                className="btn btn-secondary"
+                disabled={visibilitySaving}
+              >
+                {visibilitySaving
+                  ? t('records.visibility.saving')
+                  : record.is_listed
+                    ? t('records.visibility.hide')
+                    : t('records.visibility.show')}
+              </button>
               <button type="button" onClick={() => setShowDeleteDialog(true)} className="btn btn-danger">
                 {t('recordForm.detail.delete')}
               </button>
@@ -226,6 +259,11 @@ export const RecordDetail = observer(() => {
           {exportError && (
             <p className="record-export-error" role="alert">
               {exportError}
+            </p>
+          )}
+          {visibilityError && (
+            <p className="record-export-error" role="alert">
+              {visibilityError}
             </p>
           )}
         </div>

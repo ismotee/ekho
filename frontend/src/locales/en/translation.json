@@ -123,7 +123,14 @@
     "searchPlaceholder": "Search records…",
     "searchAria": "Search records",
     "empty": "No records found",
-    "emptyInCollection": "No recordings added yet"
+    "emptyInCollection": "No recordings added yet",
+    "visibility": {
+      "hide": "Hide record",
+      "show": "Restore visibility",
+      "saving": "Saving…",
+      "hiddenOwnerNotice": "This record is hidden from the public records list. You can still see it because you own the collection.",
+      "toggleError": "Failed to update record visibility."
+    }
   },
   "actors": {
     "title": "Actors",

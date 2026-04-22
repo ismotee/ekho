@@ -371,7 +371,9 @@ def record_references_actor(record_data: dict, actor_id: int) -> bool:
     return actor_id in collect_actor_ids(record_data)
 
 
-def sanitize_actor_refs_for_import(data: dict, user: Any) -> dict:
+def sanitize_actor_refs_for_import(
+    data: dict, user: Any, allowed_actor_ids: Set[int] | None = None
+) -> dict:
     """
     Return a deep copy of `data` with actor refs removed when the actor is missing
     or not visible to `user` (global or owned by user). Used by record import so
@@ -385,8 +387,11 @@ def sanitize_actor_refs_for_import(data: dict, user: Any) -> dict:
         return out
     from .models import Actor
 
+    allowed = allowed_actor_ids or set()
     invalid: Set[int] = set()
     for aid in ids:
+        if aid in allowed:
+            continue
         try:
             act = Actor.objects.get(pk=aid)
         except Actor.DoesNotExist:
@@ -398,6 +403,137 @@ def sanitize_actor_refs_for_import(data: dict, user: Any) -> dict:
             invalid.add(aid)
     for aid in sorted(invalid, reverse=True):
         out = strip_actor_id(out, aid)
+    return out
+
+
+def remap_actor_ids_for_import(data: dict, id_map: dict[int, int]) -> dict:
+    """
+    Return a deep copy of record data where actor refs `{id: <int>}` are rewritten
+    according to `id_map` on known actor slots.
+    """
+    if not isinstance(data, dict) or not id_map:
+        return copy.deepcopy(data) if isinstance(data, dict) else data
+    out = copy.deepcopy(data)
+
+    def _rewrite_ref(value: Any) -> Any:
+        rid = _actor_ref_id(value)
+        if rid is None:
+            return value
+        new_id = id_map.get(rid)
+        if new_id is None:
+            return value
+        return {"id": new_id}
+
+    acq = out.get("aquisition_details")
+    if isinstance(acq, dict):
+        actors = acq.get("actor")
+        if isinstance(actors, list):
+            rewritten: list[Any] = []
+            for a in actors:
+                if isinstance(a, dict) and ("actor" in a or "acquisition_actor_role" in a):
+                    row = copy.deepcopy(a)
+                    row["actor"] = _rewrite_ref(row.get("actor"))
+                    rewritten.append(row)
+                else:
+                    rewritten.append(_rewrite_ref(a))
+            acq["actor"] = rewritten
+        places = acq.get("place")
+        if isinstance(places, list):
+            for place in places:
+                if isinstance(place, dict):
+                    place["owner"] = _rewrite_ref(place.get("owner"))
+
+    rights = out.get("rights")
+    if isinstance(rights, list):
+        for r in rights:
+            if not isinstance(r, dict):
+                continue
+            holders = r.get("holder")
+            if isinstance(holders, list):
+                r["holder"] = [_rewrite_ref(h) for h in holders]
+
+    hist = out.get("history")
+    if isinstance(hist, dict):
+        for oh in hist.get("owner_history") or []:
+            if isinstance(oh, dict):
+                oh["owner"] = _rewrite_ref(oh.get("owner"))
+                pl = oh.get("place")
+                if isinstance(pl, dict):
+                    pl["owner"] = _rewrite_ref(pl.get("owner"))
+        for opi in hist.get("object_production_information") or []:
+            if isinstance(opi, dict):
+                rows = opi.get("actor")
+                if isinstance(rows, list):
+                    for row in rows:
+                        if isinstance(row, dict):
+                            row["actor"] = _rewrite_ref(row.get("actor"))
+                pl = opi.get("place")
+                if isinstance(pl, list):
+                    for p in pl:
+                        if isinstance(p, dict):
+                            p["owner"] = _rewrite_ref(p.get("owner"))
+                elif isinstance(pl, dict):
+                    pl["owner"] = _rewrite_ref(pl.get("owner"))
+        for obh in hist.get("object_history") or []:
+            if isinstance(obh, dict):
+                rows = obh.get("actor")
+                if isinstance(rows, list):
+                    for row in rows:
+                        if isinstance(row, dict):
+                            row["actor"] = _rewrite_ref(row.get("actor"))
+                for p in obh.get("place") or []:
+                    if isinstance(p, dict):
+                        p["owner"] = _rewrite_ref(p.get("owner"))
+                ev = obh.get("event")
+                if isinstance(ev, dict):
+                    rows = ev.get("actor")
+                    if isinstance(rows, list):
+                        for row in rows:
+                            if isinstance(row, dict):
+                                row["actor"] = _rewrite_ref(row.get("actor"))
+                    for p in ev.get("place") or []:
+                        if isinstance(p, dict):
+                            p["owner"] = _rewrite_ref(p.get("owner"))
+
+    desc = out.get("description")
+    if isinstance(desc, dict):
+        for ins in desc.get("inscription") or []:
+            if not isinstance(ins, dict):
+                continue
+            ins["inscriber"] = _rewrite_ref(ins.get("inscriber"))
+            for inter in ins.get("interpretation") or []:
+                if isinstance(inter, dict):
+                    inter["interpretator"] = _rewrite_ref(inter.get("interpretator"))
+            for tr in ins.get("translation") or []:
+                if isinstance(tr, dict):
+                    tr["translator"] = _rewrite_ref(tr.get("translator"))
+        content = desc.get("content")
+        if isinstance(content, dict):
+            actors_list = content.get("actors")
+            if isinstance(actors_list, list):
+                content["actors"] = [_rewrite_ref(item) for item in actors_list]
+            content["person"] = _rewrite_ref(content.get("person"))
+            places_list = content.get("places")
+            if isinstance(places_list, list):
+                for pl in places_list:
+                    if isinstance(pl, dict):
+                        pl["owner"] = _rewrite_ref(pl.get("owner"))
+            pl = content.get("place")
+            if isinstance(pl, dict):
+                pl["owner"] = _rewrite_ref(pl.get("owner"))
+
+    loc = out.get("object_location")
+    if isinstance(loc, list):
+        for item in loc:
+            if isinstance(item, dict):
+                place = item.get("location")
+                if isinstance(place, dict):
+                    place["owner"] = _rewrite_ref(place.get("owner"))
+    elif isinstance(loc, dict):
+        place = loc.get("location")
+        if isinstance(place, dict):
+            place["owner"] = _rewrite_ref(place.get("owner"))
+
     return out
 
 

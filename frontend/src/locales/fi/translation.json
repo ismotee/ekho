@@ -123,7 +123,14 @@
     "searchPlaceholder": "Etsi tallenteita…",
     "searchAria": "Etsi tallenteita",
     "empty": "Tallenteita ei löytynyt",
-    "emptyInCollection": "Ei lisättyjä tallenteita"
+    "emptyInCollection": "Ei lisättyjä tallenteita",
+    "visibility": {
+      "hide": "Piilota teos",
+      "show": "Palauta näkyväksi",
+      "saving": "Tallennetaan…",
+      "hiddenOwnerNotice": "Tämä teos on piilotettu yleisestä tallennelistasta. Näet sen, koska olet kokoelman omistaja.",
+      "toggleError": "Tallenteen näkyvyyden päivittäminen epäonnistui."
+    }
   },
   "actors": {
     "title": "Toimijat",
