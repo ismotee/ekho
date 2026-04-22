@@ -29,7 +29,6 @@ import type { RecordDataDomainKey, RecordImage } from '../../types/record'
 import {
   getRecordPrimaryLabel,
   getRecordSecondaryLine,
-  getRecordCardYearLine,
   getRecordThumbnailUrl,
 } from '../../types/record'
 import { NestedDomainFields } from './NestedDomainFields'
@@ -41,7 +40,7 @@ import { objectProductionTimeForTitleCard } from '../../lib/temporalPayload'
 import { objectProductionManufacturerForDisplay } from './actorMiniForm'
 import './Records.css'
 
-const DOMAIN_NAV_GRID_PAGE_SIZE = 8
+const DOMAIN_NAV_GRID_PAGE_SIZE = 12
 
 type FieldPathSegment = string | number
 
@@ -97,8 +96,30 @@ function arrayItemTileLabel(
   arrayFieldParentKey?: string,
 ): string {
   const trunc = (s: string) => (s.length > ARRAY_TILE_LABEL_MAX ? `${s.slice(0, ARRAY_TILE_LABEL_MAX)}…` : s)
+  if (arrayFieldKey === 'date' && arrayFieldParentKey === 'aquisition_details') {
+    return t('recordForm.detail.arraySegmentLabel', {
+      field: recordDomainFieldLabelForKey('date', 'aquisition_details', i18n, t),
+      n: index + 1,
+    })
+  }
+  if (arrayFieldKey === 'technical_attribute' && isPlainObject(item)) {
+    const technicalName = displayTextFromScalarOrPrefLabelObject(
+      (item as Record<string, unknown>).unit,
+      i18n.language,
+    )
+    if (technicalName) return trunc(technicalName)
+  }
   if (isPlainObject(item)) {
     const o = item as Record<string, unknown>
+    if (arrayFieldKey === 'object_history') {
+      const activityRaw = o.activity
+      if (isPlainObject(activityRaw)) {
+        const activityObj = activityRaw as Record<string, unknown>
+        const activityType = displayTextFromScalarOrPrefLabelObject(activityObj.type, i18n.language)
+        if (activityType) return trunc(activityType)
+        if (typeof activityObj.note === 'string' && activityObj.note.trim()) return trunc(activityObj.note.trim())
+      }
+    }
     if (arrayFieldKey === 'object_production_information') {
       return t('recordForm.detail.arraySegmentLabel', {
         field: recordDomainFieldLabelForKey(
@@ -154,10 +175,17 @@ function breadcrumbLabelForPathPrefix(
   if (pathPrefix.length === 0) return ''
   const last = pathPrefix[pathPrefix.length - 1]
   if (typeof last === 'string') {
+    const immediatePrev = pathPrefix.length >= 2 ? pathPrefix[pathPrefix.length - 2] : undefined
+    const twoBack = pathPrefix.length >= 3 ? pathPrefix[pathPrefix.length - 3] : undefined
+    const parentForLabelBase =
+      typeof immediatePrev === 'string'
+        ? immediatePrev
+        : typeof immediatePrev === 'number' && typeof twoBack === 'string'
+          ? twoBack
+          : undefined
     const parentForLabel =
-      pathPrefix.length >= 2 && typeof pathPrefix[pathPrefix.length - 2] === 'string'
-        ? (pathPrefix[pathPrefix.length - 2] as string)
-        : undefined
+      parentForLabelBase ??
+      (pathPrefix.length === 1 && domainJsonKeyForRootArray ? domainJsonKeyForRootArray : undefined)
     return recordDomainFieldLabelForKey(last, parentForLabel, i18n, t)
   }
   const arr = getValueAtSectionPath(sectionRoot, pathPrefix.slice(0, -1))
@@ -170,6 +198,9 @@ function breadcrumbLabelForPathPrefix(
     pathPrefix.length >= 3 && typeof pathPrefix[pathPrefix.length - 3] === 'string'
       ? (pathPrefix[pathPrefix.length - 3] as string)
       : undefined
+  const arrayFieldParentForCrumbWithDomainFallback =
+    arrayFieldParentForCrumb ??
+    (pathPrefix.length === 2 && domainJsonKeyForRootArray ? domainJsonKeyForRootArray : undefined)
   const arrayKeyForItem =
     arrayFieldKeyForCrumb ??
     (pathPrefix.length === 1 && domainJsonKeyForRootArray ? domainJsonKeyForRootArray : undefined)
@@ -180,12 +211,17 @@ function breadcrumbLabelForPathPrefix(
       t,
       i18n,
       arrayKeyForItem,
-      arrayFieldParentForCrumb,
+      arrayFieldParentForCrumbWithDomainFallback,
     )
   }
   if (arrayKeyForItem) {
     return t('recordForm.detail.arraySegmentLabel', {
-      field: recordDomainFieldLabelForKey(arrayKeyForItem, arrayFieldParentForCrumb, i18n, t),
+      field: recordDomainFieldLabelForKey(
+        arrayKeyForItem,
+        arrayFieldParentForCrumbWithDomainFallback,
+        i18n,
+        t,
+      ),
       n: idx + 1,
     })
   }
@@ -535,6 +571,14 @@ export const RecordDetail = observer(() => {
       let keys = nonEmptyRootSubkeys(v)
       const pathEndsAtArrayIndex =
         fieldPath.length > 0 && typeof fieldPath[fieldPath.length - 1] === 'number'
+      const arrayKeyForIndexedObject =
+        pathEndsAtArrayIndex && fieldPath.length >= 2 && typeof fieldPath[fieldPath.length - 2] === 'string'
+          ? (fieldPath[fieldPath.length - 2] as string)
+          : undefined
+      if (pathEndsAtArrayIndex && arrayKeyForIndexedObject === 'technical_attribute' && keys.includes('unit')) {
+        const withoutUnit = keys.filter((k) => k !== 'unit')
+        if (withoutUnit.length > 0) keys = withoutUnit
+      }
       if (pathEndsAtArrayIndex) {
         const sourceKey = arrayItemTitleSourceKey(v, i18n.language)
         if (sourceKey !== null && keys.includes(sourceKey)) {
@@ -553,6 +597,8 @@ export const RecordDetail = observer(() => {
         fieldPath.length >= 2 && typeof fieldPath[fieldPath.length - 2] === 'string'
           ? (fieldPath[fieldPath.length - 2] as string)
           : undefined
+      const arrayFieldParentKeyWithDomainFallback: string | undefined =
+        arrayFieldParentKey ?? (fieldPath.length === 1 ? (selectedDomainKey ?? undefined) : undefined)
       return v.map((item, index) => ({
         kind: 'index' as const,
         index,
@@ -562,12 +608,12 @@ export const RecordDetail = observer(() => {
           t,
           i18n,
           arrayFieldKey,
-          arrayFieldParentKey,
+          arrayFieldParentKeyWithDomainFallback,
         ),
       }))
     }
     return []
-  }, [showDrillTiles, valueAtFieldPath, fieldPath, t, i18n, i18n.language])
+  }, [showDrillTiles, valueAtFieldPath, fieldPath, t, i18n, i18n.language, selectedDomainKey])
 
   const drillPageCount = Math.max(1, Math.ceil(drillEntries.length / DOMAIN_NAV_GRID_PAGE_SIZE))
   const safeDrillPage = Math.min(drillPage, drillPageCount - 1)
@@ -647,7 +693,6 @@ export const RecordDetail = observer(() => {
   const data = record.data ?? {}
   const primary = getRecordPrimaryLabel(data)
   const secondaryLine = getRecordSecondaryLine(data)
-  const yearLine = getRecordCardYearLine(data)
   const fallbackImageUrl = getRecordThumbnailUrl(record)
 
   const collection = collectionStore.currentCollection
@@ -818,9 +863,6 @@ export const RecordDetail = observer(() => {
               )}
               {secondaryLine != null && secondaryLine !== '' && (
                 <p className="record-detail-subline">{secondaryLine}</p>
-              )}
-              {yearLine != null && yearLine !== '' && (
-                <p className="record-detail-year-line">{yearLine}</p>
               )}
 
               {canEdit && (
@@ -1078,7 +1120,7 @@ export const RecordDetail = observer(() => {
                           onClick={() => openTopSubsectionField(subKey)}
                         >
                           <span className="record-detail-domain-nav__tile-label">
-                            {recordDomainFieldLabelForKey(subKey, undefined, i18n, t)}
+                            {recordDomainFieldLabelForKey(subKey, selectedDomainKey ?? undefined, i18n, t)}
                           </span>
                         </button>
                       ))}
@@ -1120,10 +1162,19 @@ export const RecordDetail = observer(() => {
                 ) : null}
                 <div className="record-detail-domain-nav__grid record-detail-domain-nav__grid--sync-fill record-detail-domain-nav__grid--subsections">
                   {(() => {
-                    const drillParentKey: string | undefined =
-                      fieldPath.length > 0 && typeof fieldPath[fieldPath.length - 1] === 'string'
-                        ? (fieldPath[fieldPath.length - 1] as string)
-                        : undefined
+                    const drillParentKey: string | undefined = (() => {
+                      if (fieldPath.length === 0) return undefined
+                      const last = fieldPath[fieldPath.length - 1]
+                      if (typeof last === 'string') return last
+                      if (typeof last === 'number' && fieldPath.length === 1 && selectedDomainKey != null) {
+                        return selectedDomainKey
+                      }
+                      if (typeof last === 'number' && fieldPath.length >= 2) {
+                        const prev = fieldPath[fieldPath.length - 2]
+                        if (typeof prev === 'string') return prev
+                      }
+                      return undefined
+                    })()
                     return drillPageSlice.map((entry) =>
                       entry.kind === 'key' ? (
                         <button
@@ -1184,9 +1235,6 @@ export const RecordDetail = observer(() => {
           )}
           {secondaryLine != null && secondaryLine !== '' && (
             <p className="record-detail-subline">{secondaryLine}</p>
-          )}
-          {yearLine != null && yearLine !== '' && (
-            <p className="record-detail-year-line">{yearLine}</p>
           )}
 
           {canEdit && (

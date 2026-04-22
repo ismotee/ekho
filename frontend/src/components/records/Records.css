@@ -486,7 +486,7 @@
 
 /* Subsection tiles: keep four columns (denser than the top-level row). */
 .record-detail-domain-nav__grid--subsections {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* Top-level domain row in split layout: use full right-column width with slightly wider spacing */
@@ -584,9 +584,9 @@
 
 /* Level-2 subsection tiles use the same tile styling as top-level domain buttons; only layout differs. */
 .record-detail-domain-nav__sync .record-detail-domain-nav__grid--subsections .record-detail-domain-nav__tile {
-  height: auto;
+  height: 100%;
   min-height: calc(4.25rem * 1.21);
-  align-self: auto;
+  align-self: stretch;
 }
 
 @media (max-width: 52rem) {
@@ -1197,8 +1197,88 @@
 }
 
 .record-field-text {
+  display: block;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.record-field-text-paged {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.record-field-text-paged__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.record-field-text-paged__status {
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.record-field-text-paged__nav-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(3.45rem * 1.1);
+  padding: calc(0.85rem * 1.1) 1.15rem;
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-primary);
+  background-color: var(--color-surface-muted);
+  border: 2px solid var(--color-border);
+  border-radius: 1.25rem;
+  box-shadow:
+    var(--shadow-md),
+    0 10px 30px rgba(0, 0, 0, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.11);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.record-field-text-paged__nav-btn:hover:not(:disabled) {
+  background-color: var(--color-btn-secondary-hover-bg);
+  border-color: var(--color-border-strong);
+  color: var(--color-primary);
+  box-shadow:
+    var(--shadow-md),
+    0 16px 40px rgba(0, 0, 0, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.13);
+  transform: translateY(-3px);
+}
+
+.record-field-text-paged__nav-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.record-field-text-paged__nav-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--shadow-md),
+    0 10px 30px rgba(0, 0, 0, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.11),
+    0 0 0 4px var(--color-primary-ring);
+}
+
+.record-field-text-paged__nav-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow:
+    var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06)),
+    0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .record-field-empty {

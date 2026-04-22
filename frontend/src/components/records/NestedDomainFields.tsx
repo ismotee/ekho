@@ -2,7 +2,7 @@
  * Generic recursive presentation for record domain JSON (RecordDetail sections).
  */
 
-import type { ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useTranslation } from 'react-i18next'
 import { isLanguageMapObject, pickLanguageMapString } from '../../lib/languageMapDisplay'
@@ -55,6 +55,65 @@ interface NestedDomainFieldsProps {
 }
 
 const MAX_DEPTH = 12
+const FIELD_TEXT_PAGE_CHAR_LIMIT = 700
+
+function splitTextIntoPages(text: string, maxChars: number): string[] {
+  const src = text.trim()
+  if (!src) return ['']
+  const pages: string[] = []
+  let i = 0
+  while (i < src.length) {
+    let end = Math.min(i + maxChars, src.length)
+    if (end < src.length) {
+      const breakAt = src.lastIndexOf(' ', end)
+      if (breakAt > i + Math.floor(maxChars * 0.6)) {
+        end = breakAt
+      }
+    }
+    const page = src.slice(i, end).trim()
+    pages.push(page)
+    i = end
+    while (i < src.length && src[i] === ' ') i += 1
+  }
+  return pages.length > 0 ? pages : [src]
+}
+
+function PagedTextValue({ text }: { text: string }) {
+  const { t } = useTranslation()
+  const pages = useMemo(() => splitTextIntoPages(text, FIELD_TEXT_PAGE_CHAR_LIMIT), [text])
+  const [page, setPage] = useState(0)
+  const safePage = Math.min(Math.max(0, page), pages.length - 1)
+  const hasPagination = pages.length > 1
+
+  return (
+    <div className="record-field-text-paged">
+      <span className="record-field-text">{pages[safePage]}</span>
+      {hasPagination ? (
+        <div className="record-field-text-paged__controls">
+          <button
+            type="button"
+            className="record-field-text-paged__nav-btn"
+            disabled={safePage <= 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+          >
+            {t('recordForm.detail.paginationPrevious')}
+          </button>
+          <span className="record-field-text-paged__status">
+            {t('recordForm.detail.domainNavPageStatus', { current: safePage + 1, total: pages.length })}
+          </span>
+          <button
+            type="button"
+            className="record-field-text-paged__nav-btn"
+            disabled={safePage >= pages.length - 1}
+            onClick={() => setPage((p) => Math.min(pages.length - 1, p + 1))}
+          >
+            {t('recordForm.detail.paginationNext')}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 /**
  * Renders arbitrary JSON-shaped domain data as label + value rows and nested lists.
@@ -109,9 +168,9 @@ function NestedDomainFieldsInner({
     const em = t('recordForm.detail.emDash')
     if (!trimmed) return wrapRootFieldPanelRow(<span className="record-field-empty">{em}</span>)
     if (/^https?:\/\//i.test(trimmed)) {
-      return wrapRootFieldPanelRow(<span className="record-field-text">{trimmed}</span>)
+      return wrapRootFieldPanelRow(<PagedTextValue text={trimmed} />)
     }
-    return wrapRootFieldPanelRow(<span className="record-field-text">{value}</span>)
+    return wrapRootFieldPanelRow(<PagedTextValue text={value} />)
   }
 
   if (Array.isArray(value)) {
@@ -155,7 +214,7 @@ function NestedDomainFieldsInner({
       const em = t('recordForm.detail.emDash')
       return wrapRootFieldPanelRow(
         picked ? (
-          <span className="record-field-text">{picked}</span>
+          <PagedTextValue text={picked} />
         ) : (
           <span className="record-field-empty">{em}</span>
         ),
@@ -174,14 +233,14 @@ function NestedDomainFieldsInner({
       const schemeRaw = value.in_scheme
       const scheme = typeof schemeRaw === 'string' ? schemeRaw.trim() : ''
       if (refText || scheme) {
-        return wrapRootFieldPanelRow(<span className="record-field-text">{refText || scheme}</span>)
+        return wrapRootFieldPanelRow(<PagedTextValue text={refText || scheme} />)
       }
     }
 
     if (isReferenceLikeObject(value)) {
       const preview = referenceLikePreview(value)
       if (preview != null) {
-        return wrapRootFieldPanelRow(<span className="record-field-text">{preview}</span>)
+        return wrapRootFieldPanelRow(<PagedTextValue text={preview} />)
       }
     }
 

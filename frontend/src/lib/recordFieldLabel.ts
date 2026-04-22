@@ -64,6 +64,7 @@ const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   price: 'recordForm.labels.exchangePrice',
   /** OwnershipExchange.denomination — form uses priceDenomination */
   denomination: 'recordForm.labels.priceDenomination',
+  transfer_of_title_number: 'recordForm.labels.transferOfTitle',
   /** ObjectHistory.event — form uses associatedEventLegend */
   event: 'recordForm.history.associatedEventLegend',
   /** DateDetail; API typo from common-models */
@@ -80,16 +81,21 @@ const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   status_date: 'recordForm.access.statusDateLegend',
   location_date: 'recordForm.location.locationDateLegend',
   object_component: 'recordForm.description.objectComponentsLegend',
+  material: 'recordForm.labels.materials',
+  technical_attribute: 'recordForm.labels.technicalAttributes',
   content_date: 'recordForm.description.contentDatesLegend',
   content_dates: 'recordForm.description.contentDatesLegend',
   content_time_role: 'recordForm.labels.contentTimeRole',
   content_places: 'recordForm.description.contentPlacesLegend',
+  style: 'recordForm.labels.styles',
   interpretation_date: 'recordForm.description.interpretationDateLegend',
   inscription_date: 'recordForm.labels.inscriptionDate',
   pref_label: 'recordForm.labels.prefLabel',
   in_scheme: 'recordForm.labels.inScheme',
   acquisition_place_role: 'recordForm.labels.acquisitionPlaceRole',
   content_place_role: 'recordForm.labels.contentPlaceRole',
+  /** Access.category */
+  category: 'recordForm.labels.usage',
 }
 
 export function translateRecordFieldKey(key: string, i18n: I18nType, t: TFunction): string {
@@ -119,6 +125,56 @@ export function recordDomainFieldLabelForKey(
   i18n: I18nType,
   t: TFunction,
 ): string {
+  if (parentFieldKey === 'material') {
+    if (k === 'type') return t('recordForm.labels.materialType')
+    if (k === 'name') return t('recordForm.labels.materialName')
+    if (k === 'source') return t('recordForm.labels.sourcePlaceFinnish')
+    if (k === 'component') return t('recordForm.description.componentsLegend')
+  }
+  if (parentFieldKey === 'technical_attribute') {
+    if (k === 'unit') return t('recordForm.labels.measurementNameTechnical')
+    if (k === 'measurement_unit') return t('recordForm.labels.unit')
+    if (k === 'value') return t('recordForm.labels.valueTechnical')
+  }
+  if (parentFieldKey === 'physical_description') {
+    if (k === 'text') return t('recordForm.labels.descriptionText')
+    if (k === 'form') return t('recordForm.labels.formInstallation')
+  }
+  if (parentFieldKey === 'aquisition_details') {
+    if (k === 'date') return t('recordForm.acquisition.dateEntriesLegend')
+    if (k === 'note') return t('recordForm.labels.note')
+    if (k === 'actor') return t('recordForm.acquisition.actorsLegend')
+    if (k === 'place') return t('recordForm.acquisition.placesLegend')
+    if (k === 'method') return t('recordForm.labels.method')
+    if (k === 'reason') return t('recordForm.labels.reason')
+    if (k === 'acquisition_time') return t('recordForm.acquisition.acquisitionTimeLegend')
+    if (k === 'reference_number') return t('recordForm.labels.referenceNumber')
+  }
+  if (parentFieldKey === 'owner_history') {
+    if (k === 'date') return t('recordForm.history.ownershipDateLegend')
+    if (k === 'place') return t('recordForm.history.ownershipPlaceLegend')
+  }
+  if (parentFieldKey === 'object_history') {
+    if (k === 'date') return t('recordForm.history.objectHistoryTimeLabel')
+    if (k === 'place') return t('recordForm.history.objectHistoryPlaceLabel')
+    if (k === 'activity') return t('recordForm.history.objectHistoryActivityLabel')
+  }
+  if ((parentFieldKey === 'usage_history' || parentFieldKey === 'usage') && k === 'category') {
+    return t('recordForm.labels.usage')
+  }
+  if (parentFieldKey === 'access') {
+    if (k === 'date') return t('recordForm.access.accessDateLegend')
+    if (k === 'note') return t('recordForm.access.accessRestrictionNoteLabel')
+  }
+  if (parentFieldKey === 'object_display_status') {
+    if (k === 'date') return t('recordForm.access.statusDateLegend')
+    if (k === 'type') return t('recordForm.access.displayStatusLegend')
+  }
+  if (parentFieldKey === 'object_location') {
+    if (k === 'date') return t('recordForm.location.locationDateLegend')
+    if (k === 'location') return t('recordForm.location.locationLegend')
+    if (k === 'fitness') return t('recordForm.labels.locationFitness')
+  }
   if (parentFieldKey === 'content' && k === 'activity') {
     return t('recordForm.labels.contentActivity')
   }

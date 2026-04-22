@@ -78,13 +78,13 @@ def collection(auth_client, user):
     return Collection.objects.get(pk=r.data["id"])
 
 
-def test_list_actors_anonymous_sees_global_only(global_actor, user_actor):
+def test_list_actors_anonymous_sees_all(global_actor, user_actor):
     client = APIClient()
     r = client.get(reverse("actors-list"))
     assert r.status_code == status.HTTP_200_OK
     ids = {x["id"] for x in r.data["results"]}
     assert global_actor.id in ids
-    assert user_actor.id not in ids
+    assert user_actor.id in ids
 
 
 def test_list_actors_authenticated_sees_global_and_own(global_actor, user_actor, auth_client):
@@ -93,6 +93,26 @@ def test_list_actors_authenticated_sees_global_and_own(global_actor, user_actor,
     ids = {x["id"] for x in r.data["results"]}
     assert global_actor.id in ids
     assert user_actor.id in ids
+
+
+def test_anonymous_actor_writes_forbidden(global_actor, user_actor):
+    client = APIClient()
+    create = client.post(
+        reverse("actors-list"),
+        {"data": {"person": {}, "organization": {"name": [{"name": {"fi": "Anon Org"}}]}}},
+        format="json",
+    )
+    assert create.status_code == status.HTTP_403_FORBIDDEN
+
+    patch = client.patch(
+        reverse("actors-detail", kwargs={"pk": user_actor.pk}),
+        {"data": {"person": {"first_name": [{"name": "Anon"}]}, "organization": {}}},
+        format="json",
+    )
+    assert patch.status_code == status.HTTP_403_FORBIDDEN
+
+    delete = client.delete(reverse("actors-detail", kwargs={"pk": global_actor.pk}))
+    assert delete.status_code == status.HTTP_403_FORBIDDEN
 
 
 def test_create_actor_rejects_both_sides_empty(auth_client):

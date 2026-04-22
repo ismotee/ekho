@@ -579,12 +579,9 @@ class ActorViewSet(viewsets.ModelViewSet):
     permission_classes = [IsActorEditorOrReadOnly]
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        if user.is_authenticated:
-            # Authenticated users can read all actors (read-only for non-owned rows).
-            return qs
-        return qs.filter(owner__isnull=True)
+        # Everyone can read all actors; write permissions are handled by
+        # IsActorEditorOrReadOnly (authenticated owner/staff only).
+        return super().get_queryset()
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)

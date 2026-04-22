@@ -471,9 +471,12 @@
     "usageHistoryHint": "Käytetään kirjattaessa tietoja objektin kaltaisten objektien käyttämisestä.",
     "emptyUsageEntry": "Tyhjä käyttömerkintä",
     "addUsageEntry": "Lisää käyttömerkintä",
-    "objectHistoryLegend": "Objektihistoria",
+    "objectHistoryLegend": "Objektiin liittyvät historiatiedot",
     "objectHistoryHint": "Käytetään kirjattaessa tietoja asioista, joiden tiedetään tapahtuneen tai liittyneen objektin historiaan.",
     "emptyObjectHistoryEntry": "Tyhjä objektihistoriamerkintä",
+    "objectHistoryTimeLabel": "Objektiin liittyvä aika",
+    "objectHistoryPlaceLabel": "objektiin liittyvä paikka",
+    "objectHistoryActivityLabel": "objektiin liittyvä toiminta",
     "associatedActivityLegend": "Objektiin liittyvä toiminta",
     "datesLegend": "Objektiin liittyvät ajat",
     "objectHistoryDatesHint": "Ajankohta, joka liittyy objektin historiaan. Kirjataan vain sellaisia tietoja, joita ei ole jo muiden ohjeiden mukaisesti kirjattu.",
@@ -526,6 +529,7 @@
   },
   "access": {
     "accessDateLegend": "Käyttörajoituksen kirjaamisaika",
+    "accessRestrictionNoteLabel": "Lisätietoja käyttörajoiteuksesta",
     "displayStatusLegend": "Esille pantavan objektin käsittelyvaihe",
     "statusDateLegend": "Käyttöoikeuden käsittelyvaiheen kirjaamisaika"
   },

@@ -474,6 +474,9 @@
     "objectHistoryLegend": "Object history",
     "objectHistoryHint": "Used when recording information about matters known to have occurred or to relate to the object’s history.",
     "emptyObjectHistoryEntry": "Empty object history entry",
+    "objectHistoryTimeLabel": "Time related to the object",
+    "objectHistoryPlaceLabel": "Place related to the object",
+    "objectHistoryActivityLabel": "Activity related to the object",
     "associatedActivityLegend": "Activity related to the object",
     "datesLegend": "Times related to the object",
     "objectHistoryDatesHint": "A date or time relating to the object’s history. Record only information that has not already been recorded according to other instructions.",
@@ -526,6 +529,7 @@
   },
   "access": {
     "accessDateLegend": "Date when access restriction was recorded",
+    "accessRestrictionNoteLabel": "Additional information about access restriction",
     "displayStatusLegend": "Object display status",
     "statusDateLegend": "Date when processing stage was recorded"
   },
