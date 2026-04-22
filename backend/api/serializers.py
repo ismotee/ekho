@@ -272,8 +272,8 @@ class ActorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Actor
-        fields = ["id", "owner", "data", "created_at", "updated_at"]
-        read_only_fields = ["id", "owner", "created_at", "updated_at"]
+        fields = ["id", "import_id", "owner", "data", "created_at", "updated_at"]
+        read_only_fields = ["id", "import_id", "owner", "created_at", "updated_at"]
 
     def validate_data(self, value):
         return validate_actor_catalog_data(value)
@@ -296,6 +296,7 @@ class RecordSerializer(serializers.ModelSerializer):
             "representative_image",
             "images",
             "collection",
+            "is_listed",
             "collection_name",
             "collection_owner_username",
             "created_at",

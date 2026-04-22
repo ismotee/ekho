@@ -21,6 +21,10 @@ export interface PaginatedResponse<T> {
   results: T[]
 }
 
+function listedRecordsOnly(records: Record[]): Record[] {
+  return records.filter((record) => record.is_listed !== false)
+}
+
 function serializeDataForMultipart(data: RecordPayload): string {
   return JSON.stringify(data ?? {})
 }
@@ -88,14 +92,14 @@ export class RecordStore {
 
       runInAction(() => {
         if (response.results) {
-          this.records = response.results
+          this.records = listedRecordsOnly(response.results)
           this.pagination = {
             count: response.count || 0,
             next: response.next || null,
             previous: response.previous || null,
           }
         } else if (response.data) {
-          this.records = [response.data]
+          this.records = listedRecordsOnly([response.data])
         }
         this.loading = false
         this.error = null
@@ -124,7 +128,7 @@ export class RecordStore {
       const response = await api.get<Record>('/records/', { ...params })
       runInAction(() => {
         if (response.results) {
-          this.records = response.results
+          this.records = listedRecordsOnly(response.results)
           this.pagination = {
             count: response.count || 0,
             next: response.next || null,
@@ -158,8 +162,12 @@ export class RecordStore {
         if (response.data) {
           const index = this.records.findIndex((r) => r.id === id)
           if (index >= 0) {
-            this.records[index] = response.data
-          } else {
+            if (response.data.is_listed === false) {
+              this.records.splice(index, 1)
+            } else {
+              this.records[index] = response.data
+            }
+          } else if (response.data.is_listed !== false) {
             this.records.push(response.data)
           }
         }
@@ -206,7 +214,9 @@ export class RecordStore {
       }
 
       runInAction(() => {
-        this.records.unshift(response.data!)
+        if (response.data!.is_listed !== false) {
+          this.records.unshift(response.data!)
+        }
         this.loading = false
         this.error = null
       })
@@ -259,7 +269,11 @@ export class RecordStore {
       runInAction(() => {
         const index = this.records.findIndex((r) => r.id === id)
         if (index >= 0) {
-          this.records[index] = response.data!
+          if (response.data!.is_listed === false) {
+            this.records.splice(index, 1)
+          } else {
+            this.records[index] = response.data!
+          }
         }
         if (this.currentRecord?.id === id) {
           this.currentRecord = response.data!

@@ -31,9 +31,11 @@ from .system_identity import get_or_create_system_instance_id
 from .record_actor_refs import (
     collect_actor_ids,
     list_record_usage_for_actor,
+    remap_actor_ids_for_import,
     sanitize_actor_refs_for_import,
     strip_actor_id,
 )
+from .actor_catalog_validate import actor_catalog_kind, validate_actor_catalog_data
 from .serializers import (
     ActorSerializer,
     CollectionSerializer,
@@ -65,8 +67,10 @@ def _collection_visibility_q(user):
 def _record_visibility_q(user):
     """Records visible in list/retrieve: same rules via parent collection."""
     if getattr(user, "is_authenticated", False):
-        return Q(collection__is_listed=True) | Q(collection__owner=user)
-    return Q(collection__is_listed=True)
+        return Q(collection__owner=user) | (
+            Q(collection__is_listed=True) & Q(is_listed=True)
+        )
+    return Q(collection__is_listed=True) & Q(is_listed=True)
 
 
 def _optional_import_uuid(value, field_label: str):
@@ -111,7 +115,12 @@ def _validated_import_payload(request_data: dict):
         raise ValueError("record.data is required.")
     if not isinstance(raw_data, dict):
         raise ValueError("record.data must be a JSON object.")
-    return col, rec, raw_data, ver_int
+    actors = request_data.get("actors")
+    if actors is None:
+        actors = []
+    if not isinstance(actors, list):
+        raise ValueError("actors must be an array when provided.")
+    return col, rec, raw_data, ver_int, actors
 
 
 def _current_collection_for_import(user, collection_id):
@@ -132,7 +141,80 @@ def _current_collection_for_import(user, collection_id):
     return col
 
 
-def _get_or_create_original_collection(user, col_meta: dict) -> Collection:
+def _resolve_or_upsert_import_actors(user, actors_payload: list[dict]) -> dict[int, int]:
+    """
+    Upsert imported actors by import_id and return source->local id map.
+    New actors are owned by `user`. Existing actors with matching import_id are updated.
+    """
+    id_map: dict[int, int] = {}
+    for i, item in enumerate(actors_payload):
+        if not isinstance(item, dict):
+            raise ValueError(f"actors[{i}] must be an object.")
+        src = item.get("source_id")
+        if src is None:
+            raise ValueError(f"actors[{i}].source_id is required.")
+        try:
+            src_id = int(src)
+        except (TypeError, ValueError):
+            raise ValueError(f"actors[{i}].source_id must be an integer.") from None
+        if src_id <= 0:
+            raise ValueError(f"actors[{i}].source_id must be a positive integer.")
+
+        raw_data = item.get("data")
+        validated_data = validate_actor_catalog_data(raw_data)
+        import_id_raw = item.get("import_id")
+        if import_id_raw in (None, ""):
+            import_uid = uuid.uuid4()
+        else:
+            import_uid = _require_import_uuid(import_id_raw, f"actors[{i}].import_id")
+
+        actor = Actor.objects.filter(import_id=import_uid).first()
+        if actor is None:
+            actor = Actor.objects.create(
+                owner=user,
+                data=validated_data,
+                import_id=import_uid,
+            )
+        else:
+            # Reuse existing actor across owners in same database and
+            # always refresh payload from the import source.
+            actor.data = validated_data
+            actor.save(update_fields=["data", "updated_at"])
+        id_map[src_id] = actor.pk
+    return id_map
+
+
+def _resolve_owning_actor_for_import(oo_meta: dict, actor_id_map: dict[int, int]):
+    if not isinstance(oo_meta, dict):
+        return None
+    source_id = oo_meta.get("id")
+    if source_id is not None:
+        try:
+            sid = int(source_id)
+        except (TypeError, ValueError):
+            sid = None
+        if sid is not None and sid in actor_id_map:
+            return Actor.objects.filter(pk=actor_id_map[sid]).first()
+
+    iid = oo_meta.get("import_id")
+    if iid not in (None, ""):
+        uid = _optional_import_uuid(iid, "collection.owning_organization.import_id")
+        if uid is not None:
+            return Actor.objects.filter(import_id=uid).first()
+
+    if source_id is not None:
+        try:
+            cand = Actor.objects.get(pk=int(source_id))
+        except (Actor.DoesNotExist, ValueError, TypeError):
+            return None
+        if actor_catalog_kind(cand.data) == "organization":
+            return cand
+    return None
+
+
+def _get_or_create_original_collection(
+    user, col_meta: dict, actor_id_map: dict[int, int] | None = None
+) -> Collection:
     sid = _require_import_uuid(col_meta.get("stable_id"), "collection.stable_id")
 
     existing = Collection.objects.filter(stable_id=sid).first()
@@ -166,15 +248,10 @@ def _get_or_create_original_collection(user, col_meta: dict) -> Collection:
 
     owning_actor = None
     oo_meta = col_meta.get("owning_organization")
-    if isinstance(oo_meta, dict) and oo_meta.get("id") is not None:
-        from .actor_catalog_validate import actor_catalog_kind
-
-        try:
-            cand = Actor.objects.get(pk=int(oo_meta["id"]))
-        except (Actor.DoesNotExist, ValueError, TypeError):
-            cand = None
-        if cand is not None and actor_catalog_kind(cand.data) == "organization":
-            owning_actor = cand
+    if isinstance(oo_meta, dict):
+        owning_actor = _resolve_owning_actor_for_import(oo_meta, actor_id_map or {})
+        if owning_actor is not None and actor_catalog_kind(owning_actor.data) != "organization":
+            owning_actor = None
 
     return Collection.objects.create(
         name=name[:200],
@@ -230,7 +307,7 @@ def health_check(request):
     """
     return Response({
         'status': 'healthy',
-        'message': 'Laukkanen Collection backend is running'
+        'message': 'Ekho backend is running'
     }, status=status.HTTP_200_OK)
 
 
@@ -505,7 +582,8 @@ class ActorViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:
-            return qs.filter(Q(owner__isnull=True) | Q(owner=user))
+            # Authenticated users can read all actors (read-only for non-owned rows).
+            return qs
         return qs.filter(owner__isnull=True)
 
     def perform_create(self, serializer):
@@ -560,6 +638,9 @@ class RecordViewSet(viewsets.ModelViewSet):
         search = (self.request.query_params.get('search') or '').strip()
 
         queryset = Record.objects.filter(_record_visibility_q(self.request.user))
+        # Hidden records are excluded from list views for all users.
+        if getattr(self, "action", None) == "list":
+            queryset = queryset.filter(is_listed=True)
 
         if collection_id:
             queryset = queryset.filter(collection_id=collection_id)
@@ -748,11 +829,19 @@ class RecordViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            col_meta, rec_block, raw_data, export_ver = _validated_import_payload(
+            col_meta, rec_block, raw_data, export_ver, actors_payload = _validated_import_payload(
                 request.data
             )
-            data_sanitized = sanitize_actor_refs_for_import(raw_data, request.user)
+            actor_id_map = _resolve_or_upsert_import_actors(request.user, actors_payload)
+            data_remapped = remap_actor_ids_for_import(raw_data, actor_id_map)
+            data_sanitized = sanitize_actor_refs_for_import(
+                data_remapped,
+                request.user,
+                allowed_actor_ids=set(actor_id_map.values()),
+            )
             data_validated = validate_record_data_payload(data_sanitized)
+        except PermissionDenied as e:
+            return _permission_denied_response(e)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -778,7 +867,9 @@ class RecordViewSet(viewsets.ModelViewSet):
 
             if mode == "original_only":
                 with transaction.atomic():
-                    original = _get_or_create_original_collection(request.user, col_meta)
+                    original = _get_or_create_original_collection(
+                        request.user, col_meta, actor_id_map
+                    )
                     rec = _save_imported_record(
                         original, data_validated, image_tuple, nested_specs
                     )
@@ -790,7 +881,9 @@ class RecordViewSet(viewsets.ModelViewSet):
             # deposition
             current = _current_collection_for_import(request.user, current_id)
             with transaction.atomic():
-                original = _get_or_create_original_collection(request.user, col_meta)
+                original = _get_or_create_original_collection(
+                    request.user, col_meta, actor_id_map
+                )
                 r1 = _save_imported_record(
                     original, data_validated, image_tuple, nested_specs
                 )

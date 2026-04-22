@@ -80,6 +80,7 @@ class Record(models.Model):
     collection = models.ForeignKey(
         Collection, on_delete=models.CASCADE, related_name="records"
     )
+    is_listed = models.BooleanField(default=True)
     imported_first = models.DateTimeField(null=True, blank=True)
     imported_last = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -89,6 +90,7 @@ class Record(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["collection"]),
+            models.Index(fields=["is_listed"]),
         ]
 
     def __str__(self):
@@ -188,6 +190,7 @@ class Actor(models.Model):
         blank=True,
         related_name="actors",
     )
+    import_id = models.UUIDField(null=True, blank=True, unique=True, db_index=True)
     data = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

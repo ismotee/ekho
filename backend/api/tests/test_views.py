@@ -16,4 +16,4 @@ class TestHealthCheck:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == 'healthy'
-        assert response.data['message'] == 'Laukkanen Collection backend is running'
+        assert response.data['message'] == 'Ekho backend is running'

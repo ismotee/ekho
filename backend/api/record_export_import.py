@@ -14,7 +14,8 @@ from typing import Any
 
 from django.core.files.base import ContentFile
 
-from .models import Record, RecordImage
+from .models import Actor, Record, RecordImage
+from .record_actor_refs import collect_actor_ids
 from .record_image_format_map import (
     ALLOWED_MIME_TYPES,
     IMAGE_UPLOAD_POLICY_SHORT_TEXT,
@@ -30,6 +31,14 @@ from .record_image_vocab import (
 
 EKHO_EXPORT_VERSION_CURRENT = 2
 EKHO_EXPORT_VERSIONS_IMPORT = frozenset({1, 2})
+
+
+def _ensure_actor_import_id(actor: Actor) -> uuid.UUID:
+    """Guarantee stable actor import id for export payloads."""
+    if actor.import_id is None:
+        actor.import_id = uuid.uuid4()
+        actor.save(update_fields=["import_id", "updated_at"])
+    return actor.import_id
 
 
 def _embed_file_as_b64(file_field) -> dict[str, str]:
@@ -74,7 +83,14 @@ def build_record_export_payload(
             "description": collection.description,
             "responsible_department": collection.responsible_department or "",
             "owning_organization": (
-                {"id": collection.owning_organization_id}
+                {
+                    "id": collection.owning_organization_id,
+                    "import_id": (
+                        str(_ensure_actor_import_id(collection.owning_organization))
+                        if collection.owning_organization
+                        else None
+                    ),
+                }
                 if collection.owning_organization_id
                 else None
             ),
@@ -117,6 +133,20 @@ def build_record_export_payload(
             block["derived_from_index"] = None
         images_out.append(block)
     payload["record"]["images"] = images_out
+
+    actor_ids = collect_actor_ids(payload["record"]["data"])
+    owning_id = collection.owning_organization_id
+    if owning_id:
+        actor_ids.add(owning_id)
+    actors = Actor.objects.filter(pk__in=actor_ids).order_by("id")
+    payload["actors"] = [
+        {
+            "source_id": actor.pk,
+            "import_id": str(_ensure_actor_import_id(actor)),
+            "data": actor.data if isinstance(actor.data, dict) else {},
+        }
+        for actor in actors
+    ]
 
     return payload
 
