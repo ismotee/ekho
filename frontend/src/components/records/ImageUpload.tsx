@@ -88,7 +88,11 @@ export const ImageUpload = ({
       
       {(preview || existingImageUrl) && (
         <div className="image-preview">
-          <img src={preview || existingImageUrl} alt={t('recordForm.imageUpload.previewAlt')} />
+          <img
+            src={preview || existingImageUrl}
+            alt={t('recordForm.imageUpload.previewAlt')}
+            decoding="async"
+          />
           {!disabled && (
             <button type="button" onClick={handleRemove} className="btn btn-secondary btn-sm">
               {t('recordForm.imageUpload.remove')}

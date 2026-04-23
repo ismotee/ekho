@@ -31,7 +31,13 @@ export const RecordCard = ({ record }: RecordCardProps) => {
   return (
     <Link to={`/records/${record.id}`} state={{ from }} className="record-card">
       {thumbnailUrl ? (
-        <img src={thumbnailUrl} alt="" className="record-thumbnail" />
+        <img
+          src={thumbnailUrl}
+          alt=""
+          className="record-thumbnail"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <div className="record-placeholder">{t('records.card.noImage')}</div>
       )}

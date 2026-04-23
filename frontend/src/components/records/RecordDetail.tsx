@@ -981,6 +981,8 @@ export const RecordDetail = observer(() => {
                         })}
                         className="record-detail-hero-carousel-img"
                         loading={safeCarouselIndex === 0 ? 'eager' : 'lazy'}
+                        decoding="async"
+                        fetchPriority={safeCarouselIndex === 0 ? 'high' : 'low'}
                       />
                     </button>
                   )}
@@ -1007,7 +1009,7 @@ export const RecordDetail = observer(() => {
                           total: nCarousel,
                         })}
                       >
-                        <img src={img.url} alt="" className="record-detail-hero-carousel-thumb-img" loading="lazy" />
+                        <img src={img.url} alt="" className="record-detail-hero-carousel-thumb-img" loading="lazy" decoding="async" />
                       </button>
                     ))}
                   </div>
@@ -1019,7 +1021,13 @@ export const RecordDetail = observer(() => {
                 className="record-image-zoom-trigger"
                 onClick={() => setImageLightbox({ src: fallbackImageUrl, alt: primary })}
               >
-                <img src={fallbackImageUrl} alt={primary} className="record-image" />
+                <img
+                  src={fallbackImageUrl}
+                  alt={primary}
+                  className="record-image"
+                  decoding="async"
+                  fetchPriority="high"
+                />
               </button>
             ) : (
               <div className="record-placeholder-large">{t('recordForm.detail.noImage')}</div>
@@ -1353,6 +1361,8 @@ export const RecordDetail = observer(() => {
                       })}
                       className="record-detail-hero-carousel-img"
                       loading={safeCarouselIndex === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      fetchPriority={safeCarouselIndex === 0 ? 'high' : 'low'}
                     />
                   </button>
                 )}
@@ -1379,7 +1389,7 @@ export const RecordDetail = observer(() => {
                         total: nCarousel,
                       })}
                     >
-                      <img src={img.url} alt="" className="record-detail-hero-carousel-thumb-img" loading="lazy" />
+                      <img src={img.url} alt="" className="record-detail-hero-carousel-thumb-img" loading="lazy" decoding="async" />
                     </button>
                   ))}
                 </div>
@@ -1391,7 +1401,13 @@ export const RecordDetail = observer(() => {
               className="record-image-zoom-trigger"
               onClick={() => setImageLightbox({ src: fallbackImageUrl, alt: primary })}
             >
-              <img src={fallbackImageUrl} alt={primary} className="record-image" />
+              <img
+                src={fallbackImageUrl}
+                alt={primary}
+                className="record-image"
+                decoding="async"
+                fetchPriority="high"
+              />
             </button>
           ) : (
             <div className="record-placeholder-large">{t('recordForm.detail.noImage')}</div>

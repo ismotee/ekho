@@ -11,8 +11,11 @@ server {
     server_name _;
     client_max_body_size 30m;
 
+    # Uploaded files use unique paths; long cache reduces repeat load on grids/detail.
     location /media/ {
         alias ${MEDIA_FS}/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
     }
 
     location /static/ {
