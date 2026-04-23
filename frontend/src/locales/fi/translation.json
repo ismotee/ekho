@@ -6,8 +6,9 @@
     "kioskTapToEnter": "Napauta missä tahansa koko näytön tilaa varten"
   },
   "landing": {
-    "introParagraph1": "Tervetuloa käyttämään Laukkanen Collectionia. Kokoelmanhallintaohjelma perustuu Museoiden luettelointioppaaseen, jonka ovat laatineet Museovirasto, Suomen museoliitto ja Kansallisgalleria.",
-    "introParagraph2": "Kaikki mitä sinun tarvitsee tietää löytyy kokoelmanhallintaohjelmasta.",
+    "introParagraph1": "",
+    "introParagraph2": "Tämä kokoelmanhallintaohjelma perustuu Museoiden luettelointioppaaseen, jonka ovat laatineet Museovirasto, Suomen museoliitto ja Kansallisgalleria.",
+    "introParagraph3": "Kaikki mitä sinä haluat tietää tästä kokoelmasta löytyy täältä.",
     "partnerLogoAlt": "Mältinranta — Taidekeskus, Tampereen taiteilijaseura"
   },
   "nav": {

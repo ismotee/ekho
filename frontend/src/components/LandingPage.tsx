@@ -9,13 +9,19 @@ import './LandingPage.css'
 
 export const LandingPage = () => {
   const { t } = useTranslation()
+  const introParagraphs = ['landing.introParagraph1', 'landing.introParagraph2', 'landing.introParagraph3']
+    .map((key) => t(key))
+    .filter((paragraph) => paragraph.trim().length > 0)
 
   return (
     <div className="landing-page">
       <div className="landing-page__cta">
         <div className="landing-page__intro">
-          <p className="landing-page__intro-p">{t('landing.introParagraph1')}</p>
-          <p className="landing-page__intro-p">{t('landing.introParagraph2')}</p>
+          {introParagraphs.map((paragraph) => (
+            <p key={paragraph} className="landing-page__intro-p">
+              {paragraph}
+            </p>
+          ))}
         </div>
         <Link to="/records" className="landing-page__collection-btn">
           {t('app.goToRecords')}
