@@ -10,7 +10,6 @@ export default defineConfig({
       'localhost',
       '127.0.0.1',
       'ekho-frontend-production.up.railway.app',
-      'ekho-production.up.railway.app',
     ],
     proxy: {
       '/api': {
