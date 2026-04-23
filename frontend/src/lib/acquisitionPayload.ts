@@ -61,7 +61,7 @@ export function unwrapAcquisitionActorSlot(v: AcquisitionActorListItem | undefin
 /** True if this acquisition actor list item should be kept when saving or shown as non-empty in the form. */
 export function acquisitionActorListItemHasContent(item: AcquisitionActorListItem | undefined): boolean {
   const r = unwrapAcquisitionActorSlot(item)
-  return actorFieldHasContent(r.actor) || referenceFieldFi(r.acquisition_actor_role)
+  return actorFieldHasContent(r.actor) || !!referenceFieldFi(r.acquisition_actor_role)
 }
 
 /**
