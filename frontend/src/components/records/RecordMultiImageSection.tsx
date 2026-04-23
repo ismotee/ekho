@@ -194,7 +194,15 @@ export function RecordMultiImageSection({
             <li key={img.id} className="record-multi-image-server-card">
               <div className="record-multi-image-server-main">
                 <a href={img.url} target="_blank" rel="noreferrer" className="record-multi-image-thumb-link">
-                  <img src={img.url} alt="" className="record-multi-image-thumb" width={120} height={120} />
+                  <img
+                    src={img.url}
+                    alt=""
+                    className="record-multi-image-thumb"
+                    width={120}
+                    height={120}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </a>
                 <div className="record-multi-image-server-body">
                   <p className="record-multi-image-role-line">
@@ -266,7 +274,7 @@ export function RecordMultiImageSection({
                   </div>
                   {draftPreviewUrl && (
                     <div className="record-multi-image-draft-preview">
-                      <img src={draftPreviewUrl} alt="" width={120} height={120} />
+                      <img src={draftPreviewUrl} alt="" width={120} height={120} decoding="async" />
                     </div>
                   )}
                 </div>

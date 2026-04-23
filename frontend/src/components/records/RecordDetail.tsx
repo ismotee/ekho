@@ -198,7 +198,13 @@ export const RecordDetail = observer(() => {
       <div className="record-content record-detail-hero">
         <div className="record-image-section">
           {imageUrl ? (
-            <img src={imageUrl} alt={primary} className="record-image" />
+            <img
+              src={imageUrl}
+              alt={primary}
+              className="record-image"
+              decoding="async"
+              fetchPriority="high"
+            />
           ) : (
             <div className="record-placeholder-large">{t('recordForm.detail.noImage')}</div>
           )}
@@ -290,7 +296,13 @@ export const RecordDetail = observer(() => {
                     }
                     onClick={() => setDetailImageId((prev) => (prev === img.id ? null : img.id))}
                   >
-                    <img src={img.url} alt="" className="record-detail-images-thumb" loading="lazy" />
+                    <img
+                      src={img.url}
+                      alt=""
+                      className="record-detail-images-thumb"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </button>
                   {detailsOpen && (
                     <div id={detailsPanelId} className="record-detail-images-meta">
