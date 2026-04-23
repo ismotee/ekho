@@ -64,6 +64,11 @@ const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   price: 'recordForm.labels.exchangePrice',
   /** OwnershipExchange.denomination — form uses priceDenomination */
   denomination: 'recordForm.labels.priceDenomination',
+  /** Acquisition prices: API uses longer snake_case keys than form label IDs. */
+  group_purchase_price: 'recordForm.labels.groupPurchasePrice',
+  group_purchase_price_denomination: 'recordForm.labels.groupPurchaseDenomination',
+  original_object_purchase_price: 'recordForm.labels.originalPurchasePrice',
+  original_object_purchase_price_denomination: 'recordForm.labels.originalPriceDenomination',
   transfer_of_title_number: 'recordForm.labels.transferOfTitle',
   /** ObjectHistory.event — form uses associatedEventLegend */
   event: 'recordForm.history.associatedEventLegend',
@@ -94,6 +99,7 @@ const FIELD_LABEL_KEY_OVERRIDES: Record<string, string> = {
   in_scheme: 'recordForm.labels.inScheme',
   acquisition_place_role: 'recordForm.labels.acquisitionPlaceRole',
   content_place_role: 'recordForm.labels.contentPlaceRole',
+  coordinates: 'recordForm.labels.placeCoordinates',
   /** Access.category */
   category: 'recordForm.labels.usage',
 }
@@ -147,6 +153,12 @@ export function recordDomainFieldLabelForKey(
     if (k === 'place') return t('recordForm.acquisition.placesLegend')
     if (k === 'method') return t('recordForm.labels.method')
     if (k === 'reason') return t('recordForm.labels.reason')
+    if (k === 'group_purchase_price') return t('recordForm.labels.groupPurchasePrice')
+    if (k === 'group_purchase_price_denomination') return t('recordForm.labels.groupPurchaseDenomination')
+    if (k === 'original_object_purchase_price') return t('recordForm.labels.originalPurchasePrice')
+    if (k === 'original_object_purchase_price_denomination') return t('recordForm.labels.originalPriceDenomination')
+    if (k === 'price') return t('recordForm.labels.groupPurchasePrice')
+    if (k === 'denomination') return t('recordForm.labels.groupPurchaseDenomination')
     if (k === 'acquisition_time') return t('recordForm.acquisition.acquisitionTimeLegend')
     if (k === 'reference_number') return t('recordForm.labels.referenceNumber')
   }

@@ -338,13 +338,13 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: calc(2rem * var(--record-detail-v-scale));
-  margin-top: calc(2rem * var(--record-detail-v-scale));
+  margin-top: calc(1rem * var(--record-detail-v-scale));
 }
 
 .record-detail-hero-layout--has-domains {
   display: grid;
-  /* Left: back + title + image ≈ one third; right: domain nav + fields ≈ two thirds */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  /* Left: narrower visual rail; right: broader domain/work area */
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 2.1fr);
   /* Single row: left column is title+image only; right column stacks nav + field panel.
    * align-items: start prevents the tall field panel from stretching the left column’s
    * grid area (subgrid used to tie row heights and pushed the image down). */
@@ -361,6 +361,9 @@
   grid-row: 1;
   display: flex;
   flex-direction: column;
+  /* Keep left column height in proportion as width is reduced. */
+  --record-detail-v-scale: 1.08;
+  --record-detail-title-scale: 1.08;
   gap: calc(1.5rem * var(--record-detail-v-scale));
   min-width: 0;
   position: sticky;
@@ -2134,14 +2137,14 @@
   right: 0.65rem;
   z-index: 1101;
   margin: 0;
-  padding: 0.35rem 0.65rem;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  padding: 1.05rem 1.95rem;
+  min-width: 7.5rem;
+  min-height: 7.5rem;
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 0.35rem;
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 4.5rem;
   line-height: 1;
   cursor: pointer;
 }

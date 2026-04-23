@@ -315,9 +315,9 @@
     "rightsReferenceNumber": "Oikeuden viitenumero",
     "provisos": "Hankinnan ehdot",
     "groupPurchasePrice": "Objektiryhmän hankintahinta",
-    "groupPurchaseDenomination": "Valuutta",
+    "groupPurchaseDenomination": "Objektiryhmän hankintahinnan valuutta",
     "originalPurchasePrice": "Objektin hankintahinta",
-    "originalPriceDenomination": "Valuutta",
+    "originalPriceDenomination": "Objektin hankintahinnan valuutta",
     "transferOfTitle": "Hankintatapahtuman tai omistusoikeuden vaihdoksen numero",
     "rightsType": "Oikeuden luonne",
     "accessCategory": "Käyttörajoitus",
@@ -529,7 +529,7 @@
   },
   "access": {
     "accessDateLegend": "Käyttörajoituksen kirjaamisaika",
-    "accessRestrictionNoteLabel": "Lisätietoja käyttörajoiteuksesta",
+    "accessRestrictionNoteLabel": "Lisätietoja käyttörajoituksesta",
     "displayStatusLegend": "Esille pantavan objektin käsittelyvaihe",
     "statusDateLegend": "Käyttöoikeuden käsittelyvaiheen kirjaamisaika"
   },

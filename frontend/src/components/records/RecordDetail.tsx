@@ -104,10 +104,15 @@ function arrayItemTileLabel(
   }
   if (arrayFieldKey === 'technical_attribute' && isPlainObject(item)) {
     const technicalName = displayTextFromScalarOrPrefLabelObject(
-      (item as Record<string, unknown>).unit,
+      (item as Record<string, unknown>).type,
       i18n.language,
     )
     if (technicalName) return trunc(technicalName)
+    const unitName = displayTextFromScalarOrPrefLabelObject(
+      (item as Record<string, unknown>).unit,
+      i18n.language,
+    )
+    if (unitName) return trunc(unitName)
   }
   if (isPlainObject(item)) {
     const o = item as Record<string, unknown>
@@ -298,6 +303,20 @@ function primaryCarouselIndex(images: RecordImage[]): number {
   if (images.length === 0) return 0
   const i = images.findIndex((img) => img.is_primary)
   return i >= 0 ? i : 0
+}
+
+/** Prefer the original image for fullscreen if this record is a derived/scaled variant. */
+function resolveNaturalSizeImage(image: RecordImage, allImages: RecordImage[]): RecordImage {
+  const byId = new Map(allImages.map((img) => [img.id, img]))
+  let current = image
+  const visited = new Set<number>()
+  while (current.derived_from?.id != null && !visited.has(current.id)) {
+    visited.add(current.id)
+    const parent = byId.get(current.derived_from.id)
+    if (!parent) break
+    current = parent
+  }
+  return current
 }
 
 export const RecordDetail = observer(() => {
@@ -581,7 +600,11 @@ export const RecordDetail = observer(() => {
       }
       if (pathEndsAtArrayIndex) {
         const sourceKey = arrayItemTitleSourceKey(v, i18n.language)
-        if (sourceKey !== null && keys.includes(sourceKey)) {
+        const isTechnicalAttributeItem =
+          pathEndsAtArrayIndex && arrayKeyForIndexedObject === 'technical_attribute'
+        // Technical attributes should keep `value` visible in the item panel even if it was used as title fallback.
+        const shouldKeepSourceKeyVisible = isTechnicalAttributeItem && sourceKey === 'value'
+        if (sourceKey !== null && keys.includes(sourceKey) && !shouldKeepSourceKeyVisible) {
           const without = keys.filter((k) => k !== sourceKey)
           if (without.length > 0) keys = without
         }
@@ -702,6 +725,9 @@ export const RecordDetail = observer(() => {
   const nCarousel = sortedCarouselImages.length
   const safeCarouselIndex = nCarousel === 0 ? 0 : Math.min(Math.max(0, carouselIndex), nCarousel - 1)
   const currentCarouselImage = nCarousel > 0 ? sortedCarouselImages[safeCarouselIndex] : undefined
+  const currentCarouselNaturalImage = currentCarouselImage
+    ? resolveNaturalSizeImage(currentCarouselImage, sortedCarouselImages)
+    : undefined
   const heroDetailsPanelId =
     currentCarouselImage != null
       ? `record-detail-hero-carousel-details-${currentCarouselImage.id}`
@@ -937,7 +963,7 @@ export const RecordDetail = observer(() => {
                       className="record-detail-hero-carousel-main-zoom"
                       onClick={() =>
                         setImageLightbox({
-                          src: currentCarouselImage.url,
+                          src: (currentCarouselNaturalImage ?? currentCarouselImage).url,
                           alt: t('recordForm.recordImages.detailCarouselImageAlt', {
                             title: primary,
                             current: safeCarouselIndex + 1,
@@ -1309,7 +1335,7 @@ export const RecordDetail = observer(() => {
                     className="record-detail-hero-carousel-main-zoom"
                     onClick={() =>
                       setImageLightbox({
-                        src: currentCarouselImage.url,
+                        src: (currentCarouselNaturalImage ?? currentCarouselImage).url,
                         alt: t('recordForm.recordImages.detailCarouselImageAlt', {
                           title: primary,
                           current: safeCarouselIndex + 1,
