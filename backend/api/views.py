@@ -323,8 +323,9 @@ def csrf_token(request):
     response = Response({
         'csrfToken': token
     }, status=status.HTTP_200_OK)
-    # Ensure the cookie is set
-    response.set_cookie('csrftoken', token, samesite='Lax', httponly=False)
+    # Rely on @ensure_csrf_cookie + Django CSRF_COOKIE_* / CSRF_COOKIE_HTTPONLY from settings.
+    # Do not set_cookie here: a hardcoded SameSite=Lax would override deployment (e.g.
+    # SameSite=None for split hosts) and can duplicate Set-Cookie for csrftoken.
     return response
 
 

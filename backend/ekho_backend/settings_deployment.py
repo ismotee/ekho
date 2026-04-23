@@ -126,8 +126,12 @@ if os.getenv("CSRF_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
 if os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true", "yes"):
     SESSION_COOKIE_SECURE = True
 
-# Session + CSRF cookies on a different host than the API (e.g. two Railway services)
-# require SameSite=None and Secure, or the browser will not attach sessionid on cross-site POST.
+# Single-domain production (HTML + /api on the same host, e.g. one Railway service behind one URL):
+#   Leave EKHO_CROSS_SITE_SESSION unset/false. Defaults from settings.py apply (SameSite=Lax).
+#   Set SESSION_COOKIE_SECURE=1 and CSRF_COOKIE_SECURE=1 for HTTPS.
+# Split-origin (separate frontend and API hostnames, e.g. two Railway services):
+#   Set EKHO_CROSS_SITE_SESSION=1 plus CORS_ALLOWED_ORIGINS and CSRF_TRUSTED_ORIGINS to the
+#   browser origin (https://frontend-host, no path). That forces SameSite=None + Secure cookies.
 _cross_site = os.getenv("EKHO_CROSS_SITE_SESSION", "").lower() in ("1", "true", "yes")
 if _cross_site:
     if not _extra_cors:
