@@ -323,8 +323,8 @@ def csrf_token(request):
     response = Response({
         'csrfToken': token
     }, status=status.HTTP_200_OK)
-    # Ensure the cookie is set
-    response.set_cookie('csrftoken', token, samesite='Lax', httponly=False)
+    # Do not call set_cookie here: @ensure_csrf_cookie plus Django's CSRF_COOKIE_*
+    # (e.g. SameSite=None + Secure when EKHO_CROSS_SITE_SESSION is on) must apply.
     return response
 
 
