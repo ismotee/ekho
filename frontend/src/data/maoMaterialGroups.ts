@@ -198,6 +198,14 @@ export const MATERIAL_TYPE_GROUPS = [
     ]
   },
   {
+    "group": "pintakäsittelyaineet",
+    "items": [
+      "lakat (pintakäsittelyaineet)",
+      "muste",
+      "painovärit"
+    ]
+  },
+  {
     "group": "pehmusteet",
     "items": [
       "pehmusteet"
@@ -312,6 +320,7 @@ export const MATERIAL_TYPE_FI = [
   "käärepaperi",
   "käärmeennahka",
   "köysi (materiaalit)",
+  "lakat (pintakäsittelyaineet)",
   "lanka",
   "leipäpuu",
   "liimapaperi",
@@ -326,6 +335,7 @@ export const MATERIAL_TYPE_FI = [
   "makulatuuripaperi",
   "massiivipuu",
   "meripihka",
+  "muste",
   "moaree",
   "mokkanahka",
   "musliini",
@@ -344,6 +354,7 @@ export const MATERIAL_TYPE_FI = [
   "pakkausmateriaalit",
   "pakkauspaperi",
   "pallosavi",
+  "painovärit",
   "panssari",
   "paperisavi",
   "parkkinahka",

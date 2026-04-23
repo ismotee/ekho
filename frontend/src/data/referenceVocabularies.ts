@@ -776,6 +776,7 @@ lisääntymiskäyttäytyminen
 luokaton opetus
 luokkaopetus
 luonto-opetus
+Luova toiminta
 läheiset
 maneerit
 manipulaatio
@@ -840,6 +841,9 @@ suoramainonta
 suostuttelu
 suullinen ilmaisu
 sähköinen viestintä
+Taiteellinen tutkimus
+Taiteellinen työ
+Taiteen vapaus
 taiteen perusopetus
 tatuointi
 teatteri-ilmaisu
