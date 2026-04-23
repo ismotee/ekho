@@ -266,7 +266,7 @@ function BiographicalNoteInputs({
         onChangeFi={(fi) =>
           commit({
             ...b,
-            source: { ...src, source_type: fi.trim() ? referenceFieldToPayload(fi) : undefined },
+            source: { ...src, source_type: fi.trim() || undefined },
           })
         }
         disabled={disabled}

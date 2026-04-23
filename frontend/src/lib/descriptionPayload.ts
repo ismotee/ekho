@@ -138,7 +138,7 @@ export function contentHasPersistableContent(c: Content): boolean {
     (c.places?.some((p) => spatialRowHasContent(p)) ?? false) ||
     activityOk ||
     c.event?.some(contentEventRowHasContent) ||
-    (typeof c.position === 'string' ? c.position.trim() : referenceFieldFi(c.position as ReferenceField)) ||
+    c.position?.trim() ||
     referenceFieldFi(c.script) ||
     referenceFieldFi(c.language) ||
     styleOk ||
@@ -262,10 +262,7 @@ export function compactDescriptionForSave(d: Description): Description | undefin
       else delete c.general_concept
     }
     if (c.position !== undefined && c.position !== null) {
-      const t =
-        typeof c.position === 'string'
-          ? c.position.trim()
-          : referenceFieldFi(c.position as ReferenceField).trim()
+      const t = c.position.trim()
       if (t) c.position = t
       else delete c.position
     }
@@ -298,14 +295,13 @@ export function compactDescriptionForSave(d: Description): Description | undefin
     if (p.color != null) {
       if (Array.isArray(p.color)) {
         const cols = p.color
-          .map((c) => (typeof c === 'string' ? referenceFieldToPayload(c.trim()) : c))
-          .filter((c) => referenceFieldFi(c))
+          .map((c) => (typeof c === 'string' ? c.trim() : c))
+          .filter((c) => (typeof c === 'string' ? !!c : !!referenceFieldFi(c)))
         if (cols.length) p.color = cols
         else delete p.color
       } else {
-        const ref =
-          typeof p.color === 'string' ? referenceFieldToPayload(p.color.trim()) : p.color
-        if (referenceFieldFi(ref)) p.color = [ref]
+        const ref = typeof p.color === 'string' ? referenceFieldToPayload(p.color.trim()) : p.color
+        if (ref && referenceFieldFi(ref)) p.color = [ref]
         else delete p.color
       }
     }

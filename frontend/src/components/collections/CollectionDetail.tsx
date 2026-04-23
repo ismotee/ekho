@@ -83,7 +83,7 @@ export const CollectionDetail = observer(() => {
 
   const owningOrgLabel = recordActorFieldDisplayName(
     collection.owning_organization ?? undefined,
-    (aid) => actorStore.actorById(aid)
+    (aid) => actorStore.actorById(aid)?.data
   ).trim()
 
   const closeImportModal = () => {
